@@ -1,0 +1,2714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatBI 组件库</title>
+    <script src="./vendor/echarts.min.js"></script>
+    <script src="./vendor/echarts-liquidfill.min.js"></script>
+    <style>
+      :root {
+        --bg: #03060c;
+        --bg-a: rgba(45, 100, 255, 0.18);
+        --bg-b: rgba(121, 54, 255, 0.12);
+        --bg-c: rgba(20, 255, 185, 0.08);
+        --panel: rgba(10, 16, 30, 0.85);
+        --panel-border: rgba(120, 160, 255, 0.25);
+        --panel-glow: rgba(90, 140, 255, 0.12);
+        --text: rgba(245, 248, 255, 0.95);
+        --muted: rgba(160, 180, 210, 0.7);
+        --border: rgba(120, 160, 255, 0.18);
+        --accent: #5e9bff;
+        --accent-2: #7c3aed;
+        --accent-3: #22d3ee;
+        --glow: rgba(90, 140, 255, 0.4);
+        --card-bg: linear-gradient(135deg, rgba(20, 30, 50, 0.6), rgba(10, 15, 25, 0.8));
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft Yahei", sans-serif;
+        font-size: 14px;
+        background: radial-gradient(1200px 700px at 30% 10%, var(--bg-a), transparent 55%),
+          radial-gradient(900px 520px at 80% 30%, var(--bg-b), transparent 55%),
+          radial-gradient(1200px 900px at 60% 120%, var(--bg-c), transparent 60%),
+          var(--bg);
+        color: var(--text);
+        overflow: hidden;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background: repeating-linear-gradient(
+            0deg,
+            rgba(255, 255, 255, 0.03),
+            rgba(255, 255, 255, 0.03) 1px,
+            transparent 1px,
+            transparent 22px
+          ),
+          repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.03),
+            rgba(255, 255, 255, 0.03) 1px,
+            transparent 1px,
+            transparent 22px
+          );
+        opacity: 0.18;
+        mask-image: radial-gradient(circle at 40% 20%, rgba(0, 0, 0, 1), transparent 70%);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        height: 100vh;
+      }
+
+      .sidebar {
+        background: linear-gradient(180deg, rgba(10, 14, 28, 0.70), rgba(8, 10, 18, 0.55));
+        border-right: 1px solid var(--border);
+        backdrop-filter: blur(10px);
+        padding: 20px 14px;
+        overflow: auto;
+      }
+
+      .sidebar::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .sidebar::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+      }
+
+      .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.00);
+        border-radius: 10px;
+        border: 2px solid rgba(0, 0, 0, 0);
+        background-clip: padding-box;
+      }
+
+      .sidebar:hover::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.10);
+        border: 2px solid rgba(0, 0, 0, 0);
+        background-clip: padding-box;
+      }
+
+      .sidebar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.12) rgba(255, 255, 255, 0.02);
+      }
+
+      .logo {
+        font-weight: 700;
+        font-size: 18px;
+        margin-bottom: 16px;
+        letter-spacing: 0.5px;
+      }
+
+      .nav-group {
+        margin: 16px 0 8px;
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.8;
+      }
+
+      .nav-item {
+        padding: 10px 12px;
+        margin: 6px 0;
+        border-radius: 8px;
+        cursor: pointer;
+        background: transparent;
+        color: var(--text);
+        border: 1px solid transparent;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+      }
+
+      .nav-item:hover {
+        background: rgba(120, 160, 255, 0.06);
+        border-color: rgba(120, 160, 255, 0.12);
+      }
+
+      .nav-item.active {
+        background: linear-gradient(90deg, rgba(120, 160, 255, 0.14), rgba(120, 160, 255, 0.04));
+        border-color: rgba(120, 160, 255, 0.18);
+        color: #fff;
+        box-shadow: 0 0 0 1px rgba(120, 160, 255, 0.06);
+      }
+
+      .nav-icon {
+        width: 18px;
+        height: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(225, 236, 255, 0.85);
+        flex: 0 0 18px;
+      }
+
+      .nav-icon svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        opacity: 0.95;
+      }
+
+      .main {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 12px;
+        padding: 16px;
+        overflow: hidden;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: var(--panel);
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 0 0 1px rgba(120, 160, 255, 0.06), 0 18px 40px rgba(0, 0, 0, 0.28);
+        position: relative;
+        z-index: 30;
+        overflow: visible;
+      }
+
+      .top-left {
+        position: absolute;
+        left: 14px;
+        display: none;
+      }
+
+      .top-right {
+        position: absolute;
+        right: 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .theme-bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .theme-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        cursor: pointer;
+        background: rgba(8, 12, 22, 0.5);
+        box-shadow: 0 0 0 1px rgba(120, 160, 255, 0.05) inset;
+        user-select: none;
+      }
+
+      .theme-btn.active {
+        outline: 2px solid var(--accent);
+        box-shadow: 0 0 0 1px rgba(120, 160, 255, 0.08) inset, 0 0 22px var(--glow);
+      }
+
+      .swatches {
+        display: flex;
+        gap: 4px;
+      }
+
+      .swatch {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .content {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .panel {
+        background: rgba(10, 16, 30, 0.45);
+        border: 1px solid var(--panel-border);
+        border-radius: 4px;
+        padding: 24px;
+        min-height: 580px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        backdrop-filter: blur(20px);
+        box-shadow: 0 0 30px var(--panel-glow), 0 40px 80px rgba(0, 0, 0, 0.5);
+        position: relative;
+        z-index: 1;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .panel::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: 
+          linear-gradient(to right, var(--accent) 12px, transparent 12px) 0 0 / 100% 2px,
+          linear-gradient(to bottom, var(--accent) 12px, transparent 12px) 0 0 / 2px 100%,
+          linear-gradient(to left, var(--accent) 12px, transparent 12px) 100% 0 / 100% 2px,
+          linear-gradient(to bottom, var(--accent) 12px, transparent 12px) 100% 0 / 2px 100%,
+          linear-gradient(to right, var(--accent) 12px, transparent 12px) 0 100% / 100% 2px,
+          linear-gradient(to top, var(--accent) 12px, transparent 12px) 0 100% / 2px 100%,
+          linear-gradient(to left, var(--accent) 12px, transparent 12px) 100% 100% / 100% 2px,
+          linear-gradient(to top, var(--accent) 12px, transparent 12px) 100% 100% / 2px 100%;
+        background-repeat: no-repeat;
+        opacity: 0.8;
+        z-index: 5;
+      }
+
+      .panel::after {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        pointer-events: none;
+        border: 1px solid rgba(120, 160, 255, 0.08);
+        background: 
+          linear-gradient(90deg, rgba(120, 160, 255, 0.03) 1px, transparent 1px) 0 0 / 20px 100%,
+          linear-gradient(0deg, rgba(120, 160, 255, 0.03) 1px, transparent 1px) 0 0 / 100% 20px;
+        opacity: 0.4;
+      }
+
+      .panel-glow-line {
+        position: absolute;
+        inset: -1px;
+        border-radius: 4px;
+        padding: 1px;
+        background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), var(--accent-3), transparent);
+        background-size: 220% 100%;
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        pointer-events: none;
+        animation: borderFlow 4s linear infinite;
+        opacity: 0.45;
+        z-index: 2;
+      }
+
+      .panel-glow-line::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 4px;
+        pointer-events: none;
+        box-shadow: 0 0 26px rgba(90, 140, 255, 0.28), 0 0 60px rgba(124, 58, 237, 0.16);
+        opacity: 0.9;
+      }
+
+      @keyframes borderFlow {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
+      .chart-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        position: relative;
+        z-index: 2;
+      }
+
+      .chart-title-area {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .chart-title-icon {
+        width: 24px;
+        height: 24px;
+        background: transparent;
+        border: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text);
+        opacity: 0.9;
+      }
+
+      .chart-title-icon svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+      }
+
+      .lang-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.05);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--muted);
+      }
+
+      .lang-toggle:hover {
+        background: rgba(120, 160, 255, 0.1);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .lang-text {
+        font-size: 11px;
+        font-weight: 700;
+        margin-left: 0;
+        text-transform: uppercase;
+      }
+
+      .toggle-group {
+        display: flex;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 3px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .toggle-btn {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        cursor: pointer;
+        color: var(--muted);
+        transition: all 0.2s;
+      }
+
+      .toggle-btn.active {
+        background: var(--accent);
+        color: #fff;
+        box-shadow: 0 2px 8px var(--glow);
+      }
+
+      .chart-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 4px;
+        letter-spacing: 0.2px;
+        color: var(--text);
+      }
+
+      .chart-subtitle {
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+
+      #chart {
+        width: 100%;
+        flex: 1;
+        min-height: 400px;
+      }
+
+      .palette-pop {
+        position: absolute;
+        top: calc(100% + 12px);
+        right: 0;
+        width: 280px;
+        background: rgba(8, 12, 22, 0.94);
+        border: 1px solid rgba(120, 160, 255, 0.25);
+        border-radius: 12px;
+        padding: 12px;
+        backdrop-filter: blur(20px);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 0 30px rgba(90, 140, 255, 0.2);
+        display: none;
+        z-index: 9999;
+      }
+
+      .palette-pop.open {
+        display: block;
+      }
+
+      .palette-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+
+      .palette-btn {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(8, 12, 22, 0.5);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .palette-btn:hover {
+        border-color: rgba(120, 160, 255, 0.28);
+      }
+
+      .palette {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+      }
+
+      .palette .swatch {
+        height: 22px;
+        width: 100%;
+        border-radius: 6px;
+        position: relative;
+      }
+
+      .palette .swatch span {
+        position: absolute;
+        bottom: 2px;
+        right: 4px;
+        font-size: 9px;
+        color: #fff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+      }
+
+      .indicator-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .indicator-grid.cols-1 {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        position: relative;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(120, 160, 255, 0.12);
+        border-radius: 10px;
+        padding: 20px;
+        min-height: 110px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+      }
+
+      .card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--accent);
+        box-shadow: 0 0 15px var(--glow);
+        transform: translateY(-2px);
+      }
+
+      .card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .card-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(120, 160, 255, 0.08);
+        border: 1px solid rgba(120, 160, 255, 0.15);
+        color: var(--accent);
+      }
+
+      .card-icon svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+      }
+
+      .badge-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(245, 248, 255, 0.82);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        background: rgba(255, 255, 255, 0.05);
+        font-size: 12px;
+        color: rgba(245, 248, 255, 0.86);
+        white-space: nowrap;
+      }
+
+      .status-chip .pill {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #22c55e;
+        box-shadow: 0 0 14px rgba(34, 197, 94, 0.45);
+      }
+
+      .status-chip.bad {
+        border-color: rgba(239, 68, 68, 0.22);
+        background: rgba(239, 68, 68, 0.08);
+      }
+
+      .status-chip.bad .pill {
+        background: #ef4444;
+        box-shadow: 0 0 14px rgba(239, 68, 68, 0.45);
+      }
+
+      .badge .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--accent);
+        box-shadow: 0 0 12px var(--glow);
+      }
+
+      .flip-display {
+        display: inline-flex;
+        align-items: flex-end;
+        gap: 1px;
+        font-family: ui-monospace, Menlo, Monaco, Consolas, "SF Mono", "Roboto Mono", monospace;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 1px;
+      }
+
+      .flip-col {
+        position: relative;
+        width: 14px;
+        height: 26px;
+        overflow: hidden;
+        border-radius: 0;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .flip-stack {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        transition: transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
+      }
+
+      .flip-digit {
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        line-height: 26px;
+        color: rgba(245, 248, 255, 0.92);
+      }
+
+      .flip-static {
+        height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4px;
+        font-size: 18px;
+        color: rgba(245, 248, 255, 0.85);
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 12px;
+        background: radial-gradient(600px 120px at 20% 0%, rgba(90, 140, 255, 0.22), transparent 60%);
+        pointer-events: none;
+      }
+
+      .card .label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .card .value {
+        font-size: 20px;
+        font-weight: 700;
+        margin-top: 6px;
+      }
+
+      .value-row {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .delta {
+        font-size: 12px;
+        font-weight: 600;
+        opacity: 0.9;
+        letter-spacing: 0.2px;
+      }
+
+      .flip {
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+        letter-spacing: 2px;
+      }
+
+      .missing {
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(239, 68, 68, 0.12);
+        color: #fecaca;
+        margin-top: 10px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="logo">ChatBI组件库</div>
+        <div id="nav"></div>
+      </aside>
+      <main class="main">
+        <section class="topbar">
+          <div class="top-left">
+            <div class="top-title">ChatBI组件库</div>
+            <div class="top-sub" id="topSub">主题/图表可切换</div>
+          </div>
+          <div class="theme-bar" id="themeBar"></div>
+          <div class="top-right">
+            <div class="palette-btn" id="paletteBtn">
+              <div class="swatches" id="palettePreview"></div>
+              <div style="color: var(--muted); font-size: 12px">色卡</div>
+              <div class="palette-pop" id="palettePop">
+                <div class="palette-head">
+                  <div id="paletteTitle">主题色卡</div>
+                  <div style="opacity: 0.8">点击外部关闭</div>
+                </div>
+                <div class="palette" id="paletteBox"></div>
+              </div>
+            </div>
+            <div class="lang-toggle" id="langToggle" title="Switch Language">
+              <span class="lang-text" id="langText">英文</span>
+            </div>
+          </div>
+        </section>
+        <section class="content">
+          <div class="panel">
+            <div class="panel-glow-line"></div>
+            <div class="chart-header">
+              <div class="chart-title-area">
+                <div class="chart-title-icon" id="chartTitleIcon"></div>
+                <div>
+                  <div class="chart-title" id="chartTitle"></div>
+                  <div class="chart-subtitle" id="chartSubTitle"></div>
+                </div>
+              </div>
+              <div id="chartControls"></div>
+            </div>
+            <div id="indicatorArea" style="display: none">
+              <div class="indicator-grid" id="indicatorGrid"></div>
+            </div>
+            <div id="chart"></div>
+            <div id="missingDeps" class="missing" style="display: none"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const themes = {
+        cyber: {
+          name: "赛博蓝紫",
+          nameEn: "Cyber Blue",
+          colors: [
+            "#6AA6FF",
+            "#7C3AED",
+            "#22D3EE",
+            "#A855F7",
+            "#38BDF8",
+            "#34D399",
+            "#F472B6",
+            "#93C5FD",
+            "#14B8A6",
+            "#C4B5FD",
+          ],
+        },
+        aurora: {
+          name: "极光青绿",
+          nameEn: "Aurora Green",
+          colors: [
+            "#2DD4BF",
+            "#22D3EE",
+            "#34D399",
+            "#4ADE80",
+            "#10B981",
+            "#38BDF8",
+            "#A7F3D0",
+            "#86EFAC",
+            "#5EEAD4",
+            "#84CC16",
+          ],
+        },
+        ember: {
+          name: "霓虹熔金",
+          nameEn: "Ember Gold",
+          colors: [
+            "#F97316",
+            "#F59E0B",
+            "#F43F5E",
+            "#FB7185",
+            "#F472B6",
+            "#A855F7",
+            "#FDBA74",
+            "#FDE047",
+            "#C084FC",
+            "#60A5FA",
+          ],
+        },
+      }
+
+      const UI_TEXT = "rgba(245, 248, 255, 0.92)"
+      const UI_MUTED = "rgba(189, 203, 227, 0.65)"
+
+      const groups = [
+        {
+          group: "指标",
+          items: [
+            { key: "indicator", name: "指标卡" },
+            { key: "flip", name: "翻牌器" },
+            { key: "gauge", name: "仪表盘" },
+            { key: "progress", name: "进度条" },
+            { key: "water", name: "水波图" },
+          ],
+        },
+        {
+          group: "线图",
+          items: [
+            { key: "line", name: "折线图" },
+            { key: "smooth", name: "曲线图" },
+            { key: "area", name: "面积图" },
+          ],
+        },
+        {
+          group: "柱图",
+          items: [
+            { key: "bar", name: "柱状图" },
+            { key: "hbar", name: "横向柱状图" },
+            { key: "groupBar", name: "分组柱状图" },
+            { key: "stackBar", name: "堆积柱状图" },
+          ],
+        },
+        {
+          group: "饼/环图",
+          items: [
+            { key: "pie", name: "饼图" },
+            { key: "donut", name: "环形图" },
+            { key: "rose", name: "玫瑰图" },
+          ],
+        },
+        {
+          group: "其他",
+          items: [
+            { key: "radar", name: "雷达图" },
+            { key: "bubble", name: "气泡图" },
+            { key: "scatter", name: "散点图" },
+            { key: "funnel", name: "漏斗图" },
+            { key: "sankey", name: "桑基图" },
+          ],
+        },
+      ]
+
+      const metaMap = {
+        indicator: { title: "核心经营指标（运营商）", titleEn: "Core Business Metrics (Telecom)", unit: "" },
+        flip: { title: "实时话务与流量大盘", titleEn: "Real-time Voice & Traffic Dashboard", unit: "" },
+        gauge: { title: "5G核心网健康度", titleEn: "5G Core Network Health", unit: "%" },
+        progress: { title: "年度基站建设进度", titleEn: "Annual Base Station Progress", unit: "%" },
+        water: { title: "宽带资源利用率", titleEn: "Broadband Resource Utilization", unit: "%" },
+        line: { title: "ARPU值与DOU增长趋势", titleEn: "ARPU & DOU Growth Trends", unit: "元/GB" },
+        smooth: { title: "套餐订购量变化（4G/5G/宽带）", titleEn: "Package Subscription Changes", unit: "万" },
+        area: { title: "各业务数据流量（DOU）贡献对比", titleEn: "Traffic Contribution by Service", unit: "TB" },
+        bar: { title: "各省分公司营收排名 Top5", titleEn: "Regional Revenue Rankings Top 5", unit: "亿" },
+        hbar: { title: "热门应用流量排行 Top5", titleEn: "Hot App Traffic Rankings Top 5", unit: "PB" },
+        groupBar: { title: "新增用户目标 vs 实际完成情况", titleEn: "New User Target vs Actual", unit: "万" },
+        stackBar: { title: "业务营收构成（语音/流量/宽带/增值）", titleEn: "Revenue Structure Analysis", unit: "亿" },
+        pie: { title: "套餐用户分布比例", titleEn: "User Distribution by Package", unit: "%" },
+        donut: { title: "5G渗透率结构", titleEn: "5G Penetration Structure", unit: "%" },
+        rose: { title: "渠道引流贡献（玫瑰）", titleEn: "Channel Contribution (Rose)", unit: "%" },
+        radar: { title: "各省份综合能力对标", titleEn: "Regional Capability Benchmarking", unit: "分" },
+        bubble: { title: "各省分投入产出分析（气泡）", titleEn: "Regional ROI Analysis (Bubble)", unit: "万" },
+        scatter: { title: "流量与ARPU值关联分析（散点）", titleEn: "Traffic vs ARPU Correlation", unit: "万" },
+        funnel: { title: "5G套餐升级转化漏斗", titleEn: "5G Upgrade Conversion Funnel", unit: "%" },
+        sankey: { title: "用户离网流向分析（多触点）", titleEn: "User Churn Flow Analysis", unit: "万" },
+      }
+
+      let currentThemeKey = "cyber"
+      let currentKey = "indicator"
+      let currentLegendMode = "simple"
+      let currentLang = "zh"
+      let chart
+
+      const translations = {
+        zh: {
+          indicator: "指标卡",
+          flip: "翻牌器",
+          gauge: "仪表盘",
+          progress: "进度条",
+          water: "水波图",
+          line: "折线图",
+          smooth: "曲线图",
+          area: "面积图",
+          bar: "柱状图",
+          hbar: "横向柱状图",
+          groupBar: "分组柱状图",
+          stackBar: "堆积柱状图",
+          pie: "饼图",
+          donut: "环形图",
+          rose: "玫瑰图",
+          radar: "雷达图",
+          bubble: "气泡图",
+          scatter: "散点图",
+          funnel: "漏斗图",
+          sankey: "桑基图",
+          simpleLegend: "简洁图例",
+          detailedLegend: "详情图例",
+          palette: "色卡",
+          paletteTip: "点击色块切换主题",
+          indicatorGroup: "指标",
+          lineGroup: "线图",
+          barGroup: "柱图",
+          pieGroup: "饼/环图",
+          otherGroup: "其他",
+          mom: "环比",
+          yoy: "同比",
+          target: "目标",
+          actual: "实际",
+          unit: "单位",
+        },
+        en: {
+          indicator: "Indicator",
+          flip: "Flip Card",
+          gauge: "Gauge",
+          progress: "Progress",
+          water: "Liquid",
+          line: "Line Chart",
+          smooth: "Smooth Line",
+          area: "Area Chart",
+          bar: "Bar Chart",
+          hbar: "H-Bar Chart",
+          groupBar: "Grouped Bar",
+          stackBar: "Stacked Bar",
+          pie: "Pie Chart",
+          donut: "Donut Chart",
+          rose: "Rose Chart",
+          radar: "Radar Chart",
+          bubble: "Bubble Chart",
+          scatter: "Scatter Chart",
+          funnel: "Funnel Chart",
+          sankey: "Sankey Chart",
+          simpleLegend: "Simple Legend",
+          detailedLegend: "Detailed Legend",
+          palette: "Palette",
+          paletteTip: "Click to switch theme",
+          indicatorGroup: "Metrics",
+          lineGroup: "Line",
+          barGroup: "Bar",
+          pieGroup: "Pie/Donut",
+          otherGroup: "Other",
+          mom: "MoM",
+          yoy: "YoY",
+          target: "Target",
+          actual: "Actual",
+          unit: "Unit",
+        }
+      }
+
+      const chartLang = {
+        zh: {
+          days: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+          sources: ["搜索", "广告", "分享", "直达", "活动"],
+          products: ["手机", "电脑", "家电", "美妆", "服饰"],
+          regions: ["华东", "华南", "华北", "西南", "华中"],
+          regionsRank: ["华东", "华南", "华北", "西南", "华中"],
+          lineSeries: ["ARPU", "DOU"],
+          smoothSeries: ["4G套餐", "5G套餐"],
+          areaSeries: ["语音", "数据"],
+          stackSeries: ["语音", "流量", "宽带"],
+          radarIndicators: ["5G渗透率", "ARPU增量", "离网控制", "政企发展", "宽带覆盖"],
+          radarSeries: ["南方大区", "北方大区"],
+          funnelStages: ["访问", "注册", "留存", "下单", "复购"],
+          pieData: [
+            { value: 42, name: "5G黄金会员" },
+            { value: 28, name: "4G普通套餐" },
+            { value: 18, name: "家庭宽带融合" },
+            { value: 12, name: "政企专网" },
+          ],
+          donutData: [
+            { value: 36, name: "已办理5G" },
+            { value: 24, name: "终端支持未办理" },
+            { value: 22, name: "老旧终端用户" },
+            { value: 18, name: "潜在升级客户" },
+          ],
+          roseData: [
+            { value: 28, name: "营业厅办理" },
+            { value: 22, name: "外呼营销" },
+            { value: 18, name: "APP商城" },
+            { value: 16, name: "第三方合作" },
+            { value: 14, name: "朋友圈广告" },
+          ],
+          sankeyNodes: [
+            "搜索",
+            "广告",
+            "分享",
+            "直达",
+            "落地页",
+            "活动页",
+            "商品列表",
+            "商品详情",
+            "加购",
+            "提交订单",
+            "支付成功",
+            "支付失败",
+            "流失",
+          ],
+        },
+        en: {
+          days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          sources: ["Search", "Ads", "Share", "Direct", "Campaign"],
+          products: ["Mobile", "PC", "Appliance", "Beauty", "Apparel"],
+          regions: ["East", "South", "North", "Southwest", "Central"],
+          regionsRank: ["East", "South", "North", "Southwest", "Central"],
+          lineSeries: ["ARPU", "DOU"],
+          smoothSeries: ["4G Plan", "5G Plan"],
+          areaSeries: ["Voice", "Data"],
+          stackSeries: ["Voice", "Traffic", "Broadband"],
+          radarIndicators: ["5G Penetration", "ARPU Lift", "Churn Control", "Enterprise", "Broadband"],
+          radarSeries: ["Southern Region", "Northern Region"],
+          funnelStages: ["Visit", "Register", "Retain", "Order", "Repurchase"],
+          pieData: [
+            { value: 42, name: "5G Gold" },
+            { value: 28, name: "4G Standard" },
+            { value: 18, name: "Home Broadband" },
+            { value: 12, name: "Enterprise" },
+          ],
+          donutData: [
+            { value: 36, name: "5G Activated" },
+            { value: 24, name: "Device Ready" },
+            { value: 22, name: "Legacy Devices" },
+            { value: 18, name: "Upgrade Potential" },
+          ],
+          roseData: [
+            { value: 28, name: "Retail Store" },
+            { value: 22, name: "Outbound" },
+            { value: 18, name: "App Store" },
+            { value: 16, name: "Partners" },
+            { value: 14, name: "Social Ads" },
+          ],
+          sankeyNodes: [
+            "Search",
+            "Ads",
+            "Share",
+            "Direct",
+            "Landing",
+            "Campaign",
+            "List",
+            "Detail",
+            "Add to Cart",
+            "Checkout",
+            "Paid",
+            "Pay Failed",
+            "Churned",
+          ],
+        },
+      }
+
+      function cl() {
+        return chartLang[currentLang] || chartLang.zh
+      }
+
+      const nav = document.getElementById("nav")
+      const topSub = document.getElementById("topSub")
+      const themeBar = document.getElementById("themeBar")
+      const chartTitle = document.getElementById("chartTitle")
+      const chartTitleIcon = document.getElementById("chartTitleIcon")
+      const chartSubTitle = document.getElementById("chartSubTitle")
+      const chartControls = document.getElementById("chartControls")
+      const paletteBtn = document.getElementById("paletteBtn")
+      const palettePop = document.getElementById("palettePop")
+      const paletteTitle = document.getElementById("paletteTitle")
+      const palettePreview = document.getElementById("palettePreview")
+      const paletteBox = document.getElementById("paletteBox")
+      const indicatorArea = document.getElementById("indicatorArea")
+      const indicatorGrid = document.getElementById("indicatorGrid")
+      const missingDeps = document.getElementById("missingDeps")
+
+      function applyThemeVars(theme) {
+        void theme
+      }
+
+      function renderThemeBar() {
+        themeBar.innerHTML = ""
+        Object.entries(themes).forEach(([key, t]) => {
+          const btn = document.createElement("div")
+          btn.className = "theme-btn" + (key === currentThemeKey ? " active" : "")
+          btn.onclick = () => {
+            currentThemeKey = key
+            renderThemeBar()
+            renderPalette()
+            renderChart()
+          }
+          const title = document.createElement("div")
+          title.textContent = currentLang === "zh" ? t.name : t.nameEn || key
+          btn.appendChild(title)
+          themeBar.appendChild(btn)
+        })
+      }
+
+      function renderPalette() {
+        const t = translations[currentLang]
+        paletteBox.innerHTML = ""
+        const themeName = currentLang === "zh" ? themes[currentThemeKey].name : themes[currentThemeKey].nameEn || currentThemeKey
+        paletteTitle.textContent = `${t.palette} · ${themeName}`
+        palettePreview.innerHTML = ""
+        themes[currentThemeKey].colors.slice(0, 4).forEach((c) => {
+          const s = document.createElement("div")
+          s.className = "swatch"
+          s.style.background = c
+          palettePreview.appendChild(s)
+        })
+        themes[currentThemeKey].colors.forEach((c) => {
+          const s = document.createElement("div")
+          s.className = "swatch"
+          s.style.background = c
+          const label = document.createElement("span")
+          label.textContent = c
+          s.appendChild(label)
+          paletteBox.appendChild(s)
+        })
+      }
+
+      function renderNav() {
+        nav.innerHTML = ""
+        const t = translations[currentLang]
+        const langGroups = [
+          { group: t.indicatorGroup, items: groups[0].items },
+          { group: t.lineGroup, items: groups[1].items },
+          { group: t.barGroup, items: groups[2].items },
+          { group: t.pieGroup, items: groups[3].items },
+          { group: t.otherGroup, items: groups[4].items },
+        ]
+
+        langGroups.forEach((g) => {
+          const title = document.createElement("div")
+          title.className = "nav-group"
+          title.textContent = g.group
+          nav.appendChild(title)
+          g.items.forEach((item) => {
+            const el = document.createElement("div")
+            el.className = "nav-item" + (item.key === currentKey ? " active" : "")
+            const icon = document.createElement("span")
+            icon.className = "nav-icon"
+            icon.innerHTML = getNavIcon(item.key)
+            const label = document.createElement("span")
+            label.textContent = t[item.key] || item.name
+            el.appendChild(icon)
+            el.appendChild(label)
+            el.onclick = () => {
+              currentKey = item.key
+              renderNav()
+              renderChart()
+            }
+            nav.appendChild(el)
+          })
+        })
+      }
+
+      function setTitle(meta) {
+        const t = translations[currentLang]
+        chartTitle.textContent = currentLang === "zh" ? meta.title : meta.titleEn
+        chartTitleIcon.innerHTML = getNavIcon(currentKey)
+        chartSubTitle.textContent = ""
+        if (topSub) topSub.textContent = ""
+      }
+
+      function indicatorCards(theme) {
+        indicatorArea.style.display = "block"
+        indicatorGrid.innerHTML = ""
+        indicatorGrid.classList.remove("cols-1")
+        indicatorGrid.style.gridTemplateColumns = ""
+        const t = translations[currentLang]
+        
+        const cards = [
+          { label: "ARPU平均值", labelEn: "ARPU Average", value: "48.2", unit: "元", unitEn: "CNY", icon: "activity", deltaType: "mom", delta: +2.4 },
+          { label: "5G套餐渗透率", labelEn: "5G Penetration", value: "62.8", unit: "%", unitEn: "%", icon: "target", deltaType: "mom", delta: +4.1 },
+          { label: "当日流量(DOU)", labelEn: "Daily Traffic (DOU)", value: "1.2", unit: "PB", unitEn: "PB", icon: "bag", deltaType: "yoy", delta: +12.6 },
+          { label: "在网总用户数", labelEn: "Total Users", value: "1,245", unit: "万", unitEn: "10k", icon: "users", deltaType: "mom", delta: +0.8 },
+          { label: "用户离网率", labelEn: "Churn Rate", value: "0.42", unit: "%", unitEn: "%", icon: "alert", deltaType: "mom", delta: -1.2 },
+        ]
+        
+        cards.forEach((c, i) => {
+          const card = document.createElement("div")
+          card.className = "card"
+          const baseColor = theme.colors[i % theme.colors.length]
+          
+          const deltaLabel = c.deltaType === "yoy" ? t.yoy : t.mom
+          const deltaColor = c.delta < 0 ? "#ef4444" : "#22c55e"
+          const arrow = c.delta === 0 ? "→" : c.delta > 0 ? "↑" : "↓"
+          
+          const labelText = currentLang === "zh" ? c.label : c.labelEn
+          const unitText = currentLang === "zh" ? c.unit : (c.unitEn || c.unit)
+          card.innerHTML = `
+            <div class="card-top">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div class="card-icon" style="color:${baseColor}; background:transparent; border:0;">
+                  ${getMetricIcon(c.icon)}
+                </div>
+                <div>
+                  <div class="label" style="font-weight: 500; color: ${UI_MUTED};">${labelText}</div>
+                  <div class="value" style="display:flex; align-items:baseline; gap:6px;">
+                    <span style="font-size: 26px; font-weight: 700; color: ${UI_TEXT};">${c.value}</span>
+                    <span style="font-size: 13px; color:${UI_MUTED}; font-weight: 400;">${unitText}</span>
+                  </div>
+                  <div class="delta" style="color:${deltaColor}; margin-top: 4px; display: flex; align-items: center; gap: 4px; font-size: 12px;">
+                    <span style="opacity: 0.8;">${deltaLabel}</span>
+                    <span style="font-weight: 600;">${arrow}${Math.abs(c.delta).toFixed(1)}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `
+          indicatorGrid.appendChild(card)
+        })
+      }
+
+      function flipCards(theme) {
+        indicatorArea.style.display = "block"
+        indicatorGrid.innerHTML = ""
+        indicatorGrid.classList.remove("cols-1")
+        indicatorGrid.style.gridTemplateColumns = ""
+        
+        const flips = [
+          { label: "当日实时总话务", labelEn: "Daily Total Calls", value: 840219, prefix: "", suffix: "次", suffixEn: "", icon: "activity" },
+          { label: "5G在网用户数", labelEn: "5G Active Users", value: 459124, prefix: "", suffix: "人", suffixEn: "", icon: "users" },
+          { label: "全网总出口带宽", labelEn: "Total Exit Bandwidth", value: 214, prefix: "", suffix: "Tbps", suffixEn: "Tbps", icon: "activity" },
+          { label: "核心网告警数", labelEn: "Core Network Alerts", value: 8, prefix: "", suffix: "项", suffixEn: "", icon: "alert" },
+          { label: "网络可用率", labelEn: "Network Availability", value: 99.9, prefix: "", suffix: "%", suffixEn: "%", icon: "target" },
+        ]
+        flips.forEach((c, i) => {
+          const card = document.createElement("div")
+          card.className = "card"
+          const baseColor = theme.colors[i % theme.colors.length]
+
+          const labelText = currentLang === "zh" ? c.label : c.labelEn
+          const valueId = `flip-${i}`
+          card.innerHTML = `
+            <div class="card-top">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div class="card-icon" style="color:${baseColor}; background:transparent; border:0;">
+                  ${getMetricIcon(c.icon)}
+                </div>
+                <div>
+                  <div class="label" style="font-weight: 500; color: ${UI_MUTED};">${labelText}</div>
+                  <div class="value flip" style="color:${UI_TEXT};"><span id="${valueId}"></span></div>
+                </div>
+              </div>
+            </div>
+          `
+          indicatorGrid.appendChild(card)
+
+          const el = document.getElementById(valueId)
+          const suffixText = currentLang === "zh" ? c.suffix : (c.suffixEn || c.suffix)
+          if (el) setFlipDisplay(el, formatFlipValue(c.value, c.prefix, suffixText))
+        })
+
+        startFlipAnimation(theme)
+      }
+
+      function progressBars(theme) {
+        indicatorArea.style.display = "block"
+        indicatorGrid.innerHTML = ""
+        indicatorGrid.classList.remove("cols-1")
+        indicatorGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(280px, 1fr))"
+
+        const items = [
+          { label: "华东5G基站建设", labelEn: "East 5G Deployment", percent: 78, value: "15.6k", unit: "个", unitEn: "sites" },
+          { label: "华南核心网扩容", labelEn: "South Core Expansion", percent: 62, value: "124", unit: "项", unitEn: "items" },
+          { label: "华北政企专线交付", labelEn: "North Dedicated Line", percent: 41, value: "820", unit: "条", unitEn: "lines" },
+          { label: "西南千兆宽带覆盖", labelEn: "SW Gigabit Coverage", percent: 86, value: "43k", unit: "户", unitEn: "homes" },
+          { label: "西北IDC机房投产", labelEn: "NW IDC Production", percent: 54, value: "27", unit: "座", unitEn: "sites" },
+        ]
+
+        items.forEach((it, idx) => {
+          const c = theme.colors[idx % theme.colors.length]
+          const card = document.createElement("div")
+          card.className = "card"
+          
+          const labelText = currentLang === "zh" ? it.label : it.labelEn
+          const unitText = currentLang === "zh" ? it.unit : (it.unitEn || it.unit)
+          card.innerHTML = `
+            <div class="card-top" style="flex-direction: column; align-items: stretch;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px;">
+                <div class="label" style="font-weight: 500; color: ${UI_MUTED}; font-size: 13px;">${labelText}</div>
+              </div>
+
+              <div style="position: relative; height: 6px; display: flex; align-items: center; margin-top: 6px;">
+                <div style="position: absolute; inset: 0; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                  <div style="height: 100%; width: ${it.percent}%; background: ${c}; border-radius: 3px; box-shadow: 0 0 10px ${withAlpha(c, 0.4)};"></div>
+                </div>
+              </div>
+
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top: 10px; font-size: 13px; font-weight: 600;">
+                <div style="color: ${c}; font-family: tabular-nums;">${it.value} ${unitText}</div>
+                <div style="color: ${c}; font-family: tabular-nums;">${it.percent}%</div>
+              </div>
+            </div>
+          `
+          indicatorGrid.appendChild(card)
+        })
+      }
+
+      function getNavIcon(key) {
+        const icons = {
+          indicator:
+            '<svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-8"/><path d="M22 20H2"/></svg>',
+          flip:
+            '<svg viewBox="0 0 24 24"><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h10"/><path d="M5 4h14v16H5z"/></svg>',
+          gauge:
+            '<svg viewBox="0 0 24 24"><path d="M4 14a8 8 0 1 1 16 0"/><path d="M12 14l4-4"/><path d="M5 18h14"/></svg>',
+          progress:
+            '<svg viewBox="0 0 24 24"><path d="M4 8h16"/><path d="M4 16h16"/><path d="M4 8v8"/><path d="M4 16h9"/></svg>',
+          water:
+            '<svg viewBox="0 0 24 24"><path d="M12 3s6 6 6 11a6 6 0 0 1-12 0c0-5 6-11 6-11z"/></svg>',
+          line:
+            '<svg viewBox="0 0 24 24"><path d="M4 18V6"/><path d="M4 18h16"/><path d="M6 15l4-6 4 4 4-7"/></svg>',
+          smooth:
+            '<svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M4 6v12"/><path d="M6 14c2-6 4-6 6-2s4 4 6-4"/></svg>',
+          multiLine:
+            '<svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M4 6v12"/><path d="M6 14l4-6 4 4 4-7"/><path d="M6 12l4-4 4 2 4-3"/></svg>',
+          multiSmooth:
+            '<svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M4 6v12"/><path d="M6 14c2-6 4-6 6-2s4 4 6-4"/><path d="M6 12c2-4 4-4 6-1s4 3 6-3"/></svg>',
+          area:
+            '<svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M4 6v12"/><path d="M6 15l4-6 4 4 4-7"/><path d="M6 15h12"/></svg>',
+          stackArea:
+            '<svg viewBox="0 0 24 24"><path d="M4 18h16"/><path d="M4 6v12"/><path d="M6 15l4-6 4 4 4-7"/><path d="M6 17l4-4 4 2 4-3"/></svg>',
+          bar:
+            '<svg viewBox="0 0 24 24"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M7 20v-6"/><path d="M12 20v-10"/><path d="M17 20v-4"/></svg>',
+          hbar:
+            '<svg viewBox="0 0 24 24"><path d="M4 4v16"/><path d="M4 20h16"/><path d="M6 7h10"/><path d="M6 12h14"/><path d="M6 17h7"/></svg>',
+          groupBar:
+            '<svg viewBox="0 0 24 24"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M7 20v-7"/><path d="M10 20v-9"/><path d="M14 20v-5"/><path d="M17 20v-8"/></svg>',
+          stackBar:
+            '<svg viewBox="0 0 24 24"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 20v-12"/><path d="M8 12h6"/><path d="M14 12v-4"/></svg>',
+          pie:
+            '<svg viewBox="0 0 24 24"><path d="M12 3v9h9"/><path d="M21 12a9 9 0 1 1-9-9"/></svg>',
+          donut:
+            '<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z"/><path d="M12 8a4 4 0 1 0 0 8a4 4 0 0 0 0-8z"/></svg>',
+          rose:
+            '<svg viewBox="0 0 24 24"><path d="M12 12v9"/><path d="M12 12l7 7"/><path d="M12 12H3"/><path d="M12 12l7-7"/><path d="M12 12l-7 7"/></svg>',
+          radar:
+            '<svg viewBox="0 0 24 24"><path d="M12 3l8 6-3 10H7L4 9z"/><path d="M12 3v16"/><path d="M4 9l8 6 8-6"/></svg>',
+          bubble:
+            '<svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M4 20V4"/><path d="M9 14a2 2 0 1 0 0.001 0"/><path d="M15 10a3 3 0 1 0 0.001 0"/><path d="M18 16a1.5 1.5 0 1 0 0.001 0"/></svg>',
+          scatter:
+            '<svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M4 20V4"/><path d="M8 14h0"/><path d="M12 10h0"/><path d="M16 16h0"/><path d="M18 8h0"/></svg>',
+          funnel:
+            '<svg viewBox="0 0 24 24"><path d="M4 4h16l-6 8v6l-4 2v-8z"/></svg>',
+          sankey:
+            '<svg viewBox="0 0 24 24"><path d="M4 7h5v10H4"/><path d="M15 7h5v10h-5"/><path d="M9 12h6"/><path d="M9 9h6"/><path d="M9 15h6"/></svg>',
+        }
+        return icons[key] || '<svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M4 4v16"/></svg>'
+      }
+
+      function getMetricIcon(key) {
+        const icons = {
+          activity:
+            '<svg viewBox="0 0 24 24"><path d="M4 13h4l2-6 4 12 2-6h4"/></svg>',
+          target:
+            '<svg viewBox="0 0 24 24"><path d="M12 3v3"/><path d="M21 12h-3"/><path d="M12 21v-3"/><path d="M3 12h3"/><path d="M12 7a5 5 0 1 0 5 5"/><path d="M12 12l3-3"/></svg>',
+          bag:
+            '<svg viewBox="0 0 24 24"><path d="M6 8h12l-1 13H7L6 8z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>',
+          users:
+            '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+          alert:
+            '<svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3h3.4L22 20H2L10.3 3z"/></svg>',
+        }
+        return icons[key] || icons.activity
+      }
+
+      function formatFlipValue(value, prefix, suffix) {
+        if (typeof value === "number") {
+          const isFloat = String(value).includes(".")
+          const v = isFloat ? value.toFixed(1) : Math.round(value).toString()
+          const withSep = v.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+          return `${prefix || ""}${withSep}${suffix || ""}`
+        }
+        return `${prefix || ""}${String(value)}${suffix || ""}`
+      }
+
+      function setFlipDisplay(el, text) {
+        el.innerHTML = ""
+        const wrap = document.createElement("span")
+        wrap.className = "flip-display"
+        const chars = String(text).split("")
+        chars.forEach((ch) => {
+          if (/[0-9]/.test(ch)) {
+            const col = document.createElement("span")
+            col.className = "flip-col"
+            col.dataset.kind = "digit"
+            col.dataset.digit = ch
+
+            const stack = document.createElement("span")
+            stack.className = "flip-stack"
+            for (let i = 0; i <= 9; i += 1) {
+              const d = document.createElement("span")
+              d.className = "flip-digit"
+              d.textContent = String(i)
+              stack.appendChild(d)
+            }
+            col.appendChild(stack)
+            wrap.appendChild(col)
+          } else {
+            const s = document.createElement("span")
+            s.className = "flip-static"
+            s.dataset.kind = "static"
+            s.textContent = ch
+            wrap.appendChild(s)
+          }
+        })
+        el.appendChild(wrap)
+        updateFlipDisplay(el, text, true)
+      }
+
+      function updateFlipDisplay(el, text, immediate = false) {
+        const wrap = el.querySelector(".flip-display")
+        if (!wrap) return setFlipDisplay(el, text)
+        const next = String(text)
+        const currSignature = Array.from(wrap.children)
+          .map((n) => (n.dataset.kind === "digit" ? "d" : `s:${n.textContent}`))
+          .join("|")
+        const nextSignature = next
+          .split("")
+          .map((ch) => (/[0-9]/.test(ch) ? "d" : `s:${ch}`))
+          .join("|")
+        if (currSignature !== nextSignature) return setFlipDisplay(el, text)
+
+        const digits = next.split("").filter((ch) => /[0-9]/.test(ch))
+        let di = 0
+        Array.from(wrap.children).forEach((node) => {
+          if (node.dataset.kind !== "digit") return
+          const d = digits[di] || "0"
+          di += 1
+          node.dataset.digit = d
+          const stack = node.querySelector(".flip-stack")
+          if (!stack) return
+          if (immediate) stack.style.transition = "none"
+          stack.style.transform = `translateY(${-Number(d) * 26}px)`
+          if (immediate) {
+            requestAnimationFrame(() => {
+              stack.style.transition = "transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1)"
+            })
+          }
+        })
+      }
+
+      let flipTimer = null
+
+      function startFlipAnimation(theme) {
+        if (flipTimer) {
+          clearInterval(flipTimer)
+          flipTimer = null
+        }
+
+        const state = [
+          { id: "flip-0", value: 840219, step: [80, 320], prefix: "¥", suffix: "" },
+          { id: "flip-1", value: 1924, step: [2, 12], prefix: "", suffix: "" },
+          { id: "flip-2", value: 214, step: [0, 2], prefix: "", suffix: "" },
+          { id: "flip-3", value: 87, step: [0, 1], prefix: "", suffix: "" },
+          { id: "flip-4", value: 99.8, step: [-0.1, 0.1], prefix: "", suffix: "%" },
+        ]
+
+        flipTimer = setInterval(() => {
+          state.forEach((s) => {
+            const el = document.getElementById(s.id)
+            if (!el) return
+            const [minStep, maxStep] = s.step
+            const delta = minStep + Math.random() * (maxStep - minStep)
+            if (s.id === "flip-4") {
+              s.value = Math.max(98.5, Math.min(99.99, s.value + delta))
+              s.value = Math.round(s.value * 10) / 10
+            } else {
+              s.value = Math.max(0, Math.round(s.value + delta))
+            }
+            updateFlipDisplay(el, formatFlipValue(s.value, s.prefix, s.suffix))
+          })
+        }, 1000)
+      }
+
+      function hexToRgb(hex) {
+        const cleaned = (hex || "").replace("#", "").trim()
+        if (cleaned.length !== 6) return null
+        const r = parseInt(cleaned.slice(0, 2), 16)
+        const g = parseInt(cleaned.slice(2, 4), 16)
+        const b = parseInt(cleaned.slice(4, 6), 16)
+        if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return null
+        return { r, g, b }
+      }
+
+      function withAlpha(hex, alpha) {
+        const rgb = hexToRgb(hex)
+        if (!rgb) return hex
+        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
+      }
+
+      function formatWithUnit(value, unit) {
+        if (!unit) return String(value)
+        if (Array.isArray(value)) return value.map((v) => `${v}${unit}`).join(", ")
+        return `${value}${unit}`
+      }
+
+      function baseOption(theme, { showLegend, unit, tooltipTrigger } = {}) {
+        const primary = theme.colors[0]
+        const axisPointerColor = withAlpha(primary, 0.14)
+        return {
+          backgroundColor: "transparent",
+          color: theme.colors,
+          animationDuration: 1000,
+          animationEasing: "cubicOut",
+          textStyle: { color: UI_TEXT, fontFamily: "PingFang SC" },
+          tooltip: {
+            trigger: tooltipTrigger || "axis",
+            backgroundColor: "rgba(8, 12, 22, 0.92)",
+            borderColor: withAlpha(primary, 0.5),
+            borderWidth: 1,
+            padding: [12, 16],
+            backdropFilter: "blur(12px)",
+            textStyle: { color: UI_TEXT, fontSize: 13 },
+            axisPointer: {
+              type: "shadow",
+              shadowStyle: { color: axisPointerColor },
+            },
+            extraCssText: "box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px;",
+          },
+          legend: {
+            show: Boolean(showLegend),
+            bottom: 8,
+            left: "center",
+            icon: "roundRect",
+            itemWidth: 14,
+            itemHeight: 4,
+            textStyle: { color: UI_MUTED, fontSize: 12 },
+            itemGap: 24,
+            inactiveColor: "rgba(255,255,255,0.2)",
+            itemStyle: {
+              borderWidth: 0,
+            }
+          },
+          grid: { left: 60, right: 30, top: 60, bottom: showLegend ? 70 : 50, containLabel: true },
+          xAxis: {
+            axisLine: { lineStyle: { color: "rgba(255,255,255,0.15)" } },
+            axisTick: { show: false },
+            axisLabel: { color: UI_MUTED, fontSize: 12, margin: 12 },
+            splitLine: { show: false },
+          },
+          yAxis: {
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: { color: UI_MUTED, fontSize: 12, margin: 12 },
+            splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)", type: "dashed" } },
+            name: unit || "",
+            nameTextStyle: { color: UI_MUTED, padding: [0, 0, 10, 0] },
+          },
+        }
+      }
+
+      function ensureDeps() {
+        const missing = []
+        if (typeof window.echarts === "undefined") missing.push("echarts.min.js")
+        if (currentKey === "water") {
+          const hasLiquid =
+            window.echarts && window.echarts?.registerAction && window.echarts?.graphic
+          if (!hasLiquid) missing.push("echarts-liquidfill.min.js")
+        }
+
+        if (missing.length > 0) {
+          missingDeps.style.display = "block"
+          const isFile = window.location && window.location.protocol === "file:"
+          const hint = isFile
+            ? (currentLang === "zh"
+              ? "你当前是 file:// 方式打开，部分浏览器可能会拦截本地脚本。建议用 Chrome 打开，或改用本地 http 方式访问。"
+              : "You opened this page via file://. Some browsers may block local scripts. Use a local http server instead.")
+            : ""
+          missingDeps.textContent =
+            (currentLang === "zh" ? "依赖缺失：" : "Missing dependencies: ") +
+            missing.join(", ") +
+            (currentLang === "zh"
+              ? "。请确认同级目录存在 public/vendor/ 下的对应文件。"
+              : ". Please ensure the files exist under public/vendor/.") +
+            (hint ? " " + hint : "")
+          return false
+        }
+        missingDeps.style.display = "none"
+        missingDeps.textContent = ""
+        return true
+      }
+
+      function renderChart() {
+        const theme = themes[currentThemeKey]
+        applyThemeVars(theme)
+        renderPalette()
+        const meta = metaMap[currentKey]
+        setTitle(meta)
+
+        indicatorArea.style.display = "none"
+        indicatorGrid.innerHTML = ""
+        chartControls.innerHTML = ""
+
+        if (["pie", "donut", "rose"].includes(currentKey)) {
+          const group = document.createElement("div")
+          group.className = "toggle-group"
+          const t = translations[currentLang]
+          const modes = [
+            { key: "simple", name: t.simpleLegend },
+            { key: "detailed", name: t.detailedLegend },
+          ]
+          modes.forEach((m) => {
+            const btn = document.createElement("div")
+            btn.className = `toggle-btn ${currentLegendMode === m.key ? "active" : ""}`
+            btn.textContent = m.name
+            btn.onclick = () => {
+              currentLegendMode = m.key
+              renderChart()
+            }
+            group.appendChild(btn)
+          })
+          chartControls.appendChild(group)
+        }
+
+        if (!ensureDeps()) return
+
+        const chartDom = document.getElementById("chart")
+        const graphic = window.echarts.graphic
+
+        if (currentKey === "indicator") {
+          chartDom.style.display = "none"
+          indicatorCards(theme)
+          chartSubTitle.textContent = ""
+          return
+        }
+
+        if (currentKey === "flip") {
+          chartDom.style.display = "none"
+          flipCards(theme)
+          chartSubTitle.textContent = ""
+          return
+        }
+
+        if (currentKey === "progress") {
+          chartDom.style.display = "none"
+          if (flipTimer) {
+            clearInterval(flipTimer)
+            flipTimer = null
+          }
+          progressBars(theme)
+          chartSubTitle.textContent = ""
+          return
+        }
+
+        if (flipTimer) {
+          clearInterval(flipTimer)
+          flipTimer = null
+        }
+
+        chartDom.style.display = "block"
+        if (!chart) {
+          chart = window.echarts.init(chartDom)
+          chart.on("click", (params) => {
+            chart.dispatchAction({ type: "downplay" })
+            if (typeof params.seriesIndex === "number" && typeof params.dataIndex === "number") {
+              chart.dispatchAction({
+                type: "highlight",
+                seriesIndex: params.seriesIndex,
+                dataIndex: params.dataIndex,
+              })
+              chart.dispatchAction({
+                type: "select",
+                seriesIndex: params.seriesIndex,
+                dataIndex: params.dataIndex,
+              })
+            }
+          })
+        }
+
+        let option = {}
+        const lang = cl()
+        const days = lang.days
+        const sources = lang.sources
+        const unit = meta.unit
+
+        function axisTooltipFormatter(params) {
+          if (!Array.isArray(params) || params.length === 0) return ""
+          const header = params[0].axisValueLabel || params[0].name || ""
+          const lines = params
+            .map((p) => {
+              const marker = p.marker || ""
+              const name = p.seriesName || p.name || ""
+              const v = p.value
+              return `${marker}${name}：${formatWithUnit(v, unit)}`
+            })
+            .join("<br/>")
+          return `${header}<br/>${lines}`
+        }
+
+        function itemTooltipFormatter(p) {
+          const name = p.name || p.seriesName || ""
+          const v = p.value
+          return `${name}<br/>${formatWithUnit(v, unit)}`
+        }
+
+        switch (currentKey) {
+          case "gauge":
+            option = {
+              backgroundColor: "transparent",
+              color: theme.colors,
+              tooltip: {
+                trigger: "item",
+                backgroundColor: "rgba(8, 12, 22, 0.9)",
+                borderColor: withAlpha(theme.colors[0], 0.4),
+                borderWidth: 1,
+                padding: [12, 16],
+                backdropFilter: "blur(10px)",
+                textStyle: { color: UI_TEXT, fontSize: 13 },
+                formatter: (p) => `${p.name}<br/>${formatWithUnit(p.value, "%")}`,
+              },
+              series: [
+                {
+                  name: currentLang === "zh" ? "健康度" : "Health",
+                  type: "gauge",
+                  center: ["50%", "55%"],
+                  startAngle: 210,
+                  endAngle: -30,
+                  axisLine: {
+                    lineStyle: {
+                      width: 16,
+                      color: [
+                        [0.3, theme.colors[4]],
+                        [0.7, theme.colors[0]],
+                        [1, theme.colors[1]],
+                      ],
+                    },
+                  },
+                  progress: { show: true, width: 16, roundCap: true },
+                  pointer: {
+                    icon: "path://M2,0 L-2,0 L0,60 Z",
+                    length: "65%",
+                    width: 8,
+                    itemStyle: {
+                      color: theme.colors[0],
+                    },
+                  },
+                  axisTick: { show: false },
+                  splitLine: { length: 12, lineStyle: { color: "rgba(255,255,255,0.1)" } },
+                  axisLabel: { color: UI_MUTED, distance: 25 },
+                  detail: {
+                    valueAnimation: true,
+                    offsetCenter: [0, "15%"],
+                    formatter: (v) => `{v|${Math.round(v)}}{u|%}\n{t|${currentLang === "zh" ? "系统健康度" : "Network Health"}}`,
+                    rich: {
+                      v: { fontSize: 44, fontWeight: 800, color: UI_TEXT, textShadowBlur: 10, textShadowColor: withAlpha(theme.colors[0], 0.5) },
+                      u: { fontSize: 20, fontWeight: 700, color: withAlpha(UI_TEXT, 0.8), padding: [0, 0, 6, 2] },
+                      t: { fontSize: 14, color: UI_MUTED, padding: [8, 0, 0, 0] },
+                    },
+                  },
+                  data: [{ value: 76, name: "" }],
+                  title: { show: false },
+                },
+              ],
+            }
+            break
+          case "progress": {
+            const common = baseOption(theme, { showLegend: false, unit: "", tooltipTrigger: "axis" })
+            option = {
+              ...common,
+              tooltip: { ...common.tooltip, formatter: axisTooltipFormatter },
+              xAxis: {
+                ...common.xAxis,
+                type: "value",
+                max: 100,
+                name: "%",
+                splitLine: { lineStyle: { color: withAlpha("#ffffff", 0.08) } },
+              },
+              yAxis: {
+                ...common.yAxis,
+                type: "category",
+                name: "",
+                splitLine: { show: false },
+                data: ["阶段1", "阶段2", "阶段3", "阶段4"],
+              },
+              series: [
+                {
+                  name: "完成度",
+                  type: "bar",
+                  data: [80, 62, 45, 30],
+                  label: { show: true, position: "right", formatter: "{c}%" },
+                  barWidth: 14,
+                  itemStyle: {
+                    borderRadius: 10,
+                    color: new graphic.LinearGradient(1, 0, 0, 0, [
+                      { offset: 0, color: theme.colors[0] },
+                      { offset: 1, color: withAlpha(theme.colors[0], 0.18) },
+                    ]),
+                    shadowBlur: 18,
+                    shadowColor: withAlpha(theme.colors[0], 0.35),
+                  },
+                  emphasis: {
+                    itemStyle: {
+                      shadowBlur: 28,
+                      shadowColor: withAlpha(theme.colors[0], 0.5),
+                    },
+                  },
+                  select: { itemStyle: { borderWidth: 1, borderColor: withAlpha("#ffffff", 0.6) } },
+                },
+              ],
+            }
+            break
+          }
+          case "water":
+            option = {
+              backgroundColor: "transparent",
+              color: theme.colors,
+              tooltip: {
+                trigger: "item",
+                backgroundColor: "rgba(8, 12, 22, 0.9)",
+                borderColor: withAlpha(theme.colors[0], 0.4),
+                borderWidth: 1,
+                padding: [12, 16],
+                backdropFilter: "blur(10px)",
+                textStyle: { color: UI_TEXT, fontSize: 13 },
+                formatter: (p) => `${p.name}<br/>${Math.round((p.value || 0) * 100)}%`,
+              },
+              series: [
+                {
+                  type: "liquidFill",
+                  name: currentLang === "zh" ? "利用率" : "Utilization",
+                  data: [0.72, 0.6],
+                  radius: "70%",
+                  center: ["50%", "48%"],
+                  color: [theme.colors[0], theme.colors[1]],
+                  label: {
+                    formatter: () => `{v|72%}\n{t|${currentLang === "zh" ? "资源利用率" : "Resource Utilization"}}`,
+                    rich: {
+                      v: { fontSize: 44, fontWeight: 800, color: UI_TEXT, textShadowBlur: 10, textShadowColor: withAlpha(theme.colors[0], 0.5) },
+                      t: { fontSize: 14, color: UI_MUTED, padding: [8, 0, 0, 0] },
+                    },
+                  },
+                  outline: {
+                    borderDistance: 6,
+                    itemStyle: {
+                      borderColor: withAlpha(theme.colors[0], 0.4),
+                      borderWidth: 2,
+                    },
+                  },
+                  backgroundStyle: { color: "transparent" },
+                },
+              ],
+            }
+            break
+          case "line": {
+            const common = baseOption(theme, { showLegend: true, unit, tooltipTrigger: "axis" })
+            option = {
+              ...common,
+              tooltip: { ...common.tooltip, formatter: axisTooltipFormatter },
+              xAxis: { ...common.xAxis, type: "category", data: days },
+              yAxis: { ...common.yAxis, type: "value" },
+              series: [
+                {
+                  name: lang.lineSeries[0],
+                  type: "line",
+                  smooth: false,
+                  symbol: "circle",
+                  symbolSize: 8,
+                  data: [18.2, 20.1, 19.4, 21.6, 24.0, 26.8, 25.2],
+                  lineStyle: {
+                    width: 4,
+                    shadowBlur: 14,
+                    shadowColor: withAlpha(theme.colors[0], 0.35),
+                  },
+                  itemStyle: {
+                    borderWidth: 2,
+                    borderColor: "#fff",
+                  },
+                  emphasis: { focus: "series" },
+                },
+                {
+                  name: lang.lineSeries[1],
+                  type: "line",
+                  smooth: false,
+                  symbol: "circle",
+                  symbolSize: 8,
+                  data: [12.4, 13.8, 14.2, 15.6, 16.2, 18.4, 17.5],
+                  lineStyle: {
+                    width: 4,
+                    shadowBlur: 14,
+                    shadowColor: withAlpha(theme.colors[1], 0.35),
+                  },
+                  itemStyle: {
+                    borderWidth: 2,
+                    borderColor: "#fff",
+                  },
+                  emphasis: { focus: "series" },
+                },
+              ],
+            }
+            break
+          }
+          case "smooth": {
+            const common = baseOption(theme, { showLegend: true, unit, tooltipTrigger: "axis" })
+            option = {
+              ...common,
+              tooltip: { ...common.tooltip, formatter: axisTooltipFormatter },
+              xAxis: { ...common.xAxis, type: "category", data: days },
+              yAxis: { ...common.yAxis, type: "value" },
+              series: [
+                {
+                  name: lang.smoothSeries[0],
+                  type: "line",
+                  smooth: true,
+                  symbol: "circle",
+                  symbolSize: 8,
+                  data: [62.4, 70.1, 68.8, 75.6, 80.2, 92.3, 88.9],
+                  lineStyle: {
+                    width: 4,
+                    shadowBlur: 16,
+                    shadowColor: withAlpha(theme.colors[0], 0.35),
+                  },
+                  itemStyle: {
+                    borderWidth: 2,
+                    borderColor: "#fff",
+                  },
+                  emphasis: { focus: "series" },
+                },
+                {
+                  name: lang.smoothSeries[1],
+                  type: "line",
+                  smooth: true,
+                  symbol: "circle",
+                  symbolSize: 8,
+                  data: [42.1, 48.4, 45.6, 52.8, 58.4, 64.2, 60.1],
+                  lineStyle: {
+                    width: 4,
+                    shadowBlur: 16,
+                    shadowColor: withAlpha(theme.colors[1], 0.35),
+                  },
+                  itemStyle: {
+                    borderWidth: 2,
+                    borderColor: "#fff",
+                  },
+                  emphasis: { focus: "series" },
+                },
+              ],
+            }
+            break
+          }
+          case "area": {
+            const common = baseOption(theme, { showLegend: true, unit, tooltipTrigger: "axis" })
+            option = {
+              ...common,
+              tooltip: { ...common.tooltip, formatter: axisTooltipFormatter },
+              xAxis: { ...common.xAxis, type: "category", data: days },
+              yAxis: { ...common.yAxis, type: "value" },
+              series: [
+                {
+                  name: lang.areaSeries[0],
+                  type: "line",
+                  smooth: true,
+                  symbol: "none",
+                  data: [32.1, 34.0, 33.6, 35.2, 36.8, 39.6, 38.4],
+                  lineStyle: { width: 3 },
+                  areaStyle: {
+                    opacity: 0.35,
+                    color: new graphic.LinearGradient(0, 0, 0, 1, [
+                      { offset: 0, color: withAlpha(theme.colors[0], 0.6) },
+                      { offset: 1, color: "transparent" },
+                    ]),
+                  },
+                  emphasis: { focus: "series" },
+                },
+                {
+                  name: lang.areaSeries[1],
+                  type: "line",
+                  smooth: true,
+                  symbol: "none",
+                  data: [24.5, 26.2, 25.8, 27.4, 28.1, 30.2, 29.5],
+                  lineStyle: { width: 3 },
+                  areaStyle: {
+                    opacity: 0.3,
+                    color: new graphic.LinearGradient(0, 0, 0, 1, [
+                      { offset: 0, color: withAlpha(theme.colors[1], 0.6) },
+                      { offset: 1, color: "transparent" },
+                    ]),
+                  },
+                  emphasis: { focus: "series" },
+                },
+              ],
+            }
+            break
+          }
+          case "bar": {
+            const common = baseOption(theme, { showLegend: true, unit, tooltipTrigger: "axis" })
+            option = {
+              ...common,
+              tooltip: { ...common.tooltip, formatter: axisTooltipFormatter },
+              xAxis: { ...common.xAxis, type: "category", data: lang.products },
+              yAxis: { ...common.yAxis, type: "value" },
+              series: [
+                {
+                  name: currentLang === "zh" ? "销量" : "Volume",
+                  type: "bar",
+                  data: [18.4, 15.2, 12.6, 10.8, 9.7],
+                  barWidth: 20,
+                  itemStyle: {
+                    borderRadius: [10, 10, 0, 0],
+                    color: new graphic.LinearGradient(0, 0, 0, 1, [
+                      { offset: 0, color: theme.colors[0] },
+                      { offset: 1, color: withAlpha(theme.colors[0], 0.1) },
+                    ]),
+                  },
+                },
+              ],
+            }
+            break
+          }
+          case "hbar": {
+            const common = baseOption(theme, { showLegend: true, unit: "", tooltipTrigger: "axis" })
+            const values = [26.1, 22.8, 19.6, 16.4, 14.2]
+            const data = lang.regions.map((name, i) => ({ name, value: values[i] || 0 })).sort((a, b) => b.value - a.value)
+            
+            option = {
+              ...common,
+              tooltip: { ...common.tooltip, formatter: axisTooltipFormatter },
+              xAxis: {
+                ...common.xAxis,
+                type: "value",
+                name: unit,
+                splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } },
+              },
+              yAxis: { 
+                ...common.yAxis, 
+                type: "category", 
+                name: "", 
+                inverse: true,
+                data: data.map(it => it.name) 
+              },
+              series: [
+                {
+                  name: currentLang === "zh" ? "排行" : "Ranking",
+                  type: "bar",
+                  data: data.map(it => it.value),
+                  barWidth: 16,
+                  itemStyle: {
+                    borderRadius: [0, 10, 10, 0],
+                    color: new graphic.LinearGradient(1, 0, 0, 0, [
+                      { offset: 0, color: theme.colors[0] },
+                      { offset: 1, color: withAlpha(theme.colors[0], 0.2) },
+                    ]),
+                  },
+                },
+              ],
+            }
+            break
+          }
+          case "groupBar": {
+            const common = baseOption(theme, { showLegend: true, unit, tooltipTrigger: "axis" })
+            option = {
+              ...common,
+              tooltip: { ...common.tooltip, formatter: axisTooltipFormatter },
+              xAxis: { ...common.xAxis, type: "category", data: sources },
+              yAxis: { ...common.yAxis, type: "value" },
+              barCategoryGap: "30%",
+              barGap: "20%",
+              series: [
+                {
+                  name: translations[currentLang].target,
+                  type: "bar",
+                  data: [18.0, 16.2, 10.8, 9.6, 12.4],
+                  barMaxWidth: 40,
+                  itemStyle: {
+                    borderRadius: [8, 8, 0, 0],
+                    color: new graphic.LinearGradient(0, 0, 0, 1, [
+                      { offset: 0, color: theme.colors[0] },
+                      { offset: 1, color: withAlpha(theme.colors[0], 0.2) },
+                    ]),
+                  },
+                },
+                {
+                  name: translations[currentLang].actual,
+                  type: "bar",
+                  data: [16.4, 14.7, 9.2, 10.8, 13.6],
+                  barMaxWidth: 40,
+                  itemStyle: {
+                    borderRadius: [8, 8, 0, 0],
+                    color: new graphic.LinearGradient(0, 0, 0, 1, [
+                      { offset: 0, color: theme.colors[1] },
+                      { offset: 1, color: withAlpha(theme.colors[1], 0.2) },
+                    ]),
+                  },
+                },
+              ],
+            }
+            break
+          }
+          case "stackBar": {
+            const common = baseOption(theme, { showLegend: true, unit, tooltipTrigger: "axis" })
+            option = {
+              ...common,
+              tooltip: { ...common.tooltip, formatter: axisTooltipFormatter },
+              xAxis: { ...common.xAxis, type: "category", data: sources },
+              yAxis: { ...common.yAxis, type: "value" },
+              barCategoryGap: "28%",
+              series: [
+                {
+                  name: lang.stackSeries[0],
+                  type: "bar",
+                  stack: "total",
+                  data: [6.2, 5.4, 3.2, 2.8, 4.1],
+                  barMaxWidth: 56,
+                  barMinWidth: 22,
+                  itemStyle: { borderRadius: 0 },
+                },
+                {
+                  name: lang.stackSeries[1],
+                  type: "bar",
+                  stack: "total",
+                  data: [7.4, 6.8, 4.1, 3.6, 5.2],
+                  barMaxWidth: 56,
+                  barMinWidth: 22,
+                },
+                {
+                  name: lang.stackSeries[2],
+                  type: "bar",
+                  stack: "total",
+                  data: [2.8, 2.6, 1.9, 1.4, 2.1],
+                  barMaxWidth: 56,
+                  barMinWidth: 22,
+                  itemStyle: { borderRadius: 0 },
+                },
+              ],
+            }
+            break
+          }
+          case "pie": {
+            const isSimple = currentLegendMode === "simple"
+            const data = lang.pieData
+            const total = data.reduce((a, b) => a + b.value, 0)
+            option = {
+              backgroundColor: "transparent",
+              color: theme.colors,
+              tooltip: {
+                trigger: "item",
+                backgroundColor: "rgba(8, 12, 22, 0.92)",
+                borderColor: withAlpha(theme.colors[0], 0.5),
+                borderWidth: 1,
+                padding: [12, 16],
+                backdropFilter: "blur(12px)",
+                textStyle: { color: UI_TEXT, fontSize: 13 },
+                formatter: (p) =>
+                  currentLang === "zh"
+                    ? `${p.name}<br/>用户数：${p.value}万<br/>占比：${p.percent}%`
+                    : `${p.name}<br/>Users: ${p.value} (10k)<br/>Share: ${p.percent}%`,
+              },
+              legend: {
+                show: true,
+                orient: isSimple ? "horizontal" : "vertical",
+                left: isSimple ? "center" : "auto",
+                right: isSimple ? "auto" : "10%",
+                bottom: isSimple ? 8 : "auto",
+                top: isSimple ? "auto" : "middle",
+                textStyle: { color: UI_MUTED, fontSize: 12 },
+                icon: "roundRect",
+                itemWidth: 14,
+                itemHeight: 4,
+                itemGap: isSimple ? 24 : 16,
+                inactiveColor: "rgba(255,255,255,0.2)",
+                itemStyle: { borderWidth: 0 },
+                formatter: (name) => {
+                  if (isSimple) return name
+                  const item = data.find((it) => it.name === name)
+                  const p = total > 0 ? ((item.value / total) * 100).toFixed(1) : "0.0"
+                  return currentLang === "zh"
+                    ? `${name}  ${item.value}万 (${p}%)`
+                    : `${name}  ${item.value} (10k) (${p}%)`
+                },
+              },
+              series: [
+                {
+                  name: currentLang === "zh" ? "占比" : "Share",
+                  type: "pie",
+                  radius: ["0%", "65%"],
+                  center: isSimple ? ["50%", "45%"] : ["40%", "48%"],
+                  startAngle: 90,
+                  minAngle: 6,
+                  avoidLabelOverlap: true,
+                  data,
+                  itemStyle: {
+                    borderRadius: 8,
+                    borderColor: "rgba(8, 12, 22, 1)",
+                    borderWidth: 2,
+                  },
+                  label: {
+                    show: isSimple,
+                    color: UI_TEXT,
+                    fontSize: 13,
+                    formatter: "{b}\n{d}%",
+                  },
+                  labelLine: {
+                    show: isSimple,
+                    length: 15,
+                    length2: 15,
+                    lineStyle: { color: "rgba(255,255,255,0.2)" },
+                  },
+                  emphasis: {
+                    scale: true,
+                    scaleSize: 10,
+                    itemStyle: {
+                      shadowBlur: 20,
+                      shadowColor: withAlpha(theme.colors[0], 0.5),
+                    },
+                  },
+                },
+              ],
+            }
+            break
+          }
+          case "donut": {
+            const isSimple = currentLegendMode === "simple"
+            const data = lang.donutData
+            option = {
+              backgroundColor: "transparent",
+              color: theme.colors,
+              tooltip: {
+                trigger: "item",
+                backgroundColor: "rgba(8, 12, 22, 0.92)",
+                borderColor: withAlpha(theme.colors[0], 0.5),
+                borderWidth: 1,
+                padding: [12, 16],
+                backdropFilter: "blur(12px)",
+                textStyle: { color: UI_TEXT, fontSize: 13 },
+                formatter: (p) =>
+                  currentLang === "zh"
+                    ? `${p.name}<br/>渗透率：${p.value}%`
+                    : `${p.name}<br/>Penetration: ${p.value}%`,
+              },
+              legend: {
+                show: true,
+                orient: isSimple ? "horizontal" : "vertical",
+                left: isSimple ? "center" : "auto",
+                right: isSimple ? "auto" : "10%",
+                bottom: isSimple ? 8 : "auto",
+                top: isSimple ? "auto" : "middle",
+                textStyle: { color: UI_MUTED, fontSize: 12 },
+                icon: "roundRect",
+                itemWidth: 14,
+                itemHeight: 4,
+                itemGap: isSimple ? 24 : 16,
+                inactiveColor: "rgba(255,255,255,0.2)",
+                itemStyle: { borderWidth: 0 },
+                formatter: (name) => {
+                  if (isSimple) return name
+                  const item = data.find((it) => it.name === name)
+                  return `${name}  ${item.value}%`
+                },
+              },
+              series: [
+                {
+                  name: currentLang === "zh" ? "结构" : "Structure",
+                  type: "pie",
+                  radius: ["45%", "68%"],
+                  center: isSimple ? ["50%", "45%"] : ["40%", "48%"],
+                  avoidLabelOverlap: true,
+                  data,
+                  itemStyle: {
+                    borderRadius: 8,
+                    borderColor: "rgba(8, 12, 22, 1)",
+                    borderWidth: 2,
+                  },
+                  label: {
+                    show: isSimple,
+                    color: UI_TEXT,
+                    fontSize: 13,
+                    formatter: "{b}\n{d}%",
+                  },
+                  labelLine: {
+                    show: isSimple,
+                    length: 15,
+                    length2: 15,
+                    lineStyle: { color: "rgba(255,255,255,0.2)" },
+                  },
+                  emphasis: {
+                    scale: true,
+                    scaleSize: 10,
+                    itemStyle: {
+                      shadowBlur: 20,
+                      shadowColor: withAlpha(theme.colors[0], 0.5),
+                    },
+                  },
+                },
+              ],
+            }
+            break
+          }
+          case "rose": {
+            const isSimple = currentLegendMode === "simple"
+            const data = lang.roseData
+            option = {
+              backgroundColor: "transparent",
+              color: theme.colors,
+              tooltip: {
+                trigger: "item",
+                backgroundColor: "rgba(8, 12, 22, 0.92)",
+                borderColor: withAlpha(theme.colors[0], 0.5),
+                borderWidth: 1,
+                padding: [12, 16],
+                backdropFilter: "blur(12px)",
+                textStyle: { color: UI_TEXT, fontSize: 13 },
+                formatter: (p) =>
+                  currentLang === "zh"
+                    ? `${p.name}<br/>引流占比：${p.percent}%`
+                    : `${p.name}<br/>Share: ${p.percent}%`,
+              },
+              legend: {
+                show: true,
+                orient: isSimple ? "horizontal" : "vertical",
+                left: isSimple ? "center" : "auto",
+                right: isSimple ? "auto" : "10%",
+                bottom: isSimple ? 8 : "auto",
+                top: isSimple ? "auto" : "middle",
+                textStyle: { color: UI_MUTED, fontSize: 12 },
+                icon: "roundRect",
+                itemWidth: 14,
+                itemHeight: 4,
+                itemGap: isSimple ? 24 : 16,
+                inactiveColor: "rgba(255,255,255,0.2)",
+                itemStyle: { borderWidth: 0 },
+                formatter: (name) => {
+                  if (isSimple) return name
+                  const item = data.find((it) => it.name === name)
+                  return `${name}  ${item.value}%`
+                },
+              },
+              series: [
+                {
+                  name: currentLang === "zh" ? "玫瑰" : "Rose",
+                  type: "pie",
+                  roseType: "area",
+                  radius: ["20%", "70%"],
+                  center: isSimple ? ["50%", "45%"] : ["40%", "48%"],
+                  data,
+                  itemStyle: {
+                    borderRadius: 8,
+                    borderColor: "rgba(8, 12, 22, 1)",
+                    borderWidth: 2,
+                  },
+                  label: {
+                    show: isSimple,
+                    color: UI_TEXT,
+                    fontSize: 13,
+                    formatter: "{b}\n{d}%",
+                  },
+                  labelLine: {
+                    show: isSimple,
+                    length: 10,
+                    length2: 10,
+                    lineStyle: { color: "rgba(255,255,255,0.2)" },
+                  },
+                  emphasis: {
+                    scale: true,
+                    itemStyle: {
+                      shadowBlur: 20,
+                      shadowColor: withAlpha(theme.colors[0], 0.5),
+                    },
+                  },
+                },
+              ],
+            }
+            break
+          }
+          case "radar":
+            option = {
+              backgroundColor: "transparent",
+              color: theme.colors,
+              tooltip: {
+                trigger: "item",
+                backgroundColor: "rgba(8, 12, 22, 0.9)",
+                borderColor: withAlpha(theme.colors[0], 0.4),
+                borderWidth: 1,
+                padding: [12, 16],
+                backdropFilter: "blur(10px)",
+                textStyle: { color: UI_TEXT, fontSize: 13 },
+              },
+              legend: {
+                show: true,
+                bottom: 8,
+                left: "center",
+                textStyle: { color: UI_MUTED, fontSize: 12 },
+                icon: "roundRect",
+                itemWidth: 14,
+                itemHeight: 4,
+                itemGap: 24,
+                inactiveColor: "rgba(255,255,255,0.2)",
+                itemStyle: { borderWidth: 0 },
+              },
+              radar: {
+                indicator: [
+                  { name: lang.radarIndicators[0], max: 100 },
+                  { name: lang.radarIndicators[1], max: 100 },
+                  { name: lang.radarIndicators[2], max: 100 },
+                  { name: lang.radarIndicators[3], max: 100 },
+                  { name: lang.radarIndicators[4], max: 100 },
+                ],
+                center: ["50%", "45%"],
+                radius: "60%",
+                axisName: { color: UI_MUTED, fontSize: 13 },
+                splitNumber: 4,
+                splitLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+                splitArea: { areaStyle: { color: ["rgba(255,255,255,0.02)", "transparent"] } },
+                axisLine: { lineStyle: { color: "rgba(255,255,255,0.15)" } },
+              },
+              series: [
+                {
+                  type: "radar",
+                  data: [
+                    {
+                      value: [78, 85, 60, 72, 88],
+                      name: lang.radarSeries[0],
+                      lineStyle: { width: 3, color: theme.colors[0] },
+                      areaStyle: {
+                        color: new graphic.LinearGradient(0, 0, 0, 1, [
+                          { offset: 0, color: withAlpha(theme.colors[0], 0.4) },
+                          { offset: 1, color: withAlpha(theme.colors[0], 0.1) },
+                        ]),
+                      },
+                      itemStyle: { color: theme.colors[0] },
+                    },
+                    {
+                      value: [65, 70, 85, 55, 75],
+                      name: lang.radarSeries[1],
+                      lineStyle: { width: 3, color: theme.colors[1] },
+                      areaStyle: {
+                        color: new graphic.LinearGradient(0, 0, 0, 1, [
+                          { offset: 0, color: withAlpha(theme.colors[1], 0.4) },
+                          { offset: 1, color: withAlpha(theme.colors[1], 0.1) },
+                        ]),
+                      },
+                      itemStyle: { color: theme.colors[1] },
+                    },
+                  ],
+                },
+              ],
+            }
+            break
+          case "bubble": {
+            const common = baseOption(theme, { showLegend: true, unit: "", tooltipTrigger: "item" })
+            option = {
+              ...common,
+              tooltip: {
+                ...common.tooltip,
+                formatter: (p) => {
+                  const v = p.value || []
+                  return `${currentLang === "zh" ? "分类" : "Category"}：${p.seriesName || ""}<br/>${currentLang === "zh" ? "成本" : "Cost"}：${formatWithUnit(v[0], unit)}<br/>${currentLang === "zh" ? "收益" : "Revenue"}：${formatWithUnit(v[1], unit)}<br/>${currentLang === "zh" ? "规模" : "Scale"}：${v[2]}`
+                },
+              },
+              xAxis: {
+                ...common.xAxis,
+                type: "value",
+                name: `${currentLang === "zh" ? "成本" : "Cost"}(${unit})`,
+                splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } },
+              },
+              yAxis: { ...common.yAxis, type: "value", name: `${currentLang === "zh" ? "收益" : "Revenue"}(${unit})` },
+              series: [
+                {
+                  name: currentLang === "zh" ? "核心业务" : "Core",
+                  type: "scatter",
+                  symbolSize: (d) => d[2],
+                  itemStyle: {
+                    opacity: 0.8,
+                    color: new graphic.RadialGradient(0.4, 0.3, 1, [
+                      { offset: 0, color: withAlpha(theme.colors[0], 0.9) },
+                      { offset: 1, color: withAlpha(theme.colors[0], 0.4) },
+                    ]),
+                    borderColor: theme.colors[0],
+                    borderWidth: 1,
+                  },
+                  emphasis: { focus: "series" },
+                  data: [
+                    [10, 20, 30],
+                    [15, 35, 50],
+                    [25, 45, 40],
+                    [30, 28, 25],
+                    [40, 60, 65],
+                  ],
+                },
+              ],
+            }
+            break
+          }
+          case "scatter": {
+            const common = baseOption(theme, { showLegend: true, unit: "", tooltipTrigger: "item" })
+            option = {
+              ...common,
+              tooltip: {
+                ...common.tooltip,
+                formatter: (p) => {
+                  const v = p.value || []
+                  return `${currentLang === "zh" ? "风险" : "Risk"}：${formatWithUnit(v[0], unit)}<br/>${currentLang === "zh" ? "回报" : "Return"}：${formatWithUnit(v[1], unit)}`
+                },
+              },
+              xAxis: {
+                ...common.xAxis,
+                type: "value",
+                name: `${currentLang === "zh" ? "风险" : "Risk"}(${unit})`,
+                splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } },
+              },
+              yAxis: { ...common.yAxis, type: "value", name: `${currentLang === "zh" ? "回报" : "Return"}(${unit})` },
+              series: [
+                {
+                  name: currentLang === "zh" ? "数据样本" : "Samples",
+                  type: "scatter",
+                  symbolSize: 12,
+                  itemStyle: {
+                    opacity: 0.8,
+                    color: theme.colors[0],
+                    borderColor: "#fff",
+                    borderWidth: 1,
+                  },
+                  emphasis: { focus: "series" },
+                  data: [
+                    [12, 22],
+                    [18, 30],
+                    [25, 35],
+                    [30, 20],
+                    [35, 45],
+                    [40, 38],
+                  ],
+                },
+              ],
+            }
+            break
+          }
+          case "funnel":
+            option = {
+              backgroundColor: "transparent",
+              color: theme.colors,
+              tooltip: {
+                trigger: "item",
+                backgroundColor: "rgba(8, 12, 22, 0.9)",
+                borderColor: withAlpha(theme.colors[0], 0.4),
+                borderWidth: 1,
+                padding: [12, 16],
+                backdropFilter: "blur(10px)",
+                textStyle: { color: UI_TEXT, fontSize: 13 },
+                formatter: itemTooltipFormatter,
+              },
+              legend: {
+                show: true,
+                bottom: 8,
+                left: "center",
+                textStyle: { color: UI_MUTED, fontSize: 12 },
+                icon: "roundRect",
+                itemWidth: 14,
+                itemHeight: 4,
+                itemGap: 24,
+                inactiveColor: "rgba(255,255,255,0.2)",
+                itemStyle: { borderWidth: 0 },
+              },
+              series: [
+                {
+                  name: currentLang === "zh" ? "转化" : "Conversion",
+                  type: "funnel",
+                  left: "15%",
+                  width: "70%",
+                  height: "75%",
+                  top: "10%",
+                  sort: "descending",
+                  gap: 4,
+                  label: { show: true, position: "inside", color: "#fff", fontSize: 13 },
+                  itemStyle: {
+                    borderColor: "rgba(8, 12, 22, 1)",
+                    borderWidth: 2,
+                  },
+                  data: [
+                    { value: 100, name: lang.funnelStages[0] },
+                    { value: 80, name: lang.funnelStages[1] },
+                    { value: 60, name: lang.funnelStages[2] },
+                    { value: 40, name: lang.funnelStages[3] },
+                    { value: 25, name: lang.funnelStages[4] },
+                  ],
+                },
+              ],
+            }
+            break
+          case "sankey":
+            const nodes = lang.sankeyNodes
+            const edges = [
+              { s: 0, t: 4, v: 26.4 },
+              { s: 1, t: 4, v: 18.2 },
+              { s: 2, t: 5, v: 9.6 },
+              { s: 3, t: 4, v: 12.8 },
+              { s: 4, t: 6, v: 40.6 },
+              { s: 5, t: 6, v: 8.1 },
+              { s: 5, t: 12, v: 1.5 },
+              { s: 6, t: 7, v: 30.4 },
+              { s: 6, t: 12, v: 18.3 },
+              { s: 7, t: 8, v: 14.8 },
+              { s: 7, t: 12, v: 15.6 },
+              { s: 8, t: 9, v: 9.6 },
+              { s: 8, t: 12, v: 5.2 },
+              { s: 9, t: 10, v: 7.8 },
+              { s: 9, t: 11, v: 1.1 },
+              { s: 9, t: 12, v: 0.7 },
+            ]
+            option = {
+              backgroundColor: "transparent",
+              color: theme.colors,
+              tooltip: {
+                trigger: "item",
+                backgroundColor: "rgba(8, 12, 22, 0.9)",
+                borderColor: withAlpha(theme.colors[0], 0.4),
+                borderWidth: 1,
+                padding: [12, 16],
+                backdropFilter: "blur(10px)",
+                textStyle: { color: UI_TEXT, fontSize: 13 },
+                formatter: (p) => {
+                  if (p.dataType === "edge") return `${p.data.source} → ${p.data.target}<br/>${formatWithUnit(p.data.value, unit)}`
+                  return p.name
+                },
+              },
+              series: [
+                {
+                  type: "sankey",
+                  left: "5%",
+                  right: "15%",
+                  top: "10%",
+                  bottom: "10%",
+                  emphasis: { focus: "adjacency" },
+                  nodeAlign: "left",
+                  nodeWidth: 14,
+                  nodeGap: 12,
+                  label: { color: UI_TEXT, fontSize: 13, padding: [0, 0, 0, 10] },
+                  lineStyle: {
+                    color: "gradient",
+                    curveness: 0.5,
+                    opacity: 0.4,
+                  },
+                  itemStyle: {
+                    borderWidth: 0,
+                    borderRadius: 2,
+                  },
+                  data: nodes.map((name) => ({ name })),
+                  links: edges.map((e) => ({ source: nodes[e.s], target: nodes[e.t], value: e.v })),
+                },
+              ],
+            }
+            break
+        }
+
+        try {
+          chart.setOption(option, true)
+          chart.resize()
+        } catch (e) {
+          missingDeps.style.display = "block"
+          missingDeps.textContent =
+            "渲染失败：" +
+            (e && e.message ? e.message : String(e)) +
+            "。如果是水波图，请确认已下载 public/vendor/echarts-liquidfill.min.js。"
+        }
+      }
+
+      window.addEventListener("resize", () => chart && chart.resize())
+
+      const langToggle = document.getElementById("langToggle")
+      const langText = document.getElementById("langText")
+      if (langToggle) {
+        langToggle.addEventListener("click", () => {
+          currentLang = currentLang === "zh" ? "en" : "zh"
+          if (langText) langText.textContent = currentLang === "zh" ? "英文" : "中文"
+          
+          renderNav()
+          renderThemeBar()
+          renderPalette()
+          renderChart()
+        })
+      }
+
+      if (paletteBtn && palettePop) {
+        paletteBtn.addEventListener("click", (e) => {
+          e.stopPropagation()
+          palettePop.classList.toggle("open")
+        })
+        palettePop.addEventListener("click", (e) => e.stopPropagation())
+      }
+
+      renderNav()
+      renderThemeBar()
+      renderPalette()
+      renderChart()
+    </script>
+  </body>
+</html>

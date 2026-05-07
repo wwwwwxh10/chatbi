@@ -1,0 +1,128 @@
+:root {
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+  font-size: 14px;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ant-color-bg-layout, #ffffff);
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+}
+
+html[data-mode='dark'] body {
+  background: #121317;
+  color: #E6EDF7;
+}
+
+html[data-mode='light'] body {
+  background: #FFFFFF;
+  color: #1F2430;
+}
+
+html[data-mode='dark'] #root {
+  background: #121317;
+}
+
+html[data-mode='dark'] .ant-layout,
+html[data-mode='dark'] .ant-layout-content {
+  background: transparent;
+}
+
+html[data-mode='dark'] .ant-card,
+html[data-mode='dark'] .ant-modal-content,
+html[data-mode='dark'] .ant-dropdown-menu,
+html[data-mode='dark'] .ant-popover-inner,
+html[data-mode='dark'] .ant-select-dropdown,
+html[data-mode='dark'] .ant-picker-panel-container,
+html[data-mode='dark'] .ant-picker-dropdown .ant-picker-panel-container,
+html[data-mode='dark'] .ant-tooltip-inner,
+html[data-mode='dark'] .ant-popconfirm-inner-content {
+  background: var(--ant-color-bg-container, #111722);
+}
+
+html[data-mode='dark'] .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background: rgba(43, 92, 246, 0.16);
+}
+
+html[data-mode='dark'] .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-mode='dark'] .ant-input,
+html[data-mode='dark'] .ant-input-affix-wrapper,
+html[data-mode='dark'] .ant-input-password,
+html[data-mode='dark'] .ant-input-number,
+html[data-mode='dark'] .ant-input-number-input {
+  background: var(--ant-color-bg-container);
+}
+
+html[data-mode='dark'] .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover,
+html[data-mode='dark'] .ant-input:hover,
+html[data-mode='dark'] .ant-input-number:hover {
+  border-color: rgba(43, 92, 246, 0.55);
+}
+
+html[data-mode='dark'] .ant-modal-header {
+  background: transparent;
+}
+
+html[data-mode='dark'] .ant-modal-mask {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+html[data-mode='dark'] .ant-table,
+html[data-mode='dark'] .ant-table-container,
+html[data-mode='dark'] .ant-table-content {
+  background: transparent;
+}
+
+html[data-mode='dark'] .ant-table-thead > tr > th {
+  background: var(--ant-color-bg-container);
+}
+
+html[data-mode='light'] .ant-layout,
+html[data-mode='light'] .ant-layout-content {
+  background: var(--ant-color-bg-layout);
+}
+
+html[data-mode='dark'] .ant-card {
+  background: var(--ant-color-bg-container, #111827);
+}
+
+
+
+html[data-mode='dark'] .ant-card-bordered {
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+html[data-mode='dark'] .ant-table,
+html[data-mode='dark'] .ant-table-container,
+html[data-mode='dark'] .ant-table-content {
+  background: transparent;
+}
+
+html[data-mode='dark'] .ant-menu-dark,
+html[data-mode='dark'] .ant-menu-dark .ant-menu-sub {
+  background: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.chartCanvas {
+  width: 100%;
+  height: 100%;
+}
