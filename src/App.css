@@ -382,6 +382,26 @@ html[data-mode='dark'] .dsPreviewTable .ant-table-thead > tr > th {
   height: 100%;
 }
 
+.dsPreviewTable {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dsPreviewTable .ant-spin-nested-loading,
+.dsPreviewTable .ant-spin-container,
+.dsPreviewTable .ant-table,
+.dsPreviewTable .ant-table-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dsPreviewTable .ant-table-body {
+  flex: 1;
+  overflow-y: auto !important;
+}
+
 
 .appHeaderIconButton .ant-btn-icon {
   margin-inline-end: 0;

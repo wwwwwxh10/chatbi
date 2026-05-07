@@ -7,7 +7,7 @@ export function buildBarOption(
   if (kind === 'horizontal') {
     return {
       ...commonTitle('横向柱状图', 'Y：部门 · X：人数（人）'),
-      grid: { left: 70, right: 18, top: 56, bottom: 28 },
+      grid: { left: 24, right: 12, top: 56, bottom: 28, containLabel: true },
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
       xAxis: { type: 'value', name: '人数（人）' },
       yAxis: {
@@ -23,7 +23,7 @@ export function buildBarOption(
   if (kind === 'grouped') {
     return {
       ...commonTitle('分组柱状图', 'X：班级 · Y：成绩（分）'),
-      grid: { left: 44, right: 18, top: 56, bottom: 36 },
+      grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
       legend: { top: 28 },
       xAxis: { type: 'category', name: '班级', data: ['一班', '二班', '三班', '四班'] },
@@ -39,7 +39,7 @@ export function buildBarOption(
   if (kind === 'stacked') {
     return {
       ...commonTitle('堆积柱状图', 'X：月份 · Y：数量（个）'),
-      grid: { left: 44, right: 18, top: 56, bottom: 36 },
+      grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
       legend: { top: 28 },
       xAxis: { type: 'category', name: '月份', data: ['1月', '2月', '3月', '4月', '5月'] },
@@ -54,7 +54,7 @@ export function buildBarOption(
 
   return {
     ...commonTitle('柱状图', 'X：品类 · Y：销售额（万）'),
-    grid: { left: 44, right: 18, top: 56, bottom: 36 },
+    grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     xAxis: { type: 'category', name: '品类', data: ['A', 'B', 'C', 'D', 'E'] },
     yAxis: { type: 'value', name: '销售额（万）' },

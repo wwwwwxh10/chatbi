@@ -23,7 +23,7 @@ export function buildLineOption({
 
   return {
     ...commonTitle(smooth ? '曲线趋势' : '折线趋势', 'X：月份 · Y：数量（单）'),
-    grid: { left: 44, right: 18, top: 56, bottom: 36 },
+    grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
     tooltip: { trigger: 'axis' },
     legend: multi ? { top: 28 } : undefined,
     xAxis: { type: 'category', name: '月份', boundaryGap: false, data: x },
@@ -39,7 +39,7 @@ export function buildAreaOption({ stacked }: { stacked: boolean }): EChartsOptio
   const c = [150, 232, 201, 154, 190, 330, 410]
   return {
     ...commonTitle(stacked ? '堆积面积图' : '面积图', 'X：星期 · Y：用量（GB）'),
-    grid: { left: 44, right: 18, top: 56, bottom: 36 },
+    grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
     tooltip: { trigger: 'axis' },
     legend: stacked ? { top: 28 } : undefined,
     xAxis: { type: 'category', name: '星期', boundaryGap: false, data: x },

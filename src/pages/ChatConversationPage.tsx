@@ -99,7 +99,7 @@ export default function ChatConversationPage() {
       setSending(false)
       setPendingAssistantId(null)
       timerRef.current = null
-    }, 1200)
+    }, 5000)
   }
 
   const stop = () => {
@@ -128,7 +128,13 @@ export default function ChatConversationPage() {
     const q = String(user?.content ?? '').trim()
     if (!q) return
     setSending(true)
-    await new Promise((r) => setTimeout(r, 650))
+    setState((prev) => ({
+      ...prev,
+      messages: prev.messages.map((m) => (m.id === assistantId ? { ...m, content: '分析中…', at: Date.now() } : m)),
+      resultsByAssistantId: { ...prev.resultsByAssistantId, [assistantId]: { status: 'running', answerText: '分析中…' } },
+      activeAssistantId: assistantId,
+    }))
+    await new Promise((r) => setTimeout(r, 5000))
     const next = buildMockResult(q)
     setState((prev) => ({
       ...prev,

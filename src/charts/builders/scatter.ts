@@ -16,7 +16,7 @@ export function buildBubbleOption(): EChartsOption {
   ]
   return {
     ...commonTitle('气泡图 · 成本/收益/规模', 'X：成本 · Y：收益 · 大小：规模（万）'),
-    grid: { left: 44, right: 18, top: 56, bottom: 36 },
+    grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
     tooltip: {
       trigger: 'item',
       formatter: (p: unknown) => {
@@ -58,7 +58,7 @@ export function buildScatterOption(): EChartsOption {
   ]
   return {
     ...commonTitle('散点图 · 学习时长与成绩', 'X：学习时长（h） · Y：成绩（分）'),
-    grid: { left: 44, right: 18, top: 56, bottom: 36 },
+    grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
     tooltip: {
       trigger: 'item',
       formatter: (p: unknown) => {

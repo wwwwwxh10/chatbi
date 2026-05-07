@@ -195,20 +195,46 @@ function buildDerivedChartOption(type: ChartTypeKey, r: MessageResult): EChartsO
 
   if (type === 'bar') {
     return {
-      grid: { left: 44, right: 18, top: 40, bottom: 32 },
+      grid: { left: 12, right: 10, top: 40, bottom: 52, containLabel: true },
       tooltip: { trigger: 'axis' },
-      xAxis: { type: 'category', data: dim, axisLabel: { opacity: 0.8 }, axisLine: { lineStyle: { opacity: 0.35 } } },
-      yAxis: { type: 'value', axisLabel: { opacity: 0.75 }, splitLine: { lineStyle: { opacity: 0.12 } } },
+      xAxis: {
+        type: 'category',
+        data: dim,
+        axisLabel: { opacity: 0.8, hideOverlap: true, rotate: dim.length > 6 ? 28 : 0, margin: 12 },
+        axisLine: { lineStyle: { opacity: 0.35 } },
+        axisTick: { show: false },
+      },
+      yAxis: {
+        type: 'value',
+        splitNumber: 4,
+        axisLabel: { opacity: 0.75, margin: 8 },
+        axisLine: { lineStyle: { opacity: 0.35 } },
+        axisTick: { show: false },
+        splitLine: { lineStyle: { opacity: 0.12 } },
+      },
       series: [{ type: 'bar', data: vals, barWidth: 22, itemStyle: { borderRadius: [10, 10, 0, 0] } }],
     }
   }
 
   if (type === 'line') {
     return {
-      grid: { left: 44, right: 18, top: 40, bottom: 32 },
+      grid: { left: 12, right: 10, top: 40, bottom: 52, containLabel: true },
       tooltip: { trigger: 'axis' },
-      xAxis: { type: 'category', data: dim, axisLabel: { opacity: 0.8 }, axisLine: { lineStyle: { opacity: 0.35 } } },
-      yAxis: { type: 'value', axisLabel: { opacity: 0.75 }, splitLine: { lineStyle: { opacity: 0.12 } } },
+      xAxis: {
+        type: 'category',
+        data: dim,
+        axisLabel: { opacity: 0.8, hideOverlap: true, rotate: dim.length > 6 ? 28 : 0, margin: 12 },
+        axisLine: { lineStyle: { opacity: 0.35 } },
+        axisTick: { show: false },
+      },
+      yAxis: {
+        type: 'value',
+        splitNumber: 4,
+        axisLabel: { opacity: 0.75, margin: 8 },
+        axisLine: { lineStyle: { opacity: 0.35 } },
+        axisTick: { show: false },
+        splitLine: { lineStyle: { opacity: 0.12 } },
+      },
       series: [{ type: 'line', smooth: true, symbol: 'circle', symbolSize: 7, lineStyle: { width: 3 }, areaStyle: { opacity: 0.08 }, data: vals }],
     }
   }
@@ -525,7 +551,7 @@ export default function DashboardChatWorkspacePage() {
   )
   const currentModel = useMemo(() => modelOptions.find((x) => x.key === model) ?? modelOptions[0], [model, modelOptions])
 
-  const datasetOptions = useMemo(() => ['orders', 'users', 'events', 'products', 'sessions'], [])
+  const datasetOptions = useMemo(() => ['subs', 'cdr_voice', 'cdr_data', 'billing_monthly', 'network_kpi_daily'], [])
 
   const NeutralModelIcon = () => (
     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
@@ -542,21 +568,44 @@ export default function DashboardChatWorkspacePage() {
     </svg>
   )
 
-  const ModelLogo = ({ k, url, label }: { k: string; url: string; label: string }) => (
-    <img
-      src={url}
-      alt={label}
-      width={18}
-      height={18}
-      style={{
-        display: 'block',
-        objectFit: 'contain',
-        filter: k === 'gpt-4o' ? 'invert(1)' : undefined,
-        opacity: 0.95,
-      }}
-      onError={() => {}}
-    />
-  )
+  const ModelLogo = ({ k, url, label }: { k: string; url: string; label: string }) => {
+    if (k === 'gpt-4o') {
+      return (
+        <span
+          aria-label={label}
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 6,
+            display: 'grid',
+            placeItems: 'center',
+            background: 'linear-gradient(135deg, rgba(43,92,246,0.95), rgba(124,58,237,0.92))',
+            color: 'rgba(255,255,255,0.96)',
+            fontSize: 10,
+            fontWeight: 900,
+            lineHeight: 1,
+          }}
+        >
+          G
+        </span>
+      )
+    }
+    return (
+      <img
+        src={url}
+        alt={label}
+        width={18}
+        height={18}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        style={{
+          display: 'block',
+          objectFit: 'contain',
+          opacity: 0.95,
+        }}
+      />
+    )
+  }
 
   const bubbleMaxWidth = useMemo(() => {
     const usable = Math.max(280, panelWidth - 84)
@@ -784,7 +833,7 @@ export default function DashboardChatWorkspacePage() {
 
     setSending(true)
     setActiveQuestion(ctx)
-    runningUntilRef.current = Date.now() + 3000
+    runningUntilRef.current = Date.now() + 5000
     setRunningVisible(true)
     setActiveResult({ status: 'running', answerText: '正在分析问题...' })
 
@@ -809,11 +858,29 @@ export default function DashboardChatWorkspacePage() {
         tookMs: took * 1000,
       }
       const botMsg: ChatMessage = { id: nowId(), role: 'assistant', content: answerText, at: Date.now(), question: ctx, result: doneResult }
-      setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, messages: [...(s.messages ?? []), botMsg] } : s)))
-      setActiveResult(doneResult)
-      setRunningVisible(false)
+
+      const now = Date.now()
+      const wait = Math.max(0, runningUntilRef.current - now)
+      if (wait > 0) {
+        pendingDoneRef.current = doneResult
+        pendingMessagesRef.current = [...(activeSession?.messages ?? []), botMsg]
+        finishTimerRef.current = window.setTimeout(() => {
+          setRunningVisible(false)
+          const pendingMsgList = pendingMessagesRef.current
+          pendingMessagesRef.current = null
+          if (pendingMsgList) setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, messages: pendingMsgList } : s)))
+          const pending = pendingDoneRef.current
+          pendingDoneRef.current = null
+          finishTimerRef.current = null
+          if (pending) setActiveResult(pending)
+        }, wait)
+      } else {
+        setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, messages: [...(s.messages ?? []), botMsg] } : s)))
+        setActiveResult(doneResult)
+        setRunningVisible(false)
+      }
       setSending(false)
-    }, 900)
+    }, 1200)
   }
 
   useEffect(() => {
@@ -1324,7 +1391,7 @@ export default function DashboardChatWorkspacePage() {
                               </div>
 
                               {isTextOnly ? (
-                                <div style={{ borderRadius: 14, border: 'none', background: token.colorFillTertiary, padding: 14 }}>
+                                <div style={{ borderRadius: 14, border: `1px solid ${token.colorSplit}`, background: token.colorFillQuaternary, padding: 14 }}>
                                   <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap', color: token.colorText, fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
                                     {renderEmphasis(String(activeResult.answerText ?? ''))}
                                   </Typography.Paragraph>
@@ -1350,7 +1417,7 @@ export default function DashboardChatWorkspacePage() {
                               ) : null}
 
                               {!isTextOnly && activeResult.metric && (view === 'table' || chartType === 'metric') ? (
-                                <div style={{ borderRadius: 14, background: token.colorFillTertiary, padding: 12, textAlign: 'center' }}>
+                                <div style={{ borderRadius: 14, border: `1px solid ${token.colorSplit}`, background: token.colorFillQuaternary, padding: 12, textAlign: 'center' }}>
                                   <Typography.Text type="secondary">{activeResult.metric.label}</Typography.Text>
                                   <div style={{ height: 6 }} />
                                   <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1 }}>{activeResult.metric.value}</div>
@@ -1359,13 +1426,29 @@ export default function DashboardChatWorkspacePage() {
 
                               {!isTextOnly && view === 'chart' ? (
                                 chartType === 'metric' ? null : (
-                                  <div style={{ height: 320, borderRadius: 14, overflow: 'hidden', border: `1px solid ${token.colorSplit}` }}>
+                                  <div
+                                    style={{
+                                      height: chartType === 'funnel' ? 260 : 320,
+                                      borderRadius: 14,
+                                      overflow: 'hidden',
+                                      border: `1px solid ${token.colorSplit}`,
+                                      background: 'transparent',
+                                    }}
+                                  >
                                     <EChart key={chartType} option={activeOption || {}} />
                                   </div>
                                 )
                               ) : (
                                 !isTextOnly && chartType !== 'metric' ? (
-                                <div style={{ height: 320, borderRadius: 14, overflow: 'hidden', border: `1px solid ${token.colorSplit}` }}>
+                                <div
+                                  style={{
+                                    height: 320,
+                                    borderRadius: 14,
+                                    overflow: 'hidden',
+                                    border: `1px solid ${token.colorSplit}`,
+                                    background: 'transparent',
+                                  }}
+                                >
                                   {activeResult.table ? (
                                     <Table
                                       size="middle"
@@ -1404,7 +1487,7 @@ export default function DashboardChatWorkspacePage() {
                                 <div style={{ height: 6 }} />
                                 <Space direction="vertical" size={2} style={{ width: '100%' }}>
                                   {next.map((x, i) => (
-                                    <Typography.Text key={i} style={{ color: token.colorTextSecondary, fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
+                                    <Typography.Text key={i} style={{ color: token.colorText, fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
                                       {renderEmphasis(x)}
                                     </Typography.Text>
                                   ))}
@@ -1428,7 +1511,7 @@ export default function DashboardChatWorkspacePage() {
                           maxWidth: bubbleMax,
                           padding: '10px 12px',
                           borderRadius: 12,
-                          background: m.role === 'user' ? token.colorPrimary : token.colorFillTertiary,
+                          background: m.role === 'user' ? token.colorPrimary : token.colorFillQuaternary,
                           color: m.role === 'user' ? token.colorTextLightSolid : token.colorText,
                           border: `1px solid ${m.role === 'user' ? token.colorPrimary : token.colorSplit}`,
                           whiteSpace: 'pre-wrap',
@@ -1444,18 +1527,18 @@ export default function DashboardChatWorkspacePage() {
             {runningVisible ? (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <VirtualAvatar size={32} style={{ flex: 'none', marginRight: 10 }} />
-                <div
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 12,
-                    background: token.colorFillTertiary,
-                    border: `1px solid ${token.colorSplit}`,
-                    color: token.colorTextSecondary,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
+                  <div
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      background: token.colorFillQuaternary,
+                      border: `1px solid ${token.colorSplit}`,
+                      color: token.colorTextSecondary,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
                   <span className="biSparkleIcon" style={{ color: token.colorPrimary }}>
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path
@@ -1478,7 +1561,7 @@ export default function DashboardChatWorkspacePage() {
           )}
         </div>
 
-        <div style={{ borderTop: `1px solid ${token.colorSplit}`, padding: 12, position: 'relative' }}>
+        <div style={{ padding: 12, position: 'relative' }}>
           <div
             style={{
               display: 'flex',
@@ -1486,7 +1569,6 @@ export default function DashboardChatWorkspacePage() {
               gap: 8,
               borderRadius: 14,
               border: `1px solid ${token.colorSplit}`,
-              background: token.colorFillTertiary,
               padding: 8,
             }}
           >

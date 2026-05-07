@@ -1,6 +1,6 @@
 import { Button, Card, Empty, Input, List, Space, Switch, Table, Tabs, Typography, theme } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { DataSource } from './model'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { DataTableIcon } from '../../components/icons/DataTableIcon'
@@ -63,144 +63,133 @@ type Dataset = {
   previewRows: Array<Record<string, string | number | null>>
 }
 
-function buildSeed(ds: DataSource, lang: 'zh' | 'en'): Dataset[] {
-  const base = ds.type === 'file' ? 'sheet_1' : 'orders'
-  const dimFields: Field[] = Array.from({ length: 14 }).map((_, i) => {
-    const idx = i + 2
-    const physical = `COL_${idx}`
-    const type: FieldType =
-      idx === 2
-        ? 'Date'
-        : idx === 3
-          ? 'Geo'
-          : idx === 4
-            ? 'ImgUrl'
-            : idx === 7
-              ? 'ImgFile'
-              : 'Str'
-    return {
-      id: `d-${idx}`,
-      displayName: physical,
-      physicalName: physical,
-      type,
-      role: 'dimension',
-      description:
-        idx === 8
-          ? lang === 'en'
-            ? 'Year'
-            : '年份'
-          : idx === 9
-            ? lang === 'en'
-              ? 'Month'
-              : '月份'
-            : idx === 10
-              ? lang === 'en'
-                ? 'Department'
-                : '部门'
-              : String(idx),
-      hidden: idx === 7,
-      enabled: true,
-    }
-  })
+function buildSeed(_ds: DataSource, lang: 'zh' | 'en'): Dataset[] {
+  const provinces = lang === 'en' ? ['Shanghai', 'Zhejiang', 'Guangdong', 'Jiangsu', 'Sichuan', 'Hubei'] : ['上海', '浙江', '广东', '江苏', '四川', '湖北']
+  const cities = lang === 'en' ? ['Shanghai', 'Hangzhou', 'Guangzhou', 'Shenzhen', 'Nanjing', 'Chengdu', 'Wuhan', 'Suzhou'] : ['上海', '杭州', '广州', '深圳', '南京', '成都', '武汉', '苏州']
+  const operators = lang === 'en' ? ['CMCC', 'CUCC', 'CTCC'] : ['移动', '联通', '电信']
+  const plans = lang === 'en' ? ['Plan 129', 'Plan 199', '5G 299', 'Campus 59', 'Bundle 169'] : ['畅享 129', '畅享 199', '5G 尊享 299', '校园 59', '融合 169']
+  const netTypes = ['4G', '5G']
 
-  const measureFields: Field[] = Array.from({ length: 5 }).map((_, i) => {
-    const idx = 15 + i
-    const physical = `COL_${idx}`
-    return {
-      id: `m-${idx}`,
-      displayName: physical,
-      physicalName: physical,
-      type: 'Num',
-      role: 'measure',
-      description:
-        idx === 15
-          ? lang === 'en'
-            ? 'Metric A'
-            : '指标A'
-          : idx === 16
-            ? lang === 'en'
-              ? 'Metric B'
-              : '指标B'
-            : lang === 'en'
-              ? `Measure ${i + 1}`
-              : `度量${i + 1}`,
-      enabled: true,
-    }
-  })
+  const mkRows = (kind: 'subs' | 'cdr_voice' | 'cdr_data' | 'billing_monthly' | 'network_kpi_daily'): Array<Record<string, string | number | null>> => {
+    return Array.from({ length: 120 }).map((_, i) => {
+      const dt = `2026-0${String((i % 6) + 1)}-${String((i % 27) + 1).padStart(2, '0')}`
+      const month = `2026-0${String((i % 6) + 1)}-01`
+      const province = provinces[i % provinces.length]
+      const city = cities[i % cities.length]
+      const operator = operators[i % operators.length]
+      const msisdn = `13${(i % 9) + 1}${String(80000000 + i).slice(0, 8)}`
+      const plan = plans[i % plans.length]
+      const net_type = netTypes[i % netTypes.length]
 
-  const rows = Array.from({ length: 120 }).map((_, r) => {
-    const row: Record<string, string | number | null> = {}
-    for (const f of [...dimFields, ...measureFields]) {
-      if (f.physicalName === 'COL_2') row[f.physicalName] = `2025-0${(r % 9) + 1}-01`
-      else if (f.physicalName === 'COL_3') row[f.physicalName] = r % 2 === 0 ? '上海' : '杭州'
-      else if (f.physicalName === 'COL_4') row[f.physicalName] = 'https://example.com/img.png'
-      else if (f.physicalName === 'COL_7') row[f.physicalName] = r % 3 === 0 ? 'uploaded://image' : '-'
-      if (f.physicalName === 'COL_8') row[f.physicalName] = '2015年'
-      else if (f.physicalName === 'COL_9') row[f.physicalName] = `${(r % 6) + 1}月`
-      else if (f.physicalName === 'COL_10') row[f.physicalName] = r % 2 === 0 ? '客服部' : '招商部'
-      else if (f.physicalName === 'COL_6') row[f.physicalName] = r % 5 === 2 ? '#REF!' : '-'
-      else if (f.physicalName === 'COL_15') row[f.physicalName] = r % 7 < 4 ? '#DIV/0!' : 0
-      else if (f.physicalName === 'COL_16') row[f.physicalName] = r % 7 < 4 ? '#DIV/0!' : Number((0.18 + (r % 5) * 0.01).toFixed(6))
-      else row[f.physicalName] = '-'
-    }
-    return row
-  })
+      if (kind === 'cdr_voice') {
+        const call_minutes = (i % 85) + 5
+        const call_fee = Number((call_minutes * 0.15 + (i % 7) * 0.2).toFixed(2))
+        const call_cnt = (i % 23) + 1
+        const row: Record<string, string | number | null> = { dt, msisdn, province, city, operator, call_cnt, call_minutes, call_fee }
+        return row
+      }
 
-  const ds1: Dataset = {
-    name: base,
-    fields: [...dimFields, ...measureFields],
-    previewRows: rows,
+      if (kind === 'cdr_data') {
+        const data_mb = (i % 1800) + 200
+        const data_fee = Number((data_mb * 0.002 + (i % 5) * 0.3).toFixed(2))
+        const sessions = (i % 60) + 10
+        const row: Record<string, string | number | null> = { dt, msisdn, province, city, operator, net_type, data_mb, data_fee, sessions }
+        return row
+      }
+
+      if (kind === 'billing_monthly') {
+        const arpu = Number((89 + (i % 120) * 0.7).toFixed(2))
+        const mrr = Number((arpu * (1 + ((i % 4) * 0.03))).toFixed(2))
+        const overage_fee = Number(((i % 8) * 3.5).toFixed(2))
+        const row: Record<string, string | number | null> = { month, msisdn, operator, plan, arpu, mrr, overage_fee }
+        return row
+      }
+
+      if (kind === 'network_kpi_daily') {
+        const dau = 80000 + (i % 28) * 2300
+        const drop_rate = Number((0.2 + (i % 7) * 0.05).toFixed(2))
+        const latency_ms = 18 + (i % 12) * 3
+        const cqi = Number((8.5 + (i % 8) * 0.3).toFixed(1))
+        const row: Record<string, string | number | null> = { dt, province, city, net_type, dau, drop_rate, latency_ms, cqi }
+        return row
+      }
+
+      const arpu = Number((99 + (i % 80) * 0.8).toFixed(2))
+      const churn_rate = Number((0.8 + (i % 9) * 0.12).toFixed(2))
+      const tenure_months = (i % 72) + 1
+      const row: Record<string, string | number | null> = { dt, msisdn, province, city, operator, plan, arpu, churn_rate, tenure_months }
+      return row
+    })
   }
 
-  const ds2: Dataset = {
-    name: ds.type === 'file' ? 'sheet_2' : 'users',
-    fields: [
-      {
-        id: 'u-1',
-        displayName: 'user_id',
-        physicalName: 'user_id',
-        type: 'Str',
-        role: 'dimension',
-        description: lang === 'en' ? 'User ID' : '用户ID',
-        enabled: true,
-      },
-      {
-        id: 'u-2',
-        displayName: 'signup_date',
-        physicalName: 'signup_date',
-        type: 'Date',
-        role: 'dimension',
-        description: lang === 'en' ? 'Signup date' : '注册时间',
-        enabled: true,
-      },
-      {
-        id: 'u-3',
-        displayName: 'country',
-        physicalName: 'country',
-        type: 'Str',
-        role: 'dimension',
-        description: lang === 'en' ? 'Country/Region' : '国家/地区',
-        enabled: true,
-      },
-      {
-        id: 'u-4',
-        displayName: 'order_cnt',
-        physicalName: 'order_cnt',
-        type: 'Num',
-        role: 'measure',
-        description: lang === 'en' ? 'Order count' : '订单数',
-        enabled: true,
-      },
-    ],
-    previewRows: Array.from({ length: 120 }).map((_, i) => ({
-      user_id: `U${String(1000 + i)}`,
-      signup_date: `2025-0${(i % 9) + 1}-01`,
-      country: i % 2 === 0 ? 'CN' : 'US',
-      order_cnt: i % 7,
-    })),
+  const mkFields = (kind: Dataset['name']): Field[] => {
+    if (kind === 'cdr_voice') {
+      return [
+        { id: 'd-1', displayName: lang === 'en' ? 'Date' : '日期', physicalName: 'dt', type: 'Date', role: 'dimension', description: lang === 'en' ? 'Date' : '日期', enabled: true },
+        { id: 'd-2', displayName: lang === 'en' ? 'MSISDN' : '手机号', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Phone number' : '号码', enabled: true },
+        { id: 'd-3', displayName: lang === 'en' ? 'Province' : '省份', physicalName: 'province', type: 'Geo', role: 'dimension', description: lang === 'en' ? 'Province' : '省份', enabled: true },
+        { id: 'd-4', displayName: lang === 'en' ? 'City' : '城市', physicalName: 'city', type: 'Geo', role: 'dimension', description: lang === 'en' ? 'City' : '城市', enabled: true },
+        { id: 'd-5', displayName: lang === 'en' ? 'Operator' : '运营商', physicalName: 'operator', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Operator' : '运营商', enabled: true },
+        { id: 'm-1', displayName: lang === 'en' ? 'Call Count' : '通话次数', physicalName: 'call_cnt', type: 'Num', role: 'measure', description: lang === 'en' ? 'Call count' : '通话次数', enabled: true },
+        { id: 'm-2', displayName: lang === 'en' ? 'Minutes' : '通话分钟', physicalName: 'call_minutes', type: 'Num', role: 'measure', description: lang === 'en' ? 'Call minutes' : '通话时长(分钟)', enabled: true },
+        { id: 'm-3', displayName: lang === 'en' ? 'Call Fee' : '通话费用', physicalName: 'call_fee', type: 'Num', role: 'measure', description: lang === 'en' ? 'Call fee' : '通话费用(元)', enabled: true },
+      ]
+    }
+
+    if (kind === 'cdr_data') {
+      return [
+        { id: 'd-1', displayName: lang === 'en' ? 'Date' : '日期', physicalName: 'dt', type: 'Date', role: 'dimension', description: lang === 'en' ? 'Date' : '日期', enabled: true },
+        { id: 'd-2', displayName: lang === 'en' ? 'MSISDN' : '手机号', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Phone number' : '号码', enabled: true },
+        { id: 'd-3', displayName: lang === 'en' ? 'Province' : '省份', physicalName: 'province', type: 'Geo', role: 'dimension', description: lang === 'en' ? 'Province' : '省份', enabled: true },
+        { id: 'd-4', displayName: lang === 'en' ? 'City' : '城市', physicalName: 'city', type: 'Geo', role: 'dimension', description: lang === 'en' ? 'City' : '城市', enabled: true },
+        { id: 'd-5', displayName: lang === 'en' ? 'Operator' : '运营商', physicalName: 'operator', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Operator' : '运营商', enabled: true },
+        { id: 'd-6', displayName: lang === 'en' ? 'Net Type' : '网络制式', physicalName: 'net_type', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Network type' : '网络制式', enabled: true },
+        { id: 'm-1', displayName: lang === 'en' ? 'Data (MB)' : '流量(MB)', physicalName: 'data_mb', type: 'Num', role: 'measure', description: lang === 'en' ? 'Data usage in MB' : '流量使用(MB)', enabled: true },
+        { id: 'm-2', displayName: lang === 'en' ? 'Data Fee' : '流量费用', physicalName: 'data_fee', type: 'Num', role: 'measure', description: lang === 'en' ? 'Data fee' : '流量费用(元)', enabled: true },
+        { id: 'm-3', displayName: lang === 'en' ? 'Sessions' : '会话数', physicalName: 'sessions', type: 'Num', role: 'measure', description: lang === 'en' ? 'Data sessions' : '会话数', enabled: true },
+      ]
+    }
+
+    if (kind === 'billing_monthly') {
+      return [
+        { id: 'd-1', displayName: lang === 'en' ? 'Month' : '月份', physicalName: 'month', type: 'Date', role: 'dimension', description: lang === 'en' ? 'Month' : '月份', enabled: true },
+        { id: 'd-2', displayName: lang === 'en' ? 'MSISDN' : '手机号', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Phone number' : '号码', enabled: true },
+        { id: 'd-3', displayName: lang === 'en' ? 'Operator' : '运营商', physicalName: 'operator', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Operator' : '运营商', enabled: true },
+        { id: 'd-4', displayName: lang === 'en' ? 'Plan' : '套餐', physicalName: 'plan', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Plan' : '套餐', enabled: true },
+        { id: 'm-1', displayName: 'ARPU', physicalName: 'arpu', type: 'Num', role: 'measure', description: lang === 'en' ? 'ARPU' : 'ARPU(元)', enabled: true },
+        { id: 'm-2', displayName: 'MRR', physicalName: 'mrr', type: 'Num', role: 'measure', description: lang === 'en' ? 'MRR' : 'MRR(元)', enabled: true },
+        { id: 'm-3', displayName: lang === 'en' ? 'Overage Fee' : '超套费用', physicalName: 'overage_fee', type: 'Num', role: 'measure', description: lang === 'en' ? 'Overage fee' : '超套费用(元)', enabled: true },
+      ]
+    }
+
+    if (kind === 'network_kpi_daily') {
+      return [
+        { id: 'd-1', displayName: lang === 'en' ? 'Date' : '日期', physicalName: 'dt', type: 'Date', role: 'dimension', description: lang === 'en' ? 'Date' : '日期', enabled: true },
+        { id: 'd-2', displayName: lang === 'en' ? 'Province' : '省份', physicalName: 'province', type: 'Geo', role: 'dimension', description: lang === 'en' ? 'Province' : '省份', enabled: true },
+        { id: 'd-3', displayName: lang === 'en' ? 'City' : '城市', physicalName: 'city', type: 'Geo', role: 'dimension', description: lang === 'en' ? 'City' : '城市', enabled: true },
+        { id: 'd-4', displayName: lang === 'en' ? 'Net Type' : '网络制式', physicalName: 'net_type', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Network type' : '网络制式', enabled: true },
+        { id: 'm-1', displayName: 'DAU', physicalName: 'dau', type: 'Num', role: 'measure', description: lang === 'en' ? 'Daily active users' : '日活', enabled: true },
+        { id: 'm-2', displayName: lang === 'en' ? 'Drop Rate' : '掉线率', physicalName: 'drop_rate', type: 'Num', role: 'measure', description: lang === 'en' ? 'Drop rate (%)' : '掉线率(%)', enabled: true },
+        { id: 'm-3', displayName: lang === 'en' ? 'Latency' : '时延', physicalName: 'latency_ms', type: 'Num', role: 'measure', description: lang === 'en' ? 'Latency (ms)' : '时延(ms)', enabled: true },
+        { id: 'm-4', displayName: 'CQI', physicalName: 'cqi', type: 'Num', role: 'measure', description: lang === 'en' ? 'Channel quality index' : '信道质量(CQI)', enabled: true },
+      ]
+    }
+
+    return [
+      { id: 'd-1', displayName: lang === 'en' ? 'Date' : '日期', physicalName: 'dt', type: 'Date', role: 'dimension', description: lang === 'en' ? 'Date' : '日期', enabled: true },
+      { id: 'd-2', displayName: lang === 'en' ? 'MSISDN' : '手机号', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Phone number' : '号码', enabled: true },
+      { id: 'd-3', displayName: lang === 'en' ? 'Province' : '省份', physicalName: 'province', type: 'Geo', role: 'dimension', description: lang === 'en' ? 'Province' : '省份', enabled: true },
+      { id: 'd-4', displayName: lang === 'en' ? 'City' : '城市', physicalName: 'city', type: 'Geo', role: 'dimension', description: lang === 'en' ? 'City' : '城市', enabled: true },
+      { id: 'd-5', displayName: lang === 'en' ? 'Operator' : '运营商', physicalName: 'operator', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Operator' : '运营商', enabled: true },
+      { id: 'd-6', displayName: lang === 'en' ? 'Plan' : '套餐', physicalName: 'plan', type: 'Str', role: 'dimension', description: lang === 'en' ? 'Plan' : '套餐', enabled: true },
+      { id: 'm-1', displayName: 'ARPU', physicalName: 'arpu', type: 'Num', role: 'measure', description: lang === 'en' ? 'ARPU' : 'ARPU(元)', enabled: true },
+      { id: 'm-2', displayName: lang === 'en' ? 'Churn Rate' : '流失率', physicalName: 'churn_rate', type: 'Num', role: 'measure', description: lang === 'en' ? 'Churn rate (%)' : '流失率(%)', enabled: true },
+      { id: 'm-3', displayName: lang === 'en' ? 'Tenure' : '在网月龄', physicalName: 'tenure_months', type: 'Num', role: 'measure', description: lang === 'en' ? 'Tenure (months)' : '在网月龄(月)', enabled: true },
+    ]
   }
 
-  return [ds1, ds2]
+  const names: Dataset['name'][] = ['subs', 'cdr_voice', 'cdr_data', 'billing_monthly', 'network_kpi_daily']
+  return names.map((name) => ({ name, fields: mkFields(name), previewRows: mkRows(name as any) }))
 }
 
 export function DataSourceDetail({ dataSource }: { dataSource: DataSource }) {
@@ -212,8 +201,6 @@ export function DataSourceDetail({ dataSource }: { dataSource: DataSource }) {
   const [activeTable, setActiveTable] = useState<string>('')
   const [datasets, setDatasets] = useState<Dataset[]>(() => buildSeed(dataSource, lang))
   const [tabKey, setTabKey] = useState<'preview' | 'fields'>('preview')
-  const previewTableWrapRef = useRef<HTMLDivElement | null>(null)
-  const [previewScrollY, setPreviewScrollY] = useState(360)
 
   useEffect(() => {
     setActiveTable('')
@@ -221,16 +208,6 @@ export function DataSourceDetail({ dataSource }: { dataSource: DataSource }) {
     setTabKey('preview')
   }, [dataSource.id, lang])
 
-  useEffect(() => {
-    const el = previewTableWrapRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => {
-      const h = el.getBoundingClientRect().height
-      setPreviewScrollY(Math.max(240, Math.floor(h)))
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
 
   const updateField = (datasetName: string, fieldId: string, patch: Partial<Field>) => {
     setDatasets((prev) =>
@@ -249,12 +226,6 @@ export function DataSourceDetail({ dataSource }: { dataSource: DataSource }) {
     const name = activeTable || datasets[0]?.name
     return datasets.find((x) => x.name === name) ?? datasets[0]
   }, [activeTable, datasets])
-
-  const previewY = useMemo(() => {
-    const byWrap = Math.max(240, previewScrollY - 12)
-    const byRows = Math.max(240, (current?.previewRows ?? []).slice(0, 100).length * 44 + 12)
-    return Math.min(byWrap, byRows)
-  }, [previewScrollY, current])
 
   const visibleFields = useMemo(() => current?.fields ?? [], [current])
   const enabledFields = useMemo(() => visibleFields.filter((f) => f.enabled), [visibleFields])
@@ -432,12 +403,12 @@ export function DataSourceDetail({ dataSource }: { dataSource: DataSource }) {
               label: L.preview,
               children: (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-                  <div ref={previewTableWrapRef} style={{ flex: 1, minHeight: 0, border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, minHeight: 0, border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'hidden' }}>
                     {previewColumns.length ? (
                       <Table
                         size="middle"
                         sticky
-                        scroll={{ x: 1400, y: previewY }}
+                        scroll={{ x: 1400 }}
                         pagination={false}
                         className="dsPreviewTable"
                         columns={previewColumns}

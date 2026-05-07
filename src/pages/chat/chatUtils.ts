@@ -69,17 +69,18 @@ export function downloadText(filename: string, text: string, mime: string) {
 
 export function mockChartOption(): EChartsOption {
   return {
-    grid: { left: 44, right: 18, top: 30, bottom: 32 },
+    grid: { left: 16, right: 12, top: 30, bottom: 36, containLabel: true },
     tooltip: { trigger: 'axis' },
     xAxis: {
       type: 'category',
       data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      axisLabel: { opacity: 0.7 },
+      axisLabel: { opacity: 0.7, hideOverlap: true, margin: 12, rotate: 28 },
       axisLine: { lineStyle: { opacity: 0.35 } },
     },
     yAxis: {
       type: 'value',
-      axisLabel: { opacity: 0.7 },
+      splitNumber: 4,
+      axisLabel: { opacity: 0.7, margin: 8 },
       splitLine: { lineStyle: { opacity: 0.12 } },
     },
     series: [
@@ -117,7 +118,17 @@ export function buildMockResult(question: string): MessageResult {
 
   const applyAxis = (axis: any) => ({
     ...axis,
-    axisLabel: { ...(axis?.axisLabel ?? {}), opacity: 0.8 },
+    splitNumber: axis?.type === 'value' ? (axis?.splitNumber ?? 4) : axis?.splitNumber,
+    axisLabel: {
+      ...(axis?.axisLabel ?? {}),
+      opacity: 0.8,
+      hideOverlap: true,
+      margin: axis?.axisLabel?.margin ?? (axis?.type === 'category' ? 12 : 8),
+      rotate:
+        axis?.type === 'category'
+          ? (axis?.axisLabel?.rotate ?? ((axis?.data?.length ?? 0) > 6 ? 28 : 0))
+          : axis?.axisLabel?.rotate,
+    },
     axisLine: { ...(axis?.axisLine ?? {}), lineStyle: { ...(axis?.axisLine?.lineStyle ?? {}), opacity: 0.35 } },
     axisTick: { ...(axis?.axisTick ?? {}), show: false },
     splitLine: axis?.splitLine,
@@ -132,7 +143,7 @@ export function buildMockResult(question: string): MessageResult {
     extraCssText: 'border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);',
   } as const
 
-  const baseGrid = { left: 44, right: 18, top: 40, bottom: 30, containLabel: true } as const
+  const baseGrid = { left: 12, right: 10, top: 40, bottom: 30, containLabel: true } as const
 
   const colors = {
     primary: '#2B5CF6',
@@ -185,7 +196,7 @@ export function buildMockResult(question: string): MessageResult {
       const table: ResultTable = { columns: ['小时', 'GMV'], rows }
 
       const chartLine: EChartsOption = {
-        grid: { left: 44, right: 18, top: 40, bottom: 32 },
+        grid: { left: 16, right: 12, top: 40, bottom: 36, containLabel: true },
         tooltip: { trigger: 'axis' },
         xAxis: { type: 'category', data: rows.map((r) => String(r.小时)), axisLabel: { opacity: 0.8 }, axisLine: { lineStyle: { opacity: 0.35 } } },
         yAxis: { type: 'value', axisLabel: { opacity: 0.75 }, splitLine: { lineStyle: { opacity: 0.12 } } },
@@ -229,7 +240,7 @@ export function buildMockResult(question: string): MessageResult {
       }
 
       const chartBar: EChartsOption = {
-        grid: { left: 44, right: 18, top: 40, bottom: 32 },
+        grid: { left: 16, right: 12, top: 40, bottom: 36, containLabel: true },
         tooltip: { trigger: 'axis' },
         xAxis: { type: 'category', data: ['2.5', '2.4', '2.3'], axisLabel: { opacity: 0.8 }, axisLine: { lineStyle: { opacity: 0.35 } } },
         yAxis: { type: 'value', axisLabel: { opacity: 0.75 }, splitLine: { lineStyle: { opacity: 0.12 } } },
@@ -270,7 +281,7 @@ export function buildMockResult(question: string): MessageResult {
       }
 
       const chartCombo: EChartsOption = {
-        grid: { left: 44, right: 18, top: 40, bottom: 32 },
+        grid: { left: 16, right: 12, top: 40, bottom: 36, containLabel: true },
         tooltip: { trigger: 'axis' },
         legend: { data: ['当月', '累计'] },
         xAxis: { type: 'category', data: months, axisLabel: { opacity: 0.8 }, axisLine: { lineStyle: { opacity: 0.35 } } },
@@ -314,7 +325,7 @@ export function buildMockResult(question: string): MessageResult {
     }
 
     const chartBar: EChartsOption = {
-      grid: { left: 44, right: 18, top: 40, bottom: 32 },
+      grid: { left: 16, right: 12, top: 40, bottom: 36, containLabel: true },
       tooltip: { trigger: 'axis' },
       xAxis: {
         type: 'category',
@@ -338,7 +349,7 @@ export function buildMockResult(question: string): MessageResult {
     }
 
     const chartLine: EChartsOption = {
-      grid: { left: 44, right: 18, top: 40, bottom: 32 },
+      grid: { left: 16, right: 12, top: 40, bottom: 36, containLabel: true },
       tooltip: { trigger: 'axis' },
       xAxis: {
         type: 'category',
@@ -421,6 +432,8 @@ export function buildMockResult(question: string): MessageResult {
             type: 'funnel',
             left: '10%',
             width: '80%',
+            top: 68,
+            bottom: 68,
             label: { show: true, position: 'inside', color: '#fff' },
             data: [
               { name: '曝光', value: 120000 },
@@ -442,6 +455,12 @@ export function buildMockResult(question: string): MessageResult {
       chart: {
         tooltip: {},
         radar: {
+          radius: '68%',
+          center: ['50%', '55%'],
+          name: { color: 'rgba(233,236,242,0.92)', fontSize: 12 },
+          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
+          splitArea: { areaStyle: { color: ['rgba(255,255,255,0.03)', 'rgba(255,255,255,0.01)'] } },
+          axisLine: { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
           indicator: [
             { name: '价格', max: 100 },
             { name: '销量', max: 100 },
@@ -454,6 +473,8 @@ export function buildMockResult(question: string): MessageResult {
           {
             type: 'radar',
             areaStyle: { opacity: 0.08 },
+            lineStyle: { width: 2 },
+            itemStyle: { color: '#2B5CF6' },
             data: [{ value: [72, 88, 64, 91, 79], name: '画像' }],
           },
         ],
@@ -514,7 +535,7 @@ export function buildMockResult(question: string): MessageResult {
   const maxAbs = Math.max(0, ...vals.map((v) => Math.abs(Number(v) || 0)))
   const { unit, div } = computeUnit(maxAbs)
   const xStep = dims.length <= 8 ? 0 : Math.max(1, Math.ceil(dims.length / 6) - 1)
-  const xRotate = dims.length > 12 ? 32 : dims.length > 9 ? 20 : 0
+  const xRotate = dims.length > 6 ? 28 : 0
   const xLabel = {
     interval: xStep === 0 ? 0 : xStep,
     hideOverlap: true,
@@ -543,7 +564,7 @@ export function buildMockResult(question: string): MessageResult {
     },
   }
 
-  const grid = { ...baseGrid, left: 26, right: 10, bottom: xRotate ? 48 : (baseGrid as any).bottom } as const
+  const grid = { ...baseGrid, left: 12, right: 10, bottom: xRotate ? 52 : (baseGrid as any).bottom } as const
 
   const chartBar: EChartsOption = {
     animationDuration: 450,

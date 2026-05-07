@@ -98,7 +98,7 @@ export default function DashboardChatPage() {
       setMessages((prev) => [...prev, botMsg])
       setSending(false)
       setPendingTimer(null)
-    }, 1200)
+    }, 5000)
     setPendingTimer(tId)
   }
 

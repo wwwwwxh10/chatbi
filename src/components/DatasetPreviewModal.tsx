@@ -1,6 +1,6 @@
 import { Button, Empty, Input, Modal, Space, Table, Tabs, Typography, theme } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { DataTableIcon } from './icons/DataTableIcon'
 
@@ -34,38 +34,114 @@ function typePill(type: FieldType) {
 }
 
 function buildFields(tableName: string): Field[] {
-  const base = tableName || 'orders'
-  const dim: Field[] = [
-    { id: 'd-1', name: 'date', physicalName: 'COL_2', type: 'Date', role: 'dimension', description: '日期' },
-    { id: 'd-2', name: base === 'users' ? 'country' : 'city', physicalName: 'COL_3', type: 'Geo', role: 'dimension', description: '地域' },
-    { id: 'd-3', name: base === 'users' ? 'user_id' : 'order_id', physicalName: 'COL_5', type: 'Str', role: 'dimension', description: 'ID' },
+  const base = (tableName || 'subs').toLowerCase()
+
+  if (base.includes('cdr_voice')) {
+    return [
+      { id: 'd-1', name: 'date', physicalName: 'dt', type: 'Date', role: 'dimension', description: '日期' },
+      { id: 'd-2', name: 'msisdn', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: '手机号' },
+      { id: 'd-3', name: 'province', physicalName: 'province', type: 'Geo', role: 'dimension', description: '省份' },
+      { id: 'd-4', name: 'city', physicalName: 'city', type: 'Geo', role: 'dimension', description: '城市' },
+      { id: 'd-5', name: 'operator', physicalName: 'operator', type: 'Str', role: 'dimension', description: '运营商' },
+      { id: 'm-1', name: 'call_minutes', physicalName: 'call_minutes', type: 'Num', role: 'measure', description: '通话时长(分钟)' },
+      { id: 'm-2', name: 'call_fee', physicalName: 'call_fee', type: 'Num', role: 'measure', description: '通话费用(元)' },
+    ]
+  }
+
+  if (base.includes('cdr_data')) {
+    return [
+      { id: 'd-1', name: 'date', physicalName: 'dt', type: 'Date', role: 'dimension', description: '日期' },
+      { id: 'd-2', name: 'msisdn', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: '手机号' },
+      { id: 'd-3', name: 'province', physicalName: 'province', type: 'Geo', role: 'dimension', description: '省份' },
+      { id: 'd-4', name: 'operator', physicalName: 'operator', type: 'Str', role: 'dimension', description: '运营商' },
+      { id: 'd-5', name: 'net_type', physicalName: 'net_type', type: 'Str', role: 'dimension', description: '网络制式' },
+      { id: 'm-1', name: 'data_mb', physicalName: 'data_mb', type: 'Num', role: 'measure', description: '流量使用(MB)' },
+      { id: 'm-2', name: 'data_fee', physicalName: 'data_fee', type: 'Num', role: 'measure', description: '流量费用(元)' },
+    ]
+  }
+
+  if (base.includes('billing')) {
+    return [
+      { id: 'd-1', name: 'month', physicalName: 'month', type: 'Date', role: 'dimension', description: '月份' },
+      { id: 'd-2', name: 'msisdn', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: '手机号' },
+      { id: 'd-3', name: 'plan', physicalName: 'plan', type: 'Str', role: 'dimension', description: '套餐' },
+      { id: 'd-4', name: 'operator', physicalName: 'operator', type: 'Str', role: 'dimension', description: '运营商' },
+      { id: 'm-1', name: 'arpu', physicalName: 'arpu', type: 'Num', role: 'measure', description: 'ARPU(元)' },
+      { id: 'm-2', name: 'mrr', physicalName: 'mrr', type: 'Num', role: 'measure', description: 'MRR(元)' },
+    ]
+  }
+
+  if (base.includes('network_kpi')) {
+    return [
+      { id: 'd-1', name: 'date', physicalName: 'dt', type: 'Date', role: 'dimension', description: '日期' },
+      { id: 'd-2', name: 'province', physicalName: 'province', type: 'Geo', role: 'dimension', description: '省份' },
+      { id: 'd-3', name: 'city', physicalName: 'city', type: 'Geo', role: 'dimension', description: '城市' },
+      { id: 'd-4', name: 'net_type', physicalName: 'net_type', type: 'Str', role: 'dimension', description: '网络制式' },
+      { id: 'm-1', name: 'dau', physicalName: 'dau', type: 'Num', role: 'measure', description: '日活' },
+      { id: 'm-2', name: 'drop_rate', physicalName: 'drop_rate', type: 'Num', role: 'measure', description: '掉线率(%)' },
+      { id: 'm-3', name: 'latency_ms', physicalName: 'latency_ms', type: 'Num', role: 'measure', description: '时延(ms)' },
+    ]
+  }
+
+  return [
+    { id: 'd-1', name: 'date', physicalName: 'dt', type: 'Date', role: 'dimension', description: '日期' },
+    { id: 'd-2', name: 'msisdn', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: '手机号' },
+    { id: 'd-3', name: 'province', physicalName: 'province', type: 'Geo', role: 'dimension', description: '省份' },
+    { id: 'd-4', name: 'city', physicalName: 'city', type: 'Geo', role: 'dimension', description: '城市' },
+    { id: 'd-5', name: 'operator', physicalName: 'operator', type: 'Str', role: 'dimension', description: '运营商' },
+    { id: 'd-6', name: 'plan', physicalName: 'plan', type: 'Str', role: 'dimension', description: '套餐' },
+    { id: 'm-1', name: 'arpu', physicalName: 'arpu', type: 'Num', role: 'measure', description: 'ARPU(元)' },
+    { id: 'm-2', name: 'churn_rate', physicalName: 'churn_rate', type: 'Num', role: 'measure', description: '流失率(%)' },
   ]
-  const mea: Field[] = [
-    { id: 'm-1', name: base === 'events' ? 'cnt' : 'amount', physicalName: 'COL_15', type: 'Num', role: 'measure', description: '数值' },
-    { id: 'm-2', name: base === 'events' ? 'uv' : 'qty', physicalName: 'COL_16', type: 'Num', role: 'measure', description: '辅助指标' },
-  ]
-  return [...dim, ...mea]
 }
 
 function buildRows(tableName: string) {
-  const base = tableName || 'orders'
-  return Array.from({ length: 120 }).map((_, i) => ({
-    date: `2025-0${(i % 9) + 1}-01`,
-    city: i % 2 === 0 ? '上海' : '杭州',
-    country: i % 2 === 0 ? 'CN' : 'US',
-    order_id: `O${1000 + i}`,
-    user_id: `U${1000 + i}`,
-    amount: Number(((i + 3) * 137.42).toFixed(2)),
-    qty: i % 7,
-    cnt: (i + 1) * 3,
-    uv: (i + 1) * 2,
-    key: i,
-  }))
-    .map((r) => {
-      if (base === 'users') return { date: r.date, country: r.country, user_id: r.user_id, qty: r.qty, key: r.key }
-      if (base === 'events') return { date: r.date, city: r.city, cnt: r.cnt, uv: r.uv, key: r.key }
-      return { date: r.date, city: r.city, order_id: r.order_id, amount: r.amount, qty: r.qty, key: r.key }
-    })
+  const base = (tableName || 'subs').toLowerCase()
+  const provinces = ['上海', '浙江', '广东', '江苏', '四川', '湖北']
+  const cities = ['上海', '杭州', '广州', '深圳', '南京', '成都', '武汉', '苏州']
+  const operators = ['移动', '联通', '电信']
+  const plans = ['畅享 129', '畅享 199', '5G 尊享 299', '校园 59', '融合 169']
+  const netTypes = ['4G', '5G', 'WiFi']
+
+  return Array.from({ length: 120 }).map((_, i) => {
+    const dt = `2026-0${((i % 6) + 1).toString()}-${String(((i % 27) + 1)).padStart(2, '0')}`
+    const province = provinces[i % provinces.length]
+    const city = cities[i % cities.length]
+    const operator = operators[i % operators.length]
+    const msisdn = `13${(i % 9) + 1}${String(80000000 + i).slice(0, 8)}`
+    const plan = plans[i % plans.length]
+    const net_type = netTypes[i % netTypes.length]
+
+    if (base.includes('cdr_voice')) {
+      const call_minutes = (i % 85) + 5
+      const call_fee = Number((call_minutes * 0.15 + (i % 7) * 0.2).toFixed(2))
+      return { dt, msisdn, province, city, operator, call_minutes, call_fee, key: i }
+    }
+
+    if (base.includes('cdr_data')) {
+      const data_mb = (i % 1800) + 200
+      const data_fee = Number((data_mb * 0.002 + (i % 5) * 0.3).toFixed(2))
+      return { dt, msisdn, province, operator, net_type, data_mb, data_fee, key: i }
+    }
+
+    if (base.includes('billing')) {
+      const month = `2026-0${((i % 6) + 1).toString()}-01`
+      const arpu = Number((89 + (i % 120) * 0.7).toFixed(2))
+      const mrr = Number((arpu * (1 + ((i % 4) * 0.03))).toFixed(2))
+      return { month, msisdn, plan, operator, arpu, mrr, key: i }
+    }
+
+    if (base.includes('network_kpi')) {
+      const dau = 80000 + (i % 28) * 2300
+      const drop_rate = Number((0.2 + (i % 7) * 0.05).toFixed(2))
+      const latency_ms = 18 + (i % 12) * 3
+      return { dt, province, city, net_type, dau, drop_rate, latency_ms, key: i }
+    }
+
+    const arpu = Number((99 + (i % 80) * 0.8).toFixed(2))
+    const churn_rate = Number((0.8 + (i % 9) * 0.12).toFixed(2))
+    return { dt, msisdn, province, city, operator, plan, arpu, churn_rate, key: i }
+  })
 }
 
 export function DatasetPreviewModal({
@@ -88,8 +164,6 @@ export function DatasetPreviewModal({
   const [active, setActive] = useState(initialActive ?? '')
   const [tab, setTab] = useState<'preview' | 'fields'>(defaultTab)
   const [refreshTick, setRefreshTick] = useState(0)
-  const previewTableWrapRef = useRef<HTMLDivElement | null>(null)
-  const [previewScrollY, setPreviewScrollY] = useState(320)
 
   useEffect(() => {
     if (!open) return
@@ -99,17 +173,6 @@ export function DatasetPreviewModal({
     setTab(defaultTab)
     setRefreshTick((x) => x + 1)
   }, [defaultTab, initialActive, open])
-
-  useEffect(() => {
-    const el = previewTableWrapRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => {
-      const h = el.getBoundingClientRect().height
-      setPreviewScrollY(Math.max(200, Math.floor(h)))
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -123,7 +186,6 @@ export function DatasetPreviewModal({
 
   const fields = useMemo(() => buildFields(activeName), [activeName])
   const rows = useMemo(() => buildRows(activeName), [activeName, refreshTick])
-  const previewY = useMemo(() => Math.max(240, previewScrollY - 12), [previewScrollY])
 
   const previewColumns = useMemo(() => {
     const sample = rows[0] ?? {}
@@ -232,7 +294,7 @@ export function DatasetPreviewModal({
                   label: <Typography.Text style={{ fontWeight: 650 }}>数据预览</Typography.Text>,
                   children: (
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-                      <div ref={previewTableWrapRef} style={{ flex: 1, minHeight: 0, border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'hidden' }}>
+                      <div style={{ flex: 1, minHeight: 0, border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'hidden' }}>
                         <Table
                           size="middle"
                           pagination={false}
@@ -240,7 +302,7 @@ export function DatasetPreviewModal({
                           columns={previewColumns}
                           dataSource={(rows as any).slice(0, 100)}
                           sticky
-                          scroll={{ x: 1400, y: previewY }}
+                          scroll={{ x: 1400 }}
                         />
                       </div>
 

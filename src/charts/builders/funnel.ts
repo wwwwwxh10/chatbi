@@ -11,8 +11,8 @@ export function buildFunnelOption(): EChartsOption {
         name: '转化',
         type: 'funnel',
         left: '10%',
-        top: 64,
-        bottom: 24,
+        top: 78,
+        bottom: 78,
         width: '80%',
         min: 0,
         max: 10000,
@@ -33,4 +33,3 @@ export function buildFunnelOption(): EChartsOption {
     ],
   }
 }
-

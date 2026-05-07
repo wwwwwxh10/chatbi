@@ -27,6 +27,9 @@ export function AppLogoMark({ size = 28 }: { size?: number }) {
       <rect x="35" y="25" width="4" height="13" rx="2" fill="url(#chatbi_mark_g)" />
       <rect x="21" y="31" width="4" height="7" rx="2" fill="var(--ant-color-text)" fillOpacity="0.42" />
 
+      <circle cx="27" cy="28" r="4.2" stroke="var(--ant-color-primary)" strokeWidth="2.4" opacity="0.85" />
+      <path d="M30.1 31.1L33.6 34.6" stroke="var(--ant-color-primary)" strokeWidth="2.4" strokeLinecap="round" opacity="0.85" />
+
       <path
         d="M24 24.2H34"
         stroke="var(--ant-color-primary)"
