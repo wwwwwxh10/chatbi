@@ -52,6 +52,10 @@ html[data-mode='dark'] .ant-popconfirm-inner-content {
   background: var(--ant-color-bg-container, #111722);
 }
 
+.ant-tooltip .ant-tooltip-inner {
+  border: none !important;
+}
+
 html[data-mode='dark'] .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
   background: rgba(43, 92, 246, 0.16);
 }
@@ -82,6 +86,14 @@ html[data-mode='dark'] .ant-modal-mask {
   background: rgba(0, 0, 0, 0.55);
 }
 
+html[data-mode='dark'] .ant-drawer-mask {
+  background: rgba(0, 0, 0, 0.28) !important;
+}
+
+.ant-drawer-mask {
+  background: rgba(0, 0, 0, 0.28) !important;
+}
+
 html[data-mode='dark'] .ant-table,
 html[data-mode='dark'] .ant-table-container,
 html[data-mode='dark'] .ant-table-content {
@@ -107,6 +119,29 @@ html[data-mode='dark'] .ant-card-bordered {
   border-color: rgba(255, 255, 255, 0.10);
 }
 
+.ant-table-thead > tr > th.actionCol,
+.ant-table-tbody > tr > td.actionCol {
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+.actionCol {
+  text-align: center !important;
+}
+
+.actionCol .iconOnly {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 8px !important;
+}
+
+.ant-table table {
+  table-layout: fixed !important;
+}
+
 html[data-mode='dark'] .ant-table,
 html[data-mode='dark'] .ant-table-container,
 html[data-mode='dark'] .ant-table-content {
@@ -120,6 +155,41 @@ html[data-mode='dark'] .ant-menu-dark .ant-menu-sub {
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(110, 120, 140, 0.35) transparent;
+}
+
+html[data-mode='dark'] {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px;
+}
+
+*::-webkit-scrollbar-track-piece {
+  background: transparent;
+  margin: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(110, 120, 140, 0.32);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
+html[data-mode='dark'] *::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.20);
 }
 
 .chartCanvas {

@@ -1,5 +1,5 @@
 import { BrowserRouter } from 'react-router-dom'
-import { ConfigProvider, theme as antdTheme } from 'antd'
+import { ConfigProvider, Empty, theme as antdTheme } from 'antd'
 import enUS from 'antd/locale/en_US'
 import zhCN from 'antd/locale/zh_CN'
 import { useEffect, useMemo } from 'react'
@@ -60,8 +60,22 @@ export default function RootApp() {
     [algorithm, themeMode],
   )
 
+  const emptyNode = useMemo(() => {
+    const desc = locale === 'en-US' ? 'No data' : '暂无数据'
+    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={desc} style={{ margin: 0 }} />
+  }, [locale])
+
   return (
-    <ConfigProvider theme={theme} locale={antdLocale}>
+    <ConfigProvider
+      theme={theme}
+      locale={antdLocale}
+      renderEmpty={(componentName) => {
+        if (componentName === 'Table' || componentName === 'List') {
+          return <div style={{ paddingBlock: 28 }}>{emptyNode}</div>
+        }
+        return emptyNode
+      }}
+    >
       <BrowserRouter>
         <App />
       </BrowserRouter>

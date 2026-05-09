@@ -20,6 +20,7 @@ export type DataSource = {
   id: string
   name: string
   type: DataSourceType
+  dbVersion?: string
   accessMode?: DataAccessMode
   extractMode?: ExtractMode
   extractFrequency?: ExtractFrequency

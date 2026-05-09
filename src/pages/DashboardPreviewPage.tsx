@@ -71,7 +71,7 @@ export default function DashboardPreviewPage() {
 
       {!preview?.configText ? (
         <Card>
-          <Empty description={t('dashboard.previewEmpty')} />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('dashboard.previewEmpty')} />
         </Card>
       ) : (
         <Space direction="vertical" size={12} style={{ width: '100%' }}>

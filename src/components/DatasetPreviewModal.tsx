@@ -1,4 +1,4 @@
-import { Button, Empty, Input, Modal, Space, Table, Tabs, Typography, theme } from 'antd'
+import { Button, Drawer, Empty, Input, Space, Table, Tabs, Typography, theme } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
@@ -160,6 +160,18 @@ export function DatasetPreviewModal({
   zIndex?: number
 }) {
   const { token } = theme.useToken()
+  const [drawerHeight, setDrawerHeight] = useState(560)
+
+  useEffect(() => {
+    if (!open) return
+    const compute = () => {
+      const desired = window.innerHeight - 56
+      setDrawerHeight(Math.max(480, Math.min(720, desired)))
+    }
+    compute()
+    window.addEventListener('resize', compute)
+    return () => window.removeEventListener('resize', compute)
+  }, [open])
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(initialActive ?? '')
   const [tab, setTab] = useState<'preview' | 'fields'>(defaultTab)
@@ -209,10 +221,17 @@ export function DatasetPreviewModal({
 
   const fieldColumns = useMemo(() => {
     return [
-      { title: '字段名', dataIndex: 'name', key: 'name', width: 180 },
-      { title: '物理字段名', dataIndex: 'physicalName', key: 'physicalName', width: 180, render: (v: string) => <Typography.Text code>{v}</Typography.Text> },
-      { title: '字段类型', dataIndex: 'type', key: 'type', width: 120, render: (v: FieldType) => typePill(v) },
-      { title: '字段描述', dataIndex: 'description', key: 'description' },
+      { title: '字段名', dataIndex: 'name', key: 'name', width: '25%', ellipsis: true },
+      {
+        title: '物理字段名',
+        dataIndex: 'physicalName',
+        key: 'physicalName',
+        width: '25%',
+        ellipsis: true,
+        render: (v: string) => <Typography.Text code>{v}</Typography.Text>,
+      },
+      { title: '字段类型', dataIndex: 'type', key: 'type', width: '25%', ellipsis: true, render: (v: FieldType) => typePill(v) },
+      { title: '字段描述', dataIndex: 'description', key: 'description', width: '25%', ellipsis: true },
     ] as ColumnsType<Field>
   }, [])
 
@@ -220,7 +239,20 @@ export function DatasetPreviewModal({
   const meaCount = useMemo(() => fields.filter((f) => f.role === 'measure').length, [fields])
 
   return (
-    <Modal open={open} onCancel={onClose} footer={null} width={980} centered destroyOnHidden title="数据表" zIndex={zIndex}>
+    <Drawer
+      open={open}
+      onClose={onClose}
+      placement="bottom"
+      height={drawerHeight}
+      title="数据表"
+      zIndex={zIndex}
+      destroyOnClose
+      mask
+      maskClosable
+      keyboard
+      getContainer={() => document.body}
+      styles={{ mask: { background: 'rgba(0,0,0,0.28)' }, body: { padding: 12, height: '100%', minHeight: 0 } }}
+    >
       <div
         style={{
           display: 'grid',
@@ -228,7 +260,8 @@ export function DatasetPreviewModal({
           border: `1px solid ${token.colorSplit}`,
           borderRadius: 12,
           overflow: 'hidden',
-          height: 660,
+          height: '100%',
+          minHeight: 0,
           background: token.colorBgContainer,
         }}
       >
@@ -239,6 +272,7 @@ export function DatasetPreviewModal({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="搜索数据表"
               prefix={<SearchOutlined />}
+              allowClear
             />
           </div>
 
@@ -334,8 +368,8 @@ export function DatasetPreviewModal({
                   label: <Typography.Text style={{ fontWeight: 650 }}>字段详情</Typography.Text>,
                   children: (
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-                      <div style={{ flex: 1, minHeight: 0, border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'auto' }}>
-                        <Table size="middle" pagination={false} columns={fieldColumns} dataSource={fields as any} scroll={{ x: 'max-content' }} />
+                      <div style={{ flex: 1, minHeight: 0, border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'hidden' }}>
+                        <Table size="middle" pagination={false} columns={fieldColumns} dataSource={fields as any} tableLayout="fixed" />
                       </div>
                     </div>
                   ),
@@ -347,6 +381,6 @@ export function DatasetPreviewModal({
           )}
         </div>
       </div>
-    </Modal>
+    </Drawer>
   )
 }

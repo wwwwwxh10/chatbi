@@ -343,7 +343,7 @@ export function DataSourceDetail({ dataSource }: { dataSource: DataSource }) {
     },
   ]
 
-  if (!current) return <Empty description={null} />
+  if (!current) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={null} />
 
   const filteredDatasets = useMemo(() => {
     const q = dsQuery.trim().toLowerCase()
@@ -416,7 +416,7 @@ export function DataSourceDetail({ dataSource }: { dataSource: DataSource }) {
                       />
                     ) : (
                       <div style={{ height: '100%', display: 'grid', placeItems: 'center' }}>
-                        <Empty description={null} />
+                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={null} />
                       </div>
                     )}
                   </div>

@@ -109,11 +109,11 @@ export function buildMockResult(question: string): MessageResult {
     return { unit: '', div: 1 }
   }
 
-  const formatCompact = (n: number, unit: string, div: number) => {
+  const formatCompact = (n: number, div: number) => {
     if (!Number.isFinite(n)) return ''
     const v = n / div
     const digits = div === 1 ? 0 : v >= 100 ? 0 : v >= 10 ? 1 : 2
-    return `${v.toFixed(digits)}${unit}`
+    return `${v.toFixed(digits)}`
   }
 
   const applyAxis = (axis: any) => ({
@@ -137,10 +137,10 @@ export function buildMockResult(question: string): MessageResult {
   const baseTooltip = {
     trigger: 'axis',
     backgroundColor: 'rgba(16, 18, 22, 0.92)',
-    borderColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 1,
+    borderColor: 'transparent',
+    borderWidth: 0,
     textStyle: { color: 'rgba(233, 236, 242, 0.92)' },
-    extraCssText: 'border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);',
+    extraCssText: 'border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); z-index: 99999;',
   } as const
 
   const baseGrid = { left: 12, right: 10, top: 40, bottom: 30, containLabel: true } as const
@@ -199,7 +199,7 @@ export function buildMockResult(question: string): MessageResult {
         grid: { left: 16, right: 12, top: 40, bottom: 36, containLabel: true },
         tooltip: { trigger: 'axis' },
         xAxis: { type: 'category', data: rows.map((r) => String(r.小时)), axisLabel: { opacity: 0.8 }, axisLine: { lineStyle: { opacity: 0.35 } } },
-        yAxis: { type: 'value', axisLabel: { opacity: 0.75 }, splitLine: { lineStyle: { opacity: 0.12 } } },
+        yAxis: { type: 'value', name: '(万)', nameLocation: 'end', nameGap: 8, nameTextStyle: { color: 'rgba(233,236,242,0.40)', fontSize: 12, align: 'center' }, axisLabel: { opacity: 0.75 }, splitLine: { lineStyle: { opacity: 0.12 } } },
         series: [
           {
             type: 'line',
@@ -404,7 +404,7 @@ export function buildMockResult(question: string): MessageResult {
               { name: '广告投放', value: 59200 },
               { name: '活动', value: 55830 },
             ],
-            itemStyle: { borderRadius: 8, borderColor: 'rgba(255,255,255,0.04)', borderWidth: 1 },
+            itemStyle: { borderRadius: 8, borderWidth: 0 },
           },
         ],
       } as any,
@@ -432,8 +432,9 @@ export function buildMockResult(question: string): MessageResult {
             type: 'funnel',
             left: '10%',
             width: '80%',
-            top: 68,
-            bottom: 68,
+            top: '15%',
+            bottom: '15%',
+            minSize: 40,
             label: { show: true, position: 'inside', color: '#fff' },
             data: [
               { name: '曝光', value: 120000 },
@@ -453,14 +454,21 @@ export function buildMockResult(question: string): MessageResult {
       status: 'done',
       answerText: '',
       chart: {
-        tooltip: {},
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: baseTooltip.backgroundColor,
+          borderColor: baseTooltip.borderColor,
+          borderWidth: baseTooltip.borderWidth,
+          textStyle: baseTooltip.textStyle,
+          extraCssText: baseTooltip.extraCssText,
+        },
         radar: {
           radius: '68%',
           center: ['50%', '55%'],
-          name: { color: 'rgba(233,236,242,0.92)', fontSize: 12 },
-          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
+          nameTextStyle: { color: 'rgba(255,255,255,0.96)', fontSize: 14, fontWeight: 800 },
+          splitLine: { lineStyle: { color: '#e6e6e6', width: 1.5 } },
           splitArea: { areaStyle: { color: ['rgba(255,255,255,0.03)', 'rgba(255,255,255,0.01)'] } },
-          axisLine: { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
+          axisLine: { lineStyle: { color: '#e6e6e6', width: 1.5 } },
           indicator: [
             { name: '价格', max: 100 },
             { name: '销量', max: 100 },
@@ -560,7 +568,7 @@ export function buildMockResult(question: string): MessageResult {
     formatter: (v: unknown) => {
       const n = Number(v)
       if (!Number.isFinite(n)) return String(v ?? '')
-      return formatCompact(n, unit, div)
+      return formatCompact(n, div)
     },
   }
 
@@ -572,7 +580,17 @@ export function buildMockResult(question: string): MessageResult {
     grid: grid as any,
     tooltip: baseTooltip as any,
     xAxis: applyAxis({ type: 'category', data: dims, axisLabel: xLabel } as any),
-    yAxis: applyAxis({ type: 'value', axisLabel: yLabel, splitLine: { lineStyle: { opacity: 0.12 } } } as any),
+    yAxis: applyAxis(
+      {
+        type: 'value',
+        name: unit ? `(${unit})` : undefined,
+        nameLocation: 'end',
+        nameGap: 8,
+        nameTextStyle: { color: 'rgba(233,236,242,0.40)', fontSize: 12, align: 'center' },
+        axisLabel: yLabel,
+        splitLine: { lineStyle: { opacity: 0.12 } },
+      } as any,
+    ),
     series: [
       {
         type: 'bar',
@@ -599,7 +617,17 @@ export function buildMockResult(question: string): MessageResult {
     grid: grid as any,
     tooltip: baseTooltip as any,
     xAxis: applyAxis({ type: 'category', data: dims, axisLabel: xLabel } as any),
-    yAxis: applyAxis({ type: 'value', axisLabel: yLabel, splitLine: { lineStyle: { opacity: 0.12 } } } as any),
+    yAxis: applyAxis(
+      {
+        type: 'value',
+        name: unit ? `(${unit})` : undefined,
+        nameLocation: 'end',
+        nameGap: 8,
+        nameTextStyle: { color: 'rgba(233,236,242,0.40)', fontSize: 12, align: 'center' },
+        axisLabel: yLabel,
+        splitLine: { lineStyle: { opacity: 0.12 } },
+      } as any,
+    ),
     series: [
       {
         type: 'line',
@@ -649,7 +677,7 @@ export function buildMockResult(question: string): MessageResult {
         label: { show: false },
         labelLine: { show: false },
         data: dims.map((name, i) => ({ name, value: vals[i] })),
-        itemStyle: { borderRadius: 10, borderColor: 'rgba(16,18,22,0.9)', borderWidth: 2 },
+        itemStyle: { borderRadius: 10, borderWidth: 0 },
         emphasis: { scale: true, scaleSize: 6 },
       },
     ],

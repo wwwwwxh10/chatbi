@@ -3,9 +3,11 @@ import {
   Card,
   Checkbox,
   Col,
+  Drawer,
   Dropdown,
   Empty,
   Form,
+  Grid,
   Input,
   InputNumber,
   Modal,
@@ -16,10 +18,11 @@ import {
   Select as AntSelect,
   Space,
   Steps,
+  message,
   Typography,
   theme,
 } from 'antd'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PageIntro } from '../components/PageIntro'
 import { DataSourceTypeIcon } from '../components/DataSourceTypeIcon'
@@ -28,16 +31,19 @@ import type { DataSource, DataSourceType } from './dataSources/model'
 import {
   CheckCircleFilled,
   CloseCircleFilled,
+  CopyOutlined,
   DeleteOutlined,
   EditOutlined,
+  InfoCircleOutlined,
   MinusCircleFilled,
   PlusOutlined,
   SearchOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
 import { DataTableIcon } from '../components/icons/DataTableIcon'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useDataSourcesStore } from '../store/dataSourcesStore'
+import { DataSourceDetail } from './dataSources/DataSourceDetail'
 import { UploadPanel } from '../components/UploadPanel'
 import { useAppStore } from '../store/appStore'
 import { DatabaseDuotoneIcon } from '../components/icons/DatabaseDuotoneIcon'
@@ -72,16 +78,37 @@ function statusTag(s: DataSource['status'], t: (k: string) => string) {
 export default function DataSourcesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { id } = useParams<{ id?: string }>()
 
   const themeMode = useAppStore((s) => s.themeMode)
 
   const { token } = theme.useToken()
+  const isDark = themeMode === 'dark'
+  const screens = Grid.useBreakpoint()
+  const WHITELIST =
+    '47.101.108.0/24,101.132.48.0/24,47.101.107.0/24,139.224.92.0/24,139.224.4.0/24,106.15.146.0/24,106.15.145.0/24,106.15.143.0/24,106.15.14.0/24,106.15.13.0/24,100.104.0.0/16,139.224.19.222,47.102.111.163'
   const items = useDataSourcesStore((s) => s.items)
   const addItem = useDataSourcesStore((s) => s.addItem)
   const updateItem = useDataSourcesStore((s) => s.updateItem)
   const removeItem = useDataSourcesStore((s) => s.removeItem)
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<DataSourceType | 'all'>('all')
+
+  const [accessHelpOpen, setAccessHelpOpen] = useState(false)
+
+  const [detailDrawerHeight, setDetailDrawerHeight] = useState(560)
+  const current = useMemo(() => (id ? items.find((x) => x.id === id) : null), [id, items])
+
+  useEffect(() => {
+    if (!id) return
+    const compute = () => {
+      const desired = window.innerHeight - 56
+      setDetailDrawerHeight(Math.max(480, Math.min(720, desired)))
+    }
+    compute()
+    window.addEventListener('resize', compute)
+    return () => window.removeEventListener('resize', compute)
+  }, [id])
 
   const [editTarget, setEditTarget] = useState<DataSource | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DataSource | null>(null)
@@ -104,6 +131,7 @@ export default function DataSourcesPage() {
 
   const [dbForm] = Form.useForm<{
     name: string
+    dbVersion?: string
     host: string
     port: number
     database: string
@@ -119,7 +147,10 @@ export default function DataSourcesPage() {
   }>()
 
   const dbDatasetOptions = useMemo(() => ['orders', 'order_items', 'users', 'events', 'products', 'sessions'], [])
-  const fileDatasetOptions = useMemo(() => ['Sheet1', 'Sheet2', 'Sheet3', 'Sheet4', 'Sheet5'], [])
+  const fileDatasetOptions = useMemo(
+    () => ['Sheet1', 'Sheet2', 'Sheet3', 'Sheet4', 'Sheet5', 'Sheet6', 'Sheet7', 'Sheet8', 'Sheet9', 'Sheet10'],
+    [],
+  )
 
   const typeCatalogAll = useMemo(
     () => [
@@ -172,7 +203,7 @@ export default function DataSourcesPage() {
     setDbSelectedType(null)
     setDbTypeSearch('')
     dbForm.resetFields()
-    dbForm.setFieldsValue({ accessMode: 'direct' as DataAccessMode })
+    dbForm.setFieldsValue({ accessMode: 'direct' as DataAccessMode, extractMode: 'full' as ExtractMode, extractFrequency: '1d' as ExtractFrequency, dbVersion: '8.0' })
   }
 
   const openEditWizard = (ds: DataSource) => {
@@ -199,9 +230,10 @@ export default function DataSourcesPage() {
       port: ds.port,
       database: ds.database,
       username: ds.username,
+      dbVersion: ds.dbVersion ?? '8.0',
       accessMode: ds.accessMode ?? 'direct',
       extractMode: ds.extractMode ?? 'full',
-      extractFrequency: ds.extractFrequency ?? '1h',
+      extractFrequency: ds.extractFrequency ?? '1d',
     })
   }
 
@@ -245,6 +277,7 @@ export default function DataSourcesPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('actions.search')}
             prefix={<SearchOutlined />}
+            allowClear
             style={{ width: 280 }}
           />
           <Select
@@ -252,7 +285,10 @@ export default function DataSourcesPage() {
             style={{ width: 160 }}
             options={[
               { label: t('dataSources.allTypes'), value: 'all' },
-              ...typeCatalogAll.map((x) => ({ label: x.label, value: x.key })),
+              ...typeCatalogAll.map((x) => ({
+                label: x.label,
+                value: x.key,
+              })),
             ]}
             onChange={(v) => setTypeFilter(v)}
           />
@@ -300,7 +336,7 @@ export default function DataSourcesPage() {
 
       {filtered.length === 0 ? (
         <Card>
-          <Empty description={t('dataSources.empty')} />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('dataSources.empty')} />
         </Card>
       ) : (
         <Row gutter={[16, 16]}>
@@ -326,7 +362,7 @@ export default function DataSourcesPage() {
                   autoAdjustOverflow={false}
                   arrow={{ pointAtCenter: true }}
                   overlayInnerStyle={{ padding: 8 }}
-                  align={{ offset: [12, 16] }}
+                  align={{ offset: [0, 10] }}
                   overlayStyle={{ zIndex: 2100 }}
                   content={
                     <div
@@ -373,10 +409,10 @@ export default function DataSourcesPage() {
                   <div
                     style={{
                       position: 'absolute',
-                      right: 16,
+                      right: 14,
                       bottom: 14,
-                      width: 120,
-                      height: 1,
+                      width: 0,
+                      height: 0,
                       pointerEvents: 'none',
                     }}
                   />
@@ -422,7 +458,7 @@ export default function DataSourcesPage() {
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <DataTableIcon size={14} color={token.colorTextSecondary} />
-                        {ds.type === 'file' ? '--' : `${ds.datasetSelected ?? 0}/${ds.datasetTotal ?? 0}`}
+                      {ds.datasetSelected ?? 0}
                       </span>
                     </Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -441,10 +477,11 @@ export default function DataSourcesPage() {
         onCancel={closeFile}
         width={860}
         destroyOnHidden
-        title={fileWizardMode === 'edit' ? '编辑数据源' : '文件上传'}
+        title={fileWizardMode === 'edit' ? '编辑本地文件' : '新建本地文件'}
         centered
+        styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
         footer={
-          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Space style={{ width: '100%', justifyContent: 'flex-end' }} size={12}>
             <Button onClick={closeFile}>{t('actions.cancel')}</Button>
             <Button
               type="primary"
@@ -488,10 +525,10 @@ export default function DataSourcesPage() {
             >
               <UploadPanel
                 title="点击上传"
-                description="支持 .csv、.xlsx、.xls、.json、.xml"
+                description="支持 .xls / .xlsx / .CSV 格式"
                 height={260}
                 maxCount={1}
-                accept=".xls,.xlsx,.csv,.json,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json,application/xml,text/xml"
+                accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                 onChange={(info) => {
                   const f = info.file?.originFileObj
                   if (!(f instanceof File)) return
@@ -501,17 +538,13 @@ export default function DataSourcesPage() {
             </Form.Item>
           </Form>
 
-          <div style={{ borderTop: `1px solid ${token.colorSplit}`, marginTop: 6, paddingTop: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 10, color: token.colorTextSecondary }}>
-              <div style={{ flex: 1, height: 1, background: token.colorSplit }} />
-              <div style={{ fontWeight: 650 }}>温馨提示</div>
-              <div style={{ flex: 1, height: 1, background: token.colorSplit }} />
-            </div>
+          <div style={{ marginTop: 6, paddingTop: 6 }}>
+            <div style={{ fontWeight: 650, color: token.colorTextSecondary, marginBottom: 8 }}>温馨提示</div>
             <ul style={{ margin: 0, paddingLeft: 18, color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.9 }}>
               <li>请上传结构化数据；有合并单元格的，请处理/拆分后再上传</li>
               <li>系统默认将文件首行为标题行，第二行开始识别为要上传的数据</li>
               <li>最大支持上传的单个文件大小不超过 50M</li>
-              <li>最多支持 5 个 Sheet 解析；超过请拆分为多个文件分别上传</li>
+              <li>最多支持 10 个 Sheet 解析；超过请拆分为多个文件分别上传</li>
             </ul>
           </div>
         </Space>
@@ -523,7 +556,11 @@ export default function DataSourcesPage() {
         width={360}
         zIndex={20000}
         getContainer={() => document.body}
-        title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>确认删除数据源</div>}
+        title={
+          <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>
+            {deleteTarget?.type === 'file' ? '删除本地文件' : '删除数据库'}
+          </div>
+        }
         okText="删除"
         cancelText="取消"
         okButtonProps={{ danger: true }}
@@ -536,7 +573,9 @@ export default function DataSourcesPage() {
         }}
       >
         <div style={{ paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: 'var(--ant-color-text-secondary)' }}>
-          {deleteTarget ? `将删除数据源“${deleteTarget.name}”。删除后不可恢复。` : ''}
+          {deleteTarget
+            ? `将删除${deleteTarget.type === 'file' ? '本地文件' : '数据库'}“${deleteTarget.name}”。删除后不可恢复。`
+            : ''}
         </div>
       </Modal>
 
@@ -545,12 +584,24 @@ export default function DataSourcesPage() {
         onCancel={closeDbWizard}
         width={860}
         destroyOnHidden
-        title={t('dataSources.newTitle')}
+        title={dbWizardMode === 'edit' ? '编辑数据库' : '新建数据库'}
         centered
+        styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
         footer={
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             <Button onClick={closeDbWizard}>{t('actions.cancel')}</Button>
-            <Space>
+            <Space size={12}>
+              {dbWizardStep === 1 ? (
+                <Button
+                  icon={<SettingOutlined />}
+                  onClick={async () => {
+                    await dbForm.validateFields()
+                    void message.success(t('dataSources.testConnection') + '成功')
+                  }}
+                >
+                  {t('dataSources.testConnection')}
+                </Button>
+              ) : null}
               <Button disabled={dbWizardStep === 0} onClick={() => setDbWizardStep((s) => Math.max(0, s - 1))}>
                 {t('dataSources.prev')}
               </Button>
@@ -579,12 +630,13 @@ export default function DataSourcesPage() {
                       id: editTarget?.id ?? nowId(),
                       name: v.name,
                       type: (dbSelectedType ?? editTarget?.type ?? 'other') as DataSourceType,
+                      dbVersion: v.dbVersion,
                       accessMode: (v.accessMode as DataAccessMode) ?? 'direct',
                       extractMode: (v.extractMode as ExtractMode) ?? 'full',
                       extractFrequency: (v.extractFrequency as ExtractFrequency) ?? '1h',
                       host: v.host,
                       port: v.port,
-                      database: v.database,
+                      database: editTarget?.database ?? v.database ?? '',
                       username: v.username,
                       datasetSelected: dbSelectedDatasets.length,
                       datasetTotal: dbDatasetOptions.length,
@@ -614,8 +666,9 @@ export default function DataSourcesPage() {
                 onChange={(e) => setDbTypeSearch(e.target.value)}
                 placeholder={t('dataSources.searchType')}
                 prefix={<SearchOutlined />}
+                allowClear
               />
-              <Row gutter={[12, 12]}>
+              <Row gutter={[12, 12]} style={{ marginInline: 0 }}>
                 {dbTypeCatalog.map((x) => (
                   <Col key={x.key} xs={12} md={8}>
                     <Card
@@ -644,6 +697,22 @@ export default function DataSourcesPage() {
 
           {dbWizardStep === 1 ? (
             <Card>
+              {dbSelectedType ? (
+                <div
+                  style={{
+                    borderRadius: 10,
+                    padding: '8px 10px',
+                    background: token.colorFillTertiary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 12,
+                  }}
+                >
+                  <InfoCircleOutlined style={{ color: token.colorPrimary }} />
+                  <Typography.Text style={{ color: token.colorTextSecondary }}>提示：支持5.5、5.6、5.7、8.0版本</Typography.Text>
+                </div>
+              ) : null}
               <Form
                 key={dbSelectedType ?? 'none'}
                 form={dbForm}
@@ -672,33 +741,44 @@ export default function DataSourcesPage() {
 
                 <Row gutter={12}>
                   <Col xs={24} md={12}>
-                    <Form.Item name="database" label={t('dataSources.form.database')} rules={[{ required: true, message: t('validation.required') }]}>
-                      <Input placeholder="biz" />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
                     <Form.Item name="username" label={t('dataSources.form.username')} rules={[{ required: true, message: t('validation.required') }]}>
                       <Input placeholder="readonly" />
                     </Form.Item>
                   </Col>
+                  <Col xs={24} md={12}>
+                    <Form.Item name="password" label={t('dataSources.formPassword')}>
+                      <Input.Password placeholder="******" style={{ width: '100%' }} />
+                    </Form.Item>
+                  </Col>
                 </Row>
 
-                <Form.Item name="password" label={t('dataSources.formPassword')}>
-                  <Input.Password placeholder="******" style={{ width: '100%' }} />
-                </Form.Item>
+                <Row gutter={12}>
+                  <Col xs={24} md={24}>
+                    <Form.Item name="dbVersion" label="数据库版本" rules={[{ required: true, message: t('validation.required') }]}>
+                      <AntSelect options={[{ label: '5.5', value: '5.5' }, { label: '5.6', value: '5.6' }, { label: '5.7', value: '5.7' }, { label: '8.0', value: '8.0' }]} />
+                    </Form.Item>
+                  </Col>
+                </Row>
 
                 <Form.Item
                   name="accessMode"
-                  label="接入方式"
+                  label={
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      接入方式
+                      <InfoCircleOutlined style={{ cursor: 'pointer', color: token.colorTextTertiary }} onClick={() => setAccessHelpOpen(true)} />
+                    </span>
+                  }
                   rules={[{ required: true, message: t('validation.required') }]}
                   style={{ marginBottom: 10 }}
                 >
                   <Radio.Group
-                    options={[
-                      { label: '数据直连', value: 'direct' },
-                      { label: '数据抽取', value: 'extract' },
-                    ]}
-                  />
+                    style={{ display: 'flex' }}
+                  >
+                    <Space size={28} align="center" wrap>
+                      <Radio value="direct">数据直连</Radio>
+                      <Radio value="extract">数据抽取</Radio>
+                    </Space>
+                  </Radio.Group>
                 </Form.Item>
 
                 <Form.Item noStyle shouldUpdate={(p, c) => p.accessMode !== c.accessMode}>
@@ -706,19 +786,29 @@ export default function DataSourcesPage() {
                     const mode = getFieldValue('accessMode') as DataAccessMode
                     if (mode !== 'extract') return null
                     return (
-                      <Row gutter={12}>
+                      <Row gutter={12} align="middle">
                         <Col xs={24} md={12}>
-                          <Form.Item name="extractMode" label="抽取方式" style={{ marginBottom: 0 }}>
-                            <Radio.Group
-                              options={[
-                                { label: '全量抽取', value: 'full' },
-                                { label: '增量抽取', value: 'incremental' },
-                              ]}
-                            />
+                          <Form.Item
+                            name="extractMode"
+                            label="抽取方式"
+                            rules={[{ required: true, message: t('validation.required') }]}
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Radio.Group>
+                              <Space size={28} align="center" wrap>
+                                <Radio value="full">全量抽取</Radio>
+                                <Radio value="incremental">增量抽取</Radio>
+                              </Space>
+                            </Radio.Group>
                           </Form.Item>
                         </Col>
                         <Col xs={24} md={12}>
-                          <Form.Item name="extractFrequency" label="抽取频率" style={{ marginBottom: 0 }}>
+                          <Form.Item
+                            name="extractFrequency"
+                            label="抽取频率"
+                            rules={[{ required: true, message: t('validation.required') }]}
+                            style={{ marginBottom: 0 }}
+                          >
                             <AntSelect
                               options={[
                                 { label: '5分钟', value: '5m' },
@@ -735,7 +825,43 @@ export default function DataSourcesPage() {
                   }}
                 </Form.Item>
 
-                <Button icon={<SettingOutlined />}>{t('dataSources.testConnection')}</Button>
+                <div style={{ marginTop: 12 }}>
+                  <Typography.Text style={{ fontWeight: 650 }}>连接前，请添加如下白名单列表。</Typography.Text>
+                  <div style={{ height: 8 }} />
+                  <div
+                    style={{
+                      borderRadius: 12,
+                      padding: 12,
+                      background: token.colorFillTertiary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                    }}
+                  >
+                    <Typography.Text style={{ color: token.colorTextSecondary, fontSize: 13, lineHeight: 1.6 }}>
+                      {WHITELIST}
+                    </Typography.Text>
+                    <Button
+                      type="link"
+                      icon={<CopyOutlined />}
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(WHITELIST)
+                        } catch {
+                          const el = document.createElement('textarea')
+                          el.value = WHITELIST
+                          document.body.appendChild(el)
+                          el.select()
+                          document.execCommand('copy')
+                          document.body.removeChild(el)
+                        }
+                      }}
+                    >
+                      复制白名单
+                    </Button>
+                  </div>
+                </div>
               </Form>
             </Card>
           ) : null}
@@ -790,6 +916,289 @@ export default function DataSourcesPage() {
           ) : null}
         </Space>
       </Modal>
+
+      <Modal
+        open={accessHelpOpen}
+        onCancel={() => setAccessHelpOpen(false)}
+        footer={null}
+        centered
+        width={980}
+        style={{ maxWidth: 980, width: 'calc(100vw - 48px)' }}
+        title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>接入方式说明</div>}
+        destroyOnHidden
+        styles={{ body: { padding: 18, background: token.colorBgContainer } }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: screens.md ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr)',
+            gap: 18,
+          }}
+        >
+          <div
+            style={{
+              background: token.colorBgContainer,
+              borderRadius: 18,
+              boxShadow: 'none',
+              border: `1px solid ${token.colorSplit}`,
+              padding: 22,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ fontSize: 22, fontWeight: 850, color: token.colorText }}>直连模式</div>
+              <span
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  background: isDark ? 'rgba(59,130,246,0.18)' : 'rgba(59,130,246,0.12)',
+                  color: isDark ? 'rgba(147,197,253,0.95)' : '#2563EB',
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                数据时效性高
+              </span>
+            </div>
+            <div style={{ color: token.colorTextSecondary, fontSize: 14, lineHeight: 1.7 }}>
+              数据原地不动，通过计算下推实现秒级响应，确保感知最新业务波动。
+            </div>
+
+            <div style={{ paddingTop: 4, paddingBottom: 2 }}>
+              <div style={{ width: '100%', overflow: 'hidden' }}>
+                <svg viewBox="0 0 520 160" width="100%" height="160" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="directAccent" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stopColor={token.colorPrimary} stopOpacity="0.95" />
+                      <stop offset="1" stopColor={token.colorPrimaryBg} stopOpacity="0.95" />
+                    </linearGradient>
+                    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                      <path d="M1 1 L9 5 L1 9" fill="none" stroke={token.colorTextTertiary} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </marker>
+                  </defs>
+
+                  <g opacity={isDark ? 0.9 : 1}>
+                    <g transform="translate(92,54)">
+                      <circle cx="32" cy="26" r="10" fill={token.colorTextSecondary} opacity="0.65" />
+                      <path d="M18 52c4-10 24-10 28 0" stroke={token.colorTextSecondary} strokeWidth="6" strokeLinecap="round" opacity="0.55" />
+                      <text x="32" y="88" textAnchor="middle" fontSize="13" fill={token.colorTextSecondary}>提问</text>
+                    </g>
+
+                    <g>
+                      <path d="M176 86H344" stroke={token.colorTextTertiary} strokeWidth="2" strokeLinecap="round" markerEnd="url(#arrow)" opacity={isDark ? 0.55 : 0.7} />
+                      <text x="260" y="70" textAnchor="middle" fontSize="12" fill={token.colorPrimary} fontWeight="700">NL2SQL</text>
+                    </g>
+
+                    <g transform="translate(364,54)">
+                      <ellipse cx="32" cy="18" rx="18" ry="8" fill="url(#directAccent)" opacity="0.55" />
+                      <rect x="14" y="18" width="36" height="28" fill="url(#directAccent)" opacity="0.38" />
+                      <ellipse cx="32" cy="46" rx="18" ry="8" fill="url(#directAccent)" opacity="0.55" />
+                      <ellipse cx="32" cy="18" rx="18" ry="8" fill="none" stroke="url(#directAccent)" strokeWidth="2" opacity="0.9" />
+                      <rect x="14" y="18" width="36" height="28" fill="none" stroke="url(#directAccent)" strokeWidth="2" opacity="0.9" />
+                      <ellipse cx="32" cy="46" rx="18" ry="8" fill="none" stroke="url(#directAccent)" strokeWidth="2" opacity="0.9" />
+                      <text x="32" y="88" textAnchor="middle" fontSize="13" fill={token.colorTextSecondary}>高性能数仓</text>
+                    </g>
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 2, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14, color: token.colorText }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: isDark ? 'rgba(147,197,253,0.95)' : '#2563EB', marginTop: 8, flex: 'none' }} />
+                <span>零存储成本：不搬运原始数据</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: isDark ? 'rgba(147,197,253,0.95)' : '#2563EB', marginTop: 8, flex: 'none' }} />
+                <span>极致实时：直连数仓，数据不延时</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: isDark ? 'rgba(147,197,253,0.95)' : '#2563EB', marginTop: 8, flex: 'none' }} />
+                <span>适用场景：Doris, StarRocks, ClickHouse</span>
+              </div>
+            </div>
+
+            <Button
+              size="large"
+              block
+              style={{
+                marginTop: 'auto',
+                height: 44,
+                borderRadius: 10,
+                borderColor: isDark ? 'rgba(255,255,255,0.16)' : '#D1D5DB',
+                color: token.colorText,
+                background: token.colorBgContainer,
+              }}
+              onClick={() => {
+                dbForm.setFieldsValue({ accessMode: 'direct' })
+                setAccessHelpOpen(false)
+              }}
+            >
+              选择直连模式
+            </Button>
+          </div>
+
+          <div
+            style={{
+              background: token.colorBgContainer,
+              borderRadius: 18,
+              boxShadow: 'none',
+              border: `1px solid ${token.colorSplit}`,
+              padding: 22,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ fontSize: 22, fontWeight: 850, color: token.colorText }}>加速模式</div>
+              <span
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  background: isDark ? 'rgba(34,197,94,0.16)' : 'rgba(34,197,94,0.14)',
+                  color: isDark ? 'rgba(134,239,172,0.95)' : '#16A34A',
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                查询响应快
+              </span>
+            </div>
+            <div style={{ color: token.colorTextSecondary, fontSize: 14, lineHeight: 1.7 }}>
+              数据同步至内置计算引擎，屏蔽主库压力，提供毫秒级问答体验。
+            </div>
+
+            <div style={{ paddingTop: 4, paddingBottom: 2 }}>
+              <div style={{ width: '100%', overflow: 'hidden' }}>
+                <svg viewBox="0 0 520 160" width="100%" height="160" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="accelAccent" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stopColor={token.colorSuccess} stopOpacity="0.95" />
+                      <stop offset="1" stopColor={token.colorSuccessBg} stopOpacity="0.95" />
+                    </linearGradient>
+                    <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                      <path d="M1 1 L9 5 L1 9" fill="none" stroke={token.colorTextTertiary} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </marker>
+                  </defs>
+
+                  <g opacity={isDark ? 0.9 : 1}>
+                    <g transform="translate(78,54)">
+                      <ellipse cx="32" cy="18" rx="18" ry="8" fill={token.colorTextSecondary} opacity="0.18" />
+                      <rect x="14" y="18" width="36" height="28" fill={token.colorTextSecondary} opacity="0.10" />
+                      <ellipse cx="32" cy="46" rx="18" ry="8" fill={token.colorTextSecondary} opacity="0.18" />
+                      <ellipse cx="32" cy="18" rx="18" ry="8" fill="none" stroke={token.colorTextSecondary} strokeWidth="2" opacity="0.45" />
+                      <rect x="14" y="18" width="36" height="28" fill="none" stroke={token.colorTextSecondary} strokeWidth="2" opacity="0.45" />
+                      <ellipse cx="32" cy="46" rx="18" ry="8" fill="none" stroke={token.colorTextSecondary} strokeWidth="2" opacity="0.45" />
+                      <text x="32" y="88" textAnchor="middle" fontSize="13" fill={token.colorTextSecondary}>业务主库</text>
+                    </g>
+
+                    <g>
+                      <text x="183" y="70" textAnchor="middle" fontSize="12" fill={token.colorTextTertiary}>
+                        同步
+                      </text>
+                      <path
+                        d="M146 86H220"
+                        stroke={token.colorTextTertiary}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        markerEnd="url(#arrow2)"
+                        opacity={isDark ? 0.55 : 0.7}
+                      />
+                      <path
+                        d="M302 86H396"
+                        stroke={token.colorTextTertiary}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        markerEnd="url(#arrow2)"
+                        opacity={isDark ? 0.55 : 0.7}
+                      />
+                    </g>
+
+                    <g transform="translate(228,54)">
+                      <rect x="4" y="4" width="56" height="56" rx="16" fill="none" stroke="url(#accelAccent)" strokeWidth="2" strokeDasharray="5 5" opacity="0.95" />
+                      <path d="M37 16 L28 36 H38 L32 52 L48 32 H37" transform="translate(-6,0)" fill="url(#accelAccent)" opacity="0.95" />
+                      <text x="32" y="88" textAnchor="middle" fontSize="13" fill={token.colorTextSecondary}>
+                        内置加速引擎
+                      </text>
+                    </g>
+
+                    <g transform="translate(396,54)">
+                      <circle cx="32" cy="26" r="10" fill={token.colorTextSecondary} opacity="0.65" />
+                      <path d="M18 52c4-10 24-10 28 0" stroke={token.colorTextSecondary} strokeWidth="6" strokeLinecap="round" opacity="0.55" />
+                      <text x="32" y="88" textAnchor="middle" fontSize="13" fill={token.colorTextSecondary}>提问</text>
+                    </g>
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 2, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14, color: token.colorText }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: isDark ? 'rgba(147,197,253,0.95)' : '#2563EB', marginTop: 8, flex: 'none' }} />
+                <span>护航主库：复杂计算不影响生产系统</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: isDark ? 'rgba(147,197,253,0.95)' : '#2563EB', marginTop: 8, flex: 'none' }} />
+                <span>极致性能：内置索引加速，无视源库性能</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: isDark ? 'rgba(147,197,253,0.95)' : '#2563EB', marginTop: 8, flex: 'none' }} />
+                <span>适用场景：MySQL, Oracle, SQL Server</span>
+              </div>
+            </div>
+
+            <Button
+              size="large"
+              block
+              style={{
+                marginTop: 'auto',
+                height: 44,
+                borderRadius: 10,
+                borderColor: isDark ? 'rgba(255,255,255,0.16)' : '#D1D5DB',
+                color: token.colorText,
+                background: token.colorBgContainer,
+              }}
+              onClick={() => {
+                dbForm.setFieldsValue({ accessMode: 'extract' })
+                dbForm.setFieldsValue({ extractMode: 'full', extractFrequency: '1d' })
+                setAccessHelpOpen(false)
+              }}
+            >
+              选择加速模式
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Drawer
+        open={!!id}
+        onClose={() => navigate('/data-sources')}
+        placement="bottom"
+        height={detailDrawerHeight}
+        zIndex={2000}
+        title={<Typography.Text style={{ fontWeight: 750 }}>{current?.name ?? '数据源'}</Typography.Text>}
+        destroyOnClose
+        mask
+        maskClosable
+        keyboard
+        getContainer={() => document.body}
+        styles={{ mask: { background: 'rgba(0,0,0,0.28)' }, body: { padding: 12, height: '100%', minHeight: 0 } }}
+      >
+        {current ? (
+          <div style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
+            <DataSourceDetail dataSource={current} />
+          </div>
+        ) : (
+          <Card>
+            <Empty description={null} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            <div style={{ height: 10 }} />
+            <Button onClick={() => navigate('/data-sources')}>返回</Button>
+          </Card>
+        )}
+      </Drawer>
     </Space>
   )
 }

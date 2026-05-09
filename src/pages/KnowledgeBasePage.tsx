@@ -18,7 +18,7 @@ import { buildSeed, nowId, readTab, setQuery } from './knowledgeBase/kbModel'
 import type { KnowledgeItem, KnowledgeTabKey } from './knowledgeBase/kbModel'
 import { useTranslation } from 'react-i18next'
 import { PageIntro } from '../components/PageIntro'
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import { UploadPanel } from '../components/UploadPanel'
 import * as XLSX from 'xlsx'
 
@@ -176,7 +176,7 @@ export default function KnowledgeBasePage() {
   }, [items, keyword, tab])
 
   const renderActions = (_: unknown, r: KnowledgeItem) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 6, width: '100%', justifyItems: 'center' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 2, width: '100%', justifyItems: 'center' }}>
       <Button
         type="text"
         className="iconOnly"
@@ -209,6 +209,8 @@ export default function KnowledgeBasePage() {
     </div>
   )
 
+  const ACTION_COL_WIDTH = 120
+
   const columns = useMemo(() => {
     if (tab === 'terms') {
       return [
@@ -240,7 +242,16 @@ export default function KnowledgeBasePage() {
           },
         },
         { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 180 },
-        { title: t('knowledge.table.actions'), key: 'actions', width: 160, align: 'right' as const, render: renderActions },
+        {
+          title: t('knowledge.table.actions'),
+          key: 'actions',
+          width: ACTION_COL_WIDTH,
+          className: 'actionCol',
+          onHeaderCell: () => ({ className: 'actionCol' }),
+          onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+          align: 'center' as const,
+          render: renderActions,
+        },
       ]
     }
 
@@ -256,7 +267,16 @@ export default function KnowledgeBasePage() {
         },
         { title: '计算公式', dataIndex: 'formula', key: 'formula', ellipsis: true },
         { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 180 },
-        { title: t('knowledge.table.actions'), key: 'actions', width: 160, align: 'right' as const, render: renderActions },
+        {
+          title: t('knowledge.table.actions'),
+          key: 'actions',
+          width: ACTION_COL_WIDTH,
+          className: 'actionCol',
+          onHeaderCell: () => ({ className: 'actionCol' }),
+          onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+          align: 'center' as const,
+          render: renderActions,
+        },
       ]
     }
 
@@ -265,7 +285,16 @@ export default function KnowledgeBasePage() {
         { title: '字段', dataIndex: 'name', key: 'name', width: 180, ellipsis: true },
         { title: '正则规则', dataIndex: 'pattern', key: 'pattern', ellipsis: true },
         { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 180 },
-        { title: t('knowledge.table.actions'), key: 'actions', width: 160, align: 'right' as const, render: renderActions },
+        {
+          title: t('knowledge.table.actions'),
+          key: 'actions',
+          width: ACTION_COL_WIDTH,
+          className: 'actionCol',
+          onHeaderCell: () => ({ className: 'actionCol' }),
+          onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+          align: 'center' as const,
+          render: renderActions,
+        },
       ]
     }
 
@@ -275,7 +304,16 @@ export default function KnowledgeBasePage() {
         { title: '分析思路', dataIndex: 'steps', key: 'steps', ellipsis: true },
         { title: '适应场景', dataIndex: 'scenario', key: 'scenario', width: 220, ellipsis: true },
         { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 180 },
-        { title: t('knowledge.table.actions'), key: 'actions', width: 160, align: 'right' as const, render: renderActions },
+        {
+          title: t('knowledge.table.actions'),
+          key: 'actions',
+          width: ACTION_COL_WIDTH,
+          className: 'actionCol',
+          onHeaderCell: () => ({ className: 'actionCol' }),
+          onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+          align: 'center' as const,
+          render: renderActions,
+        },
       ]
     }
 
@@ -293,7 +331,16 @@ export default function KnowledgeBasePage() {
         ),
       },
       { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 160 },
-      { title: t('knowledge.table.actions'), key: 'actions', width: 160, align: 'right' as const, render: renderActions },
+      {
+        title: t('knowledge.table.actions'),
+        key: 'actions',
+        width: ACTION_COL_WIDTH,
+        className: 'actionCol',
+        onHeaderCell: () => ({ className: 'actionCol' }),
+        onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+        align: 'center' as const,
+        render: renderActions,
+      },
     ]
   }, [items, keyword, tab, t])
 
@@ -525,35 +572,52 @@ export default function KnowledgeBasePage() {
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <PageIntro title={intro.title} description={intro.desc} />
 
-      <Card size="small" styles={{ body: { padding: 14 } }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <Card size="small" styles={{ body: { padding: 0 } }}>
+        <div
+          style={{
+            height: 56,
+            paddingInline: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            borderBottom: '1px solid var(--ant-color-split)',
+          }}
+        >
           <Input
             value={keyword}
             placeholder={t('knowledge.filters.keywordPlaceholder')}
-            style={{ width: 320 }}
+            style={{ width: 280 }}
+            allowClear
+            prefix={<SearchOutlined />}
             onChange={(e) => setKeyword(e.target.value)}
           />
 
           <Space>
-            <Button icon={<UploadOutlined />} onClick={() => {
-              setImportFiles([])
-              setImportOpen(true)
-            }}>{importLabel}</Button>
+            <Button
+              icon={<UploadOutlined />}
+              onClick={() => {
+                setImportFiles([])
+                setImportOpen(true)
+              }}
+            >
+              {importLabel}
+            </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={openNew}>
               {createLabel}
             </Button>
           </Space>
         </div>
 
-        <div style={{ height: 12 }} />
-
-        <Table
-          size="middle"
-          columns={columns as any}
-          dataSource={visibleItems.map((it) => ({ ...it, key: it.id }))}
-          pagination={{ pageSize: 5 }}
-          tableLayout="fixed"
-        />
+        <div style={{ padding: 16, paddingTop: 16 }}>
+          <Table
+            size="middle"
+            columns={columns as any}
+            dataSource={visibleItems.map((it) => ({ ...it, key: it.id }))}
+            pagination={{ pageSize: 5 }}
+            tableLayout="fixed"
+          />
+        </div>
       </Card>
 
       <Modal
@@ -583,9 +647,9 @@ export default function KnowledgeBasePage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <UploadPanel
             title="点击上传"
-            description="支持Excel文件导入（.xls / .xlsx）"
+            description="支持 .xls / .xlsx / .CSV 格式"
             height={240}
-            accept=".json,.xls,.xlsx,application/json,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
             maxCount={5}
             templateAction={{ label: '下载模板', onClick: downloadImportTemplate }}
             onChange={(info) => {
@@ -602,7 +666,24 @@ export default function KnowledgeBasePage() {
       <Modal
         open={editorOpen}
         onCancel={closeEditor}
-        title={editing ? t('knowledge.editor.editTitle') : createLabel}
+        title={
+          <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>
+            {(() => {
+              const obj =
+                tab === 'terms'
+                  ? '术语'
+                  : tab === 'metrics'
+                    ? '指标'
+                    : tab === 'regex'
+                      ? '规则'
+                      : tab === 'logic-tree'
+                        ? '分析逻辑树'
+                        : 'SQL 示例库'
+              const action = isViewMode ? '预览' : editing ? '编辑' : '新建'
+              return `${action}${obj}`
+            })()}
+          </div>
+        }
         okText={isViewMode ? t('actions.edit') : t('actions.save')}
         cancelText={t('actions.cancel')}
         onOk={() => {
@@ -655,9 +736,6 @@ export default function KnowledgeBasePage() {
               <Form.Item name="pattern" label="正则规则" rules={[{ required: true, message: t('validation.required') }]}>
                 <Input disabled={isViewMode} placeholder="例如：^([a-zA-Z])(\\d{5})$" />
               </Form.Item>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                系统基于规则对用户输入进行标准化改写，减少表达歧义，提升查询准确性
-              </Typography.Text>
             </>
           ) : null}
 
@@ -702,7 +780,20 @@ export default function KnowledgeBasePage() {
         width={360}
         zIndex={20000}
         getContainer={() => document.body}
-        title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>确认删除</div>}
+        title={
+          <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>
+            {deleteTarget
+              ? (() => {
+                  if (deleteTarget.category === 'terms') return '删除术语'
+                  if (deleteTarget.category === 'metrics') return '删除指标'
+                if (deleteTarget.category === 'regex') return '删除规则'
+                  if (deleteTarget.category === 'logic-tree') return '删除分析逻辑树'
+                  if (deleteTarget.category === 'sql-examples') return '删除 SQL 示例'
+                  return '删除'
+                })()
+              : '删除'}
+          </div>
+        }
         okText="删除"
         cancelText="取消"
         okButtonProps={{ danger: true }}

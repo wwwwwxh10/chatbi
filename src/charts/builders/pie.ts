@@ -22,7 +22,7 @@ export function buildPieOption(kind: 'pie' | 'donut' | 'rose'): EChartsOption {
           radius: ['18%', '78%'],
           center: ['50%', '56%'],
           roseType: 'radius',
-          itemStyle: { borderRadius: 6, borderWidth: 1 },
+          itemStyle: { borderRadius: 6, borderWidth: 0 },
           label: { color: 'inherit' },
           data,
         },
@@ -40,7 +40,7 @@ export function buildPieOption(kind: 'pie' | 'donut' | 'rose'): EChartsOption {
         type: 'pie',
         radius: kind === 'donut' ? ['42%', '78%'] : '78%',
         center: ['50%', '56%'],
-        itemStyle: { borderRadius: 6, borderWidth: 1 },
+        itemStyle: { borderRadius: 6, borderWidth: 0 },
         label: { formatter: '{b}\n{d}%' },
         emphasis: { scale: true, scaleSize: 10 },
         data,
@@ -48,4 +48,3 @@ export function buildPieOption(kind: 'pie' | 'donut' | 'rose'): EChartsOption {
     ],
   }
 }
-

@@ -52,7 +52,31 @@ export function EChart({
         : { ...lg, textStyle: { ...(lg.textStyle ?? {}), fontSize: baseSize } }
     }
     if ((raw as any).tooltip) {
-      next.tooltip = { ...(raw as any).tooltip, textStyle: { ...((raw as any).tooltip?.textStyle ?? {}), fontSize: baseSize } }
+      const t0: any = (raw as any).tooltip
+      const nextTooltip: any = { ...t0, textStyle: { ...(t0?.textStyle ?? {}), fontSize: baseSize } }
+      if (nextTooltip.backgroundColor == null) nextTooltip.backgroundColor = 'rgba(16, 18, 22, 0.92)'
+      if (nextTooltip.borderWidth == null) nextTooltip.borderWidth = 0
+      if (nextTooltip.borderColor == null) nextTooltip.borderColor = 'transparent'
+      if (!nextTooltip.textStyle?.color) nextTooltip.textStyle = { ...(nextTooltip.textStyle ?? {}), color: 'rgba(233, 236, 242, 0.92)' }
+      nextTooltip.appendToBody = true
+      nextTooltip.confine = false
+      nextTooltip.extraCssText = `${String(nextTooltip.extraCssText ?? '')}; z-index: 99999;`
+      if (!nextTooltip.position) {
+        nextTooltip.position = (point: any, _params: any, _dom: any, _rect: any, size: any) => {
+          const p = Array.isArray(point) ? point : [0, 0]
+          const viewSize = size?.viewSize ?? [window.innerWidth, window.innerHeight]
+          const contentSize = size?.contentSize ?? [0, 0]
+          const pad = 12
+          let x = p[0] + pad
+          let y = p[1] + pad
+          if (x + contentSize[0] > viewSize[0]) x = p[0] - contentSize[0] - pad
+          if (y + contentSize[1] > viewSize[1]) y = p[1] - contentSize[1] - pad
+          x = Math.max(0, Math.min(x, viewSize[0] - contentSize[0]))
+          y = Math.max(0, Math.min(y, viewSize[1] - contentSize[1]))
+          return [x, y]
+        }
+      }
+      next.tooltip = nextTooltip
     }
 
     const xAxis = (raw as any).xAxis

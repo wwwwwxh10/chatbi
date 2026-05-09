@@ -1,13 +1,12 @@
-import { Button, Card, Form, Input, Modal, Select, Space, Switch, Table, Tag, Typography, Upload, message, theme } from 'antd'
+import { Button, Card, Form, Input, Modal, Select, Space, Switch, Table, Tag, Upload, message, theme } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { PageIntro } from '../components/PageIntro'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { UploadPanel } from '../components/UploadPanel'
 import { useSystemStore } from '../store/systemStore'
 import { useUsersStore } from '../store/usersStore'
 import type { SystemUser, UserRole, UserStatus } from '../store/usersStore'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { confirmDelete } from '../components/confirmDelete'
+import { DeleteOutlined, EditOutlined, InfoCircleOutlined, KeyOutlined, PlusOutlined, RadarChartOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons'
 
 export default function SystemManagementPage({ mode }: { mode: 'users' | 'settings' }) {
   const { t } = useTranslation()
@@ -26,84 +25,227 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
   const [editing, setEditing] = useState<SystemUser | null>(null)
   const [userForm] = Form.useForm<{ accountId: string; accountName: string; role: UserRole }>()
 
+  const [roleHelpOpen, setRoleHelpOpen] = useState(false)
+  const [resetTarget, setResetTarget] = useState<SystemUser | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<SystemUser | null>(null)
+
+  const [keyword, setKeyword] = useState('')
+
+  const ROLE_META: Record<UserRole, { name: string; desc: string; tag: string }> = {
+    Admin: {
+      name: '系统管理员',
+      desc: '负责平台的全局运行维护与安全管控。具备用户账号分配、角色权限授权及系统参数配置权限，是系统稳定运行的核心保障。',
+      tag: 'geekblue',
+    },
+    Analyst: {
+      name: '数据分析师',
+      desc: '负责数据资产的建设与AI语义建模。通过配置数据源、维护指标口径与语义知识库，以及搭建可视化仪表盘，将原始数据转化为AI可理解的业务洞察。',
+      tag: 'blue',
+    },
+    Viewer: {
+      name: '普通用户',
+      desc: '负责数据的消费与业务探索。支持通过自然语言对话（问数）即时获取分析结果，查看并订阅已发布的报表，实现零门槛的数据决策。',
+      tag: 'default',
+    },
+  }
+
+  const visibleUsers = useMemo(() => {
+    const q = keyword.trim().toLowerCase()
+    if (!q) return users
+    return users.filter((u) => u.accountId.toLowerCase().includes(q) || u.accountName.toLowerCase().includes(q) || ROLE_META[u.role].name.toLowerCase().includes(q))
+  }, [ROLE_META, keyword, users])
+
+  const roleOptions = useMemo(
+    () =>
+      (
+        [
+          { value: 'Admin', label: ROLE_META.Admin.name },
+          { value: 'Analyst', label: ROLE_META.Analyst.name },
+          { value: 'Viewer', label: ROLE_META.Viewer.name },
+        ] as const
+      ).map((x) => ({ ...x, value: x.value as UserRole })),
+    [ROLE_META],
+  )
+
+  const intro = useMemo(() => {
+    if (mode === 'users') {
+      return {
+        title: '用户管理',
+        desc: '集中管理系统用户信息，灵活配置角色权限，保障账号安全与系统合规。',
+      }
+    }
+    return { title: t('intro.system.title'), desc: t('intro.system.desc') }
+  }, [mode, t])
+
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <PageIntro title={t('intro.system.title')} description={t('intro.system.desc')} />
+      <PageIntro title={intro.title} description={intro.desc} />
       {mode === 'users' ? (
-        <Card
-          size="small"
-          title={t('system.users.title')}
-          extra={
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setEditing(null)
-                userForm.setFieldsValue({ accountId: '', accountName: '', role: 'Analyst' })
-                setUserOpen(true)
-              }}
-            >
-              新建
-            </Button>
-          }
-        >
-          <Table
-            size="middle"
-            pagination={false}
-            dataSource={users.map((u) => ({ ...u, key: u.id }))}
-            columns={[
-              { title: '账号ID', dataIndex: 'accountId', key: 'accountId', width: 160, ellipsis: true },
-              { title: '账号名', dataIndex: 'accountName', key: 'accountName', width: 180, ellipsis: true },
-              {
-                title: '角色',
-                dataIndex: 'role',
-                key: 'role',
-                width: 140,
-                render: (v: UserRole) => <Tag color={v === 'Admin' ? 'geekblue' : v === 'Analyst' ? 'blue' : 'default'}>{v}</Tag>,
-              },
-              {
-                title: '启用',
-                dataIndex: 'status',
-                key: 'status',
-                width: 120,
-                render: (_v: UserStatus, r: SystemUser) => (
-                  <Switch
-                    checked={r.status === 'Active'}
-                    onChange={(checked) => updateUser(r.id, { status: checked ? 'Active' : 'Disabled' })}
-                  />
-                ),
-              },
-              {
-                title: '操作',
-                key: 'actions',
-                width: 160,
-                align: 'right' as const,
-                render: (_: unknown, r: SystemUser) => (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: 6, width: '100%', justifyItems: 'center' }}>
-                    <Button
-                      type="text"
-                      className="iconOnly"
-                      icon={<EditOutlined />}
-                      onClick={() => {
-                        setEditing(r)
-                        userForm.setFieldsValue({ accountId: r.accountId, accountName: r.accountName, role: r.role })
-                        setUserOpen(true)
-                      }}
-                    />
-                    <Button
-                      type="text"
-                      danger
-                      className="iconOnly"
-                      icon={<DeleteOutlined />}
-                      onClick={() => {
-                        confirmDelete({ title: '确认删除该用户？', onOk: () => removeUser(r.id) })
-                      }}
-                    />
-                  </div>
-                ),
-              },
-            ]}
-          />
+        <Card size="small" styles={{ body: { padding: 0 } }}>
+          <div
+            style={{
+              height: 56,
+              paddingInline: 16,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              borderBottom: `1px solid ${token.colorSplit}`,
+            }}
+          >
+            <Input
+              value={keyword}
+              placeholder="搜索账号/角色"
+              style={{ width: 280 }}
+              allowClear
+              prefix={<SearchOutlined />}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+
+            <Space>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditing(null)
+                  userForm.setFieldsValue({ accountId: '', accountName: '', role: 'Analyst' })
+                  setUserOpen(true)
+                }}
+              >
+                新建用户
+              </Button>
+            </Space>
+          </div>
+
+          <div style={{ padding: 16, paddingTop: 16 }}>
+            <Table
+              size="middle"
+              tableLayout="fixed"
+              dataSource={visibleUsers.map((u) => ({ ...u, key: u.id }))}
+              pagination={{ pageSize: 8, showSizeChanger: true }}
+              columns={[
+                { title: '账号ID', dataIndex: 'accountId', key: 'accountId', width: 160, ellipsis: true },
+                { title: '账号名', dataIndex: 'accountName', key: 'accountName', width: 180, ellipsis: true },
+                {
+                  title: '角色',
+                  dataIndex: 'role',
+                  key: 'role',
+                  width: 140,
+                  render: (v: UserRole) => (
+                    <Tag color={ROLE_META[v].tag} style={{ marginInlineEnd: 0 }}>
+                      {ROLE_META[v].name}
+                    </Tag>
+                  ),
+                },
+                {
+                  title: '启用',
+                  dataIndex: 'status',
+                  key: 'status',
+                  width: 120,
+                  render: (_v: UserStatus, r: SystemUser) => (
+                    <Switch checked={r.status === 'Active'} onChange={(checked) => updateUser(r.id, { status: checked ? 'Active' : 'Disabled' })} />
+                  ),
+                },
+                {
+                  title: '操作',
+                  key: 'actions',
+                  width: 120,
+                  className: 'actionCol',
+                  onHeaderCell: () => ({ className: 'actionCol' }),
+                  onCell: () => ({ className: 'actionCol', style: { width: 120, minWidth: 120, maxWidth: 120 } }),
+                  align: 'center' as const,
+                  render: (_: unknown, r: SystemUser) => (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 2, width: '100%', justifyItems: 'center' }}>
+                      <Button
+                        type="text"
+                        className="iconOnly"
+                        icon={<EditOutlined />}
+                        onClick={() => {
+                          setEditing(r)
+                          userForm.setFieldsValue({ accountId: r.accountId, accountName: r.accountName, role: r.role })
+                          setUserOpen(true)
+                        }}
+                      />
+                      <Button
+                        type="text"
+                        className="iconOnly"
+                        icon={<KeyOutlined />}
+                        onClick={() => {
+                          setResetTarget(r)
+                        }}
+                      />
+                      <Button
+                        type="text"
+                        danger
+                        className="iconOnly"
+                        icon={<DeleteOutlined />}
+                        onClick={() => {
+                          setDeleteTarget(r)
+                        }}
+                      />
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </div>
+
+          <Modal
+            open={!!resetTarget}
+            onCancel={() => setResetTarget(null)}
+            centered
+            width={380}
+            destroyOnHidden
+            title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>重置密码</div>}
+            okText="重置"
+            cancelText="取消"
+            onOk={() =>
+              new Promise<void>((res) => {
+                if (!resetTarget) {
+                  res()
+                  return
+                }
+                updateUser(resetTarget.id, { mustChangePassword: true })
+                window.setTimeout(() => {
+                  void message.success('已重置为初始密码：88888888')
+                  setResetTarget(null)
+                  res()
+                }, 320)
+              })
+            }
+          >
+            <div style={{ color: token.colorTextSecondary, lineHeight: 1.75 }}>
+              将用户“{resetTarget?.accountName ?? '-'}”密码重置为初始密码，并要求下次登录修改。
+            </div>
+          </Modal>
+
+          <Modal
+            open={!!deleteTarget}
+            onCancel={() => setDeleteTarget(null)}
+            centered
+            width={380}
+            destroyOnHidden
+            title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>删除用户</div>}
+            okText="删除"
+            okButtonProps={{ danger: true }}
+            cancelText="取消"
+            onOk={() =>
+              new Promise<void>((res) => {
+                if (!deleteTarget) {
+                  res()
+                  return
+                }
+                removeUser(deleteTarget.id)
+                window.setTimeout(() => {
+                  void message.success('已删除')
+                  setDeleteTarget(null)
+                  res()
+                }, 280)
+              })
+            }
+          >
+            <div style={{ color: token.colorTextSecondary, lineHeight: 1.75 }}>将删除用户“{deleteTarget?.accountName ?? '-'}”。删除后不可恢复。</div>
+          </Modal>
 
           <Modal
             open={userOpen}
@@ -137,6 +279,24 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
               void message.success('已保存')
             }}
           >
+            {!editing ? (
+              <div
+                style={{
+                  marginBottom: 12,
+                  borderRadius: 12,
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  background: token.colorFillTertiary,
+                  color: token.colorText,
+                }}
+              >
+                <InfoCircleOutlined style={{ color: token.colorPrimary, fontSize: 16 }} />
+                <span style={{ fontSize: 13, fontWeight: 650 }}>提示：初始密码为 88888888（首次登录需修改）</span>
+              </div>
+            ) : null}
+
             <Form form={userForm} layout="vertical">
               <Form.Item name="accountId" label="账号ID" rules={[{ required: true, message: t('validation.required') }]}>
                 <Input placeholder="例如：zhangsan" />
@@ -144,13 +304,78 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
               <Form.Item name="accountName" label="账号名" rules={[{ required: true, message: t('validation.required') }]}>
                 <Input placeholder="例如：张三" />
               </Form.Item>
-              <Form.Item name="role" label="角色" rules={[{ required: true, message: t('validation.required') }]}>
-                <Select options={[{ label: 'Admin', value: 'Admin' }, { label: 'Analyst', value: 'Analyst' }, { label: 'Viewer', value: 'Viewer' }]} />
+
+              <Form.Item
+                name="role"
+                label={
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    角色
+                    <InfoCircleOutlined
+                      style={{ color: token.colorTextTertiary, fontSize: 12, cursor: 'pointer' }}
+                      onClick={() => setRoleHelpOpen(true)}
+                    />
+                  </span>
+                }
+                rules={[{ required: true, message: t('validation.required') }]}
+              >
+                <Select options={roleOptions} />
               </Form.Item>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                初始密码：88888888（首次登录需修改）
-              </Typography.Text>
             </Form>
+          </Modal>
+
+          <Modal
+            open={roleHelpOpen}
+            onCancel={() => setRoleHelpOpen(false)}
+            footer={null}
+            centered
+            width={920}
+            destroyOnHidden
+            title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>角色说明</div>}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+              {([
+                { k: 'Admin' as const, icon: <SafetyCertificateOutlined style={{ fontSize: 18 }} />, color: 'linear-gradient(135deg, rgba(43,92,246,0.26) 0%, rgba(43,92,246,0.06) 55%, rgba(20,24,33,0) 100%)' },
+                { k: 'Analyst' as const, icon: <RadarChartOutlined style={{ fontSize: 18 }} />, color: 'linear-gradient(135deg, rgba(99,102,241,0.22) 0%, rgba(99,102,241,0.06) 55%, rgba(20,24,33,0) 100%)' },
+                { k: 'Viewer' as const, icon: <UserOutlined style={{ fontSize: 18 }} />, color: 'linear-gradient(135deg, rgba(34,211,238,0.18) 0%, rgba(34,211,238,0.05) 55%, rgba(20,24,33,0) 100%)' },
+              ] as const).map((it) => (
+                <Card key={it.k} styles={{ body: { padding: 14 } }} style={{ borderRadius: 14, borderColor: token.colorSplit, background: token.colorBgContainer }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 14,
+                        background: it.color,
+                        border: `1px solid ${token.colorSplit}`,
+                        display: 'grid',
+                        placeItems: 'center',
+                        fontWeight: 900,
+                        color: token.colorText,
+                      }}
+                    >
+                      {it.icon}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 850, fontSize: 16, lineHeight: 1.2 }}>{ROLE_META[it.k].name}</div>
+                    </div>
+                  </div>
+                  <div
+                    title={ROLE_META[it.k].desc}
+                      style={{
+                      color: token.colorTextSecondary,
+                      lineHeight: 1.7,
+                        fontSize: 12,
+                      display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {ROLE_META[it.k].desc}
+                  </div>
+                </Card>
+              ))}
+            </div>
           </Modal>
         </Card>
       ) : (

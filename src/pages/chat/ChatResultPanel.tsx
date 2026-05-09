@@ -18,7 +18,7 @@ export function ChatResultPanel({
   onOpenSql: () => void
   onExportCsv: () => void
 }) {
-  const { token } = theme.useToken()
+  theme.useToken()
 
   const chartVariants = result?.chartVariants ?? (result?.chart ? { 图表: result.chart } : {})
   const chartKeys = Object.keys(chartVariants)
@@ -80,7 +80,7 @@ export function ChatResultPanel({
     >
       {!result ? (
         <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center' }}>
-          <Empty description="选择一条助手消息查看结果，或先发送问题" />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
         </div>
       ) : (
         <Space direction="vertical" size={10} style={{ width: '100%', flex: 1, minHeight: 0 }}>
@@ -103,7 +103,7 @@ export function ChatResultPanel({
 
           {result.status !== 'done' ? (
             <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center' }}>
-              <Empty description={result.status === 'running' ? '分析中…' : '已停止'} />
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={result.status === 'running' ? '分析中…' : '已停止'} />
             </div>
           ) : (
             <>
@@ -111,8 +111,8 @@ export function ChatResultPanel({
                 概述
               </Typography.Text>
 
-              {result.metric ? (
-                <div style={{ borderRadius: 14, border: `1px solid ${token.colorSplit}`, background: token.colorBgContainer, padding: 14 }}>
+              {view === 'chart' && result.metric ? (
+                <div className="llmOutputBox" style={{ padding: 14 }}>
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                     {result.metric.label}
                   </Typography.Text>
@@ -124,17 +124,17 @@ export function ChatResultPanel({
               {view === 'chart' ? (
                 <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                   {chartOption ? (
-                    <div style={{ height: 380, borderRadius: 12, border: `1px solid ${token.colorSplit}`, overflow: 'hidden' }}>
+                    <div className="llmOutputBox" style={{ height: 380, overflow: 'hidden', padding: 0 }}>
                       <EChart option={chartOption} />
                     </div>
                   ) : (
                     <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center' }}>
-                      <Empty description="暂无图表结果" />
+                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
                     </div>
                   )}
                 </div>
               ) : (
-                <div style={{ flex: 1, minHeight: 0, border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'hidden' }}>
+                <div className="llmOutputBox" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: 0 }}>
                   {result.table ? (
                     <Table
                       size="middle"
@@ -145,7 +145,7 @@ export function ChatResultPanel({
                     />
                   ) : (
                     <div style={{ height: '100%', display: 'grid', placeItems: 'center' }}>
-                      <Empty description="暂无表格结果" />
+                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
                     </div>
                   )}
                 </div>

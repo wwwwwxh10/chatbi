@@ -41,6 +41,7 @@ export default function DataSourceDrawer({
   form: FormInstance<{
     name: string
     type: DataSourceType
+    dbVersion?: string
     host: string
     port: number
     database: string
@@ -53,6 +54,9 @@ export default function DataSourceDrawer({
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  const dsType = Form.useWatch('type', form) as DataSourceType | undefined
+  const WHITELIST =
+    '47.101.108.0/24,101.132.48.0/24,47.101.107.0/24,139.224.92.0/24,139.224.4.0/24,106.15.146.0/24,106.15.145.0/24,106.15.143.0/24,106.15.14.0/24,106.15.13.0/24,100.104.0.0/16,139.224.19.222,47.102.111.163'
   const metaPreview = (() => {
     if (!editing) return null
     if (editing.status !== 'ok') return null
@@ -67,8 +71,10 @@ export default function DataSourceDrawer({
       open={open}
       onClose={onClose}
       width={560}
-      title={editing ? t('actions.edit') : t('actions.newDataSource')}
+      title={editing ? (editing.type === 'file' ? '编辑本地文件' : '编辑数据库') : '新建数据库'}
       destroyOnHidden
+      styles={{ mask: { background: 'rgba(0,0,0,0.28)' } }}
+      getContainer={() => document.body}
       extra={
         <Space>
           <Button onClick={onSave} type="primary">
@@ -78,6 +84,7 @@ export default function DataSourceDrawer({
       }
     >
       <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        {dsType ? <Alert type="info" showIcon message="提示：支持5.5、5.6、5.7、8.0版本" /> : null}
         {testState ? <Alert type={testState.type} message={testState.msg} showIcon /> : null}
 
         {editing ? (
@@ -109,6 +116,7 @@ export default function DataSourceDrawer({
             initialValues={{
               name: '',
               type: 'postgres',
+              dbVersion: '8.0',
               host: '',
               port: 5432,
               database: '',
@@ -127,6 +135,12 @@ export default function DataSourceDrawer({
                 ]}
               />
             </Form.Item>
+
+            {dsType === 'mysql' ? (
+              <Form.Item name="dbVersion" label="数据库版本" rules={[{ required: true, message: t('validation.required') }]}>
+                <Select options={[{ label: '5.5', value: '5.5' }, { label: '5.6', value: '5.6' }, { label: '5.7', value: '5.7' }, { label: '8.0', value: '8.0' }]} />
+              </Form.Item>
+            ) : null}
             <Form.Item name="host" label={t('dataSources.form.host')} rules={[{ required: true, message: t('validation.required') }]}>
               <Input placeholder="10.0.0.12" />
             </Form.Item>
@@ -147,6 +161,42 @@ export default function DataSourceDrawer({
             ) : (
               <Typography.Text type="secondary">{t('dataSources.form.saveTip')}</Typography.Text>
             )}
+
+            <div style={{ marginTop: 12 }}>
+              <Typography.Text style={{ fontWeight: 650 }}>连接前，请添加如下白名单列表。</Typography.Text>
+              <div style={{ height: 8 }} />
+              <div
+                style={{
+                  borderRadius: 12,
+                  padding: 12,
+                  background: 'rgba(255,255,255,0.04)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                }}
+              >
+                <Typography.Text style={{ color: 'var(--ant-color-text-secondary)', fontSize: 13, lineHeight: 1.6 }}>
+                  {WHITELIST}
+                </Typography.Text>
+                <Typography.Link
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(WHITELIST)
+                    } catch {
+                      const el = document.createElement('textarea')
+                      el.value = WHITELIST
+                      document.body.appendChild(el)
+                      el.select()
+                      document.execCommand('copy')
+                      document.body.removeChild(el)
+                    }
+                  }}
+                >
+                  复制白名单
+                </Typography.Link>
+              </div>
+            </div>
           </Form>
         ) : (
           <Card size="small">

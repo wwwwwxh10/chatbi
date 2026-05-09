@@ -250,7 +250,7 @@ function buildDerivedChartOption(type: ChartTypeKey, r: MessageResult): EChartsO
           label: { show: false },
           labelLine: { show: false },
           data: dim.map((name, i) => ({ name, value: vals[i] })),
-          itemStyle: { borderRadius: 8, borderColor: 'rgba(255,255,255,0.04)', borderWidth: 1 },
+          itemStyle: { borderRadius: 8, borderWidth: 0 },
         },
       ],
     }
@@ -430,12 +430,11 @@ export default function DashboardChatWorkspacePage() {
     placeItems: 'center',
   } as const
 
-  const [model, setModel] = useState<'deepseek-v3' | 'deepseek-r1' | 'qwen3.6' | 'gpt-4o'>('deepseek-v3')
+  const [model, setModel] = useState<'deepseek-v3' | 'deepseek-r1' | 'qwen3.6'>('deepseek-v3')
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const timerRef = useRef<number | null>(null)
 
-  const [activeQuestion, setActiveQuestion] = useState('')
   const [activeResult, setActiveResult] = useState<MessageResult | null>(null)
   const [view, setView] = useState<'chart' | 'table'>('chart')
   const [chartType, setChartType] = useState<ChartTypeKey>('bar')
@@ -472,7 +471,6 @@ export default function DashboardChatWorkspacePage() {
   const [sessionDrawerOpen, setSessionDrawerOpen] = useState(false)
 
   const resetConversationState = () => {
-    setActiveQuestion('')
     setActiveResult(null)
     setView('chart')
     setChartType('bar')
@@ -541,11 +539,6 @@ export default function DashboardChatWorkspacePage() {
         label: 'Qwen3.6',
         logoUrl: '/vendor/Qwen.png',
       },
-      {
-        key: 'gpt-4o' as const,
-        label: 'GPT-4o',
-        logoUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/OpenAI_logo_2025_(symbol).svg',
-      },
     ],
     [],
   )
@@ -568,44 +561,21 @@ export default function DashboardChatWorkspacePage() {
     </svg>
   )
 
-  const ModelLogo = ({ k, url, label }: { k: string; url: string; label: string }) => {
-    if (k === 'gpt-4o') {
-      return (
-        <span
-          aria-label={label}
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: 6,
-            display: 'grid',
-            placeItems: 'center',
-            background: 'linear-gradient(135deg, rgba(43,92,246,0.95), rgba(124,58,237,0.92))',
-            color: 'rgba(255,255,255,0.96)',
-            fontSize: 10,
-            fontWeight: 900,
-            lineHeight: 1,
-          }}
-        >
-          G
-        </span>
-      )
-    }
-    return (
-      <img
-        src={url}
-        alt={label}
-        width={18}
-        height={18}
-        loading="lazy"
-        referrerPolicy="no-referrer"
-        style={{
-          display: 'block',
-          objectFit: 'contain',
-          opacity: 0.95,
-        }}
-      />
-    )
-  }
+  const ModelLogo = ({ url, label }: { url: string; label: string }) => (
+    <img
+      src={url}
+      alt={label}
+      width={18}
+      height={18}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      style={{
+        display: 'block',
+        objectFit: 'contain',
+        opacity: 0.95,
+      }}
+    />
+  )
 
   const bubbleMaxWidth = useMemo(() => {
     const usable = Math.max(280, panelWidth - 84)
@@ -703,8 +673,7 @@ export default function DashboardChatWorkspacePage() {
     if (!question) return
     setSending(true)
 
-    setActiveQuestion(question)
-    runningUntilRef.current = Date.now() + 5000
+    runningUntilRef.current = Date.now() + 3000
     setRunningVisible(true)
     pendingDoneRef.current = null
     pendingMessagesRef.current = null
@@ -750,7 +719,6 @@ export default function DashboardChatWorkspacePage() {
         const botMsg: ChatMessage = { id: nowId(), role: 'assistant', content: result.answerText, at: Date.now(), question, result: { status: 'clarifying', answerText: result.answerText } }
         pendingDoneRef.current = { status: 'clarifying', answerText: result.answerText }
         pendingMessagesRef.current = [...baseMessages, botMsg]
-        setSending(false)
         timerRef.current = null
 
         const now = Date.now()
@@ -766,6 +734,7 @@ export default function DashboardChatWorkspacePage() {
             pendingDoneRef.current = null
             finishTimerRef.current = null
             if (pending) setActiveResult(pending)
+            setSending(false)
           }, wait)
         } else {
           setRunningVisible(false)
@@ -775,6 +744,7 @@ export default function DashboardChatWorkspacePage() {
           const pending = pendingDoneRef.current
           pendingDoneRef.current = null
           if (pending) setActiveResult(pending)
+          setSending(false)
         }
         return
       }
@@ -802,16 +772,17 @@ export default function DashboardChatWorkspacePage() {
           pendingDoneRef.current = null
           finishTimerRef.current = null
           if (pending) setActiveResult(pending)
+          setSending(false)
         }, wait)
       } else {
         setRunningVisible(false)
         upsertSession(sessionId, { messages: [...baseMessages, botMsg] })
         setActiveResult(doneResult)
+        setSending(false)
       }
 
       setChartType(inferDefaultChartType(doneResult))
       setView('chart')
-      setSending(false)
       timerRef.current = null
     }, 1200)
   }
@@ -832,8 +803,7 @@ export default function DashboardChatWorkspacePage() {
     setSessions((prev) => prev.map((s) => (s.id === sid && (!s.name || /^会话\d+$/.test(s.name) || s.name === '未命名会话') ? { ...s, name: ctx } : s)))
 
     setSending(true)
-    setActiveQuestion(ctx)
-    runningUntilRef.current = Date.now() + 5000
+    runningUntilRef.current = Date.now() + 3000
     setRunningVisible(true)
     setActiveResult({ status: 'running', answerText: '正在分析问题...' })
 
@@ -873,13 +843,14 @@ export default function DashboardChatWorkspacePage() {
           pendingDoneRef.current = null
           finishTimerRef.current = null
           if (pending) setActiveResult(pending)
+          setSending(false)
         }, wait)
       } else {
         setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, messages: [...(s.messages ?? []), botMsg] } : s)))
         setActiveResult(doneResult)
         setRunningVisible(false)
+        setSending(false)
       }
-      setSending(false)
     }, 1200)
   }
 
@@ -890,9 +861,14 @@ export default function DashboardChatWorkspacePage() {
   }, [])
 
   const stop = () => {
-    if (!sending) return
+    if (!sending && !runningVisible) return
     if (timerRef.current) window.clearTimeout(timerRef.current)
     timerRef.current = null
+    if (finishTimerRef.current) window.clearTimeout(finishTimerRef.current)
+    finishTimerRef.current = null
+    pendingDoneRef.current = null
+    pendingMessagesRef.current = null
+    setRunningVisible(false)
     setSending(false)
     setActiveResult({ status: 'stopped', answerText: '已停止' })
     const botMsg: ChatMessage = { id: nowId(), role: 'assistant', content: '已停止', at: Date.now() }
@@ -1029,8 +1005,7 @@ export default function DashboardChatWorkspacePage() {
 
   useEffect(() => {
     if (!exportOpen) return
-    const stem = `${safeFileStem(activeQuestion || '结果')}_${todayYmd()}_${nextDailySeq()}`
-    setExportName(stem)
+    setExportName(`${todayYmd()}_${nextDailySeq()}`)
     setExportFormat('excel')
   }, [exportOpen])
 
@@ -1391,8 +1366,8 @@ export default function DashboardChatWorkspacePage() {
                               </div>
 
                               {isTextOnly ? (
-                                <div style={{ borderRadius: 14, border: `1px solid ${token.colorSplit}`, background: token.colorFillQuaternary, padding: 14 }}>
-                                  <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap', color: token.colorText, fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
+                                <div className="llmOutputBox" style={{ padding: 12 }}>
+                                  <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
                                     {renderEmphasis(String(activeResult.answerText ?? ''))}
                                   </Typography.Paragraph>
 
@@ -1403,7 +1378,14 @@ export default function DashboardChatWorkspacePage() {
                                         key={q}
                                         type="default"
                                         size="small"
-                                        style={{ borderRadius: 999, fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}
+                                        style={{
+                                          borderRadius: 999,
+                                          fontSize: 'var(--font-size-base)',
+                                          lineHeight: 'var(--line-height-base)',
+                                          boxShadow: 'none',
+                                          border: 'none',
+                                          background: token.colorFillQuaternary,
+                                        }}
                                         onClick={() => {
                                           setInput('')
                                           void send(q)
@@ -1416,8 +1398,8 @@ export default function DashboardChatWorkspacePage() {
                                 </div>
                               ) : null}
 
-                              {!isTextOnly && activeResult.metric && (view === 'table' || chartType === 'metric') ? (
-                                <div style={{ borderRadius: 14, border: `1px solid ${token.colorSplit}`, background: token.colorFillQuaternary, padding: 12, textAlign: 'center' }}>
+                              {!isTextOnly && view === 'chart' && chartType === 'metric' && activeResult.metric ? (
+                                <div className="llmOutputBox" style={{ textAlign: 'center' }}>
                                   <Typography.Text type="secondary">{activeResult.metric.label}</Typography.Text>
                                   <div style={{ height: 6 }} />
                                   <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1 }}>{activeResult.metric.value}</div>
@@ -1427,26 +1409,24 @@ export default function DashboardChatWorkspacePage() {
                               {!isTextOnly && view === 'chart' ? (
                                 chartType === 'metric' ? null : (
                                   <div
+                                    className="llmOutputBox"
                                     style={{
-                                      height: chartType === 'funnel' ? 260 : 320,
-                                      borderRadius: 14,
+                                      height: chartType === 'funnel' ? 240 : 320,
                                       overflow: 'hidden',
-                                      border: `1px solid ${token.colorSplit}`,
-                                      background: 'transparent',
+                                      padding: 0,
                                     }}
                                   >
                                     <EChart key={chartType} option={activeOption || {}} />
                                   </div>
                                 )
                               ) : (
-                                !isTextOnly && chartType !== 'metric' ? (
+                                !isTextOnly ? (
                                 <div
+                                  className="llmOutputBox"
                                   style={{
                                     height: 320,
-                                    borderRadius: 14,
                                     overflow: 'hidden',
-                                    border: `1px solid ${token.colorSplit}`,
-                                    background: 'transparent',
+                                    padding: 0,
                                   }}
                                 >
                                   {activeResult.table ? (
@@ -1459,7 +1439,7 @@ export default function DashboardChatWorkspacePage() {
                                       scroll={{ x: 'max-content', y: 'calc(100% - 56px)' }}
                                     />
                                   ) : (
-                                    <Empty description="暂无表格结果" />
+                                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
                                   )}
                                 </div>
                                 ) : null
@@ -1473,7 +1453,7 @@ export default function DashboardChatWorkspacePage() {
                                 <div style={{ height: 6 }} />
                                 <Space direction="vertical" size={2} style={{ width: '100%' }}>
                                   {summary.map((x, i) => (
-                                    <Typography.Text key={i} style={{ color: token.colorText, fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
+                                    <Typography.Text key={i} style={{ fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
                                       {renderEmphasis(x)}
                                     </Typography.Text>
                                   ))}
@@ -1487,7 +1467,7 @@ export default function DashboardChatWorkspacePage() {
                                 <div style={{ height: 6 }} />
                                 <Space direction="vertical" size={2} style={{ width: '100%' }}>
                                   {next.map((x, i) => (
-                                    <Typography.Text key={i} style={{ color: token.colorText, fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
+                                    <Typography.Text key={i} style={{ fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
                                       {renderEmphasis(x)}
                                     </Typography.Text>
                                   ))}
@@ -1507,15 +1487,24 @@ export default function DashboardChatWorkspacePage() {
                     {isAssistant ? <VirtualAvatar size={32} style={{ flex: 'none', marginRight: 10 }} /> : null}
                     <div style={{ maxWidth: bubbleMax }}>
                       <div
-                        style={{
-                          maxWidth: bubbleMax,
-                          padding: '10px 12px',
-                          borderRadius: 12,
-                          background: m.role === 'user' ? token.colorPrimary : token.colorFillQuaternary,
-                          color: m.role === 'user' ? token.colorTextLightSolid : token.colorText,
-                          border: `1px solid ${m.role === 'user' ? token.colorPrimary : token.colorSplit}`,
-                          whiteSpace: 'pre-wrap',
-                        }}
+                        className={m.role === 'assistant' ? 'llmOutputBox' : undefined}
+                        style={
+                          m.role === 'user'
+                            ? {
+                                maxWidth: bubbleMax,
+                                padding: '10px 12px',
+                                borderRadius: 10,
+                                background: token.colorPrimary,
+                                color: token.colorTextLightSolid,
+                                border: `1px solid ${token.colorPrimary}`,
+                                whiteSpace: 'pre-wrap',
+                              }
+                            : {
+                                maxWidth: bubbleMax,
+                                whiteSpace: 'pre-wrap',
+                                color: token.colorText,
+                              }
+                        }
                       >
                         {isAssistant ? renderEmphasis(m.content) : m.content}
                       </div>
@@ -1527,18 +1516,7 @@ export default function DashboardChatWorkspacePage() {
             {runningVisible ? (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <VirtualAvatar size={32} style={{ flex: 'none', marginRight: 10 }} />
-                  <div
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 12,
-                      background: token.colorFillQuaternary,
-                      border: `1px solid ${token.colorSplit}`,
-                      color: token.colorTextSecondary,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
+                <div className="llmOutputBox" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   <span className="biSparkleIcon" style={{ color: token.colorPrimary }}>
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path
@@ -1563,12 +1541,12 @@ export default function DashboardChatWorkspacePage() {
 
         <div style={{ padding: 12, position: 'relative' }}>
           <div
+            className="chatInputBox"
             style={{
               display: 'flex',
               alignItems: 'flex-end',
               gap: 8,
               borderRadius: 14,
-              border: `1px solid ${token.colorSplit}`,
               padding: 8,
             }}
           >
@@ -1613,7 +1591,7 @@ export default function DashboardChatWorkspacePage() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                          <ModelLogo k={x.key} url={x.logoUrl} label={x.label} />
+                          <ModelLogo url={x.logoUrl} label={x.label} />
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.label}</span>
                         </div>
                         <span style={{ color: token.colorPrimary, opacity: active ? 1 : 0, display: 'grid', placeItems: 'center' }}>
@@ -1664,17 +1642,18 @@ export default function DashboardChatWorkspacePage() {
               styles={{ textarea: { background: 'transparent' } }}
             />
 
-            {sending ? (
+            {sending || runningVisible ? (
               <Tooltip title="停止">
                 <Button
                   type="text"
                   danger
                   icon={
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="9" cy="9" r="7" stroke="#A3A8B3" strokeWidth="1.2" />
-                      <rect x="6.4" y="6.4" width="5.2" height="5.2" rx="1.2" fill="#A3A8B3" />
+                      <circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.4" />
+                      <rect x="6.4" y="6.4" width="5.2" height="5.2" rx="1.2" fill="currentColor" />
                     </svg>
                   }
+                  style={{ color: token.colorError }}
                   onClick={stop}
                 />
               </Tooltip>
@@ -1700,40 +1679,54 @@ export default function DashboardChatWorkspacePage() {
               style={{
                 position: 'absolute',
                 left: 12,
-                right: 12,
+                right: 'auto',
                 bottom: 64,
                 zIndex: 20001,
                 borderRadius: 16,
                 background: token.colorBgContainer,
                 boxShadow: '0 18px 48px rgba(0,0,0,0.22)',
                 overflow: 'hidden',
+                width: 320,
+                maxWidth: 'calc(100% - 24px)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 12px 8px 12px' }}>
-                <span style={{ fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)', fontWeight: 400, color: token.colorText }}>推荐问题</span>
+                <span style={{ fontSize: 14, lineHeight: 1.5, fontWeight: 500, color: token.colorText }}>相关问题</span>
                 <Button
                   type="text"
                   size="small"
                   icon={<ReloadOutlined />}
-                  style={{ color: token.colorTextSecondary, fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}
+                  style={{ color: token.colorTextSecondary, fontSize: 14, lineHeight: 1.5 }}
                   onClick={() => setQuickSeed((s) => s + 1)}
                 >
                   换一批
                 </Button>
               </div>
-              <div style={{ maxHeight: 220, overflowY: 'auto', overflowX: 'hidden', padding: '0 8px 10px 8px' }}>
+              <div style={{ maxHeight: 240, overflowY: 'auto', overflowX: 'hidden', padding: '0 8px 10px 8px' }}>
                 <Space direction="vertical" size={2} style={{ width: '100%' }}>
                   {quickPrompts.slice(0, 5).map((q) => (
                     <Button
                       key={q}
                       type="text"
-                      style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal', wordBreak: 'break-word', padding: '8px 10px', borderRadius: 12 }}
+                      style={{
+                        width: '100%',
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        padding: '8px 10px',
+                        borderRadius: 10,
+                        fontSize: 14,
+                        lineHeight: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        minWidth: 0,
+                        overflow: 'hidden',
+                      }}
                       onClick={() => {
                         setQuickOpen(false)
                         void send(q)
                       }}
                     >
-                      {q}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', minWidth: 0, flex: 1 }}>{q}</span>
                     </Button>
                   ))}
                 </Space>
@@ -1753,9 +1746,6 @@ export default function DashboardChatWorkspacePage() {
         okText="确定"
         cancelButtonProps={{ style: { display: 'none' } }}
       >
-        <Typography.Paragraph style={{ marginBottom: 10 }}>
-          查询出以下数据：{activeResult?.metric?.label || '-'}
-        </Typography.Paragraph>
         <Tabs
           items={[
             {
@@ -1952,34 +1942,23 @@ export default function DashboardChatWorkspacePage() {
                     items: [
                       {
                         key: 'rename',
-                        label: (
-                          <span
-                            onClick={() => {
-                              setSessionEditId(s.id)
-                              setSessionEditName(s.name)
-                            }}
-                          >
-                            重命名
-                          </span>
-                        ),
+                        label: '重命名',
                         icon: <EditOutlined />,
+                        onClick: () => {
+                          setSessionEditId(s.id)
+                          setSessionEditName(s.name)
+                        },
                       },
                       {
                         key: 'delete',
-                        label: (
-                          <span
-                            onClick={() => {
-                              setDeleteSession({ id: s.id, name: s.name })
-                            }}
-                          >
-                            删除
-                          </span>
-                        ),
+                        label: '删除',
                         icon: <DeleteOutlined />,
                         danger: true,
+                        onClick: () => {
+                          setDeleteSession({ id: s.id, name: s.name })
+                        },
                       },
                     ],
-                    onClick: () => {},
                   }}
                 >
                   <Button
@@ -2000,7 +1979,7 @@ export default function DashboardChatWorkspacePage() {
         open={!!deleteSession}
         title={
           deleteSession ? (
-            <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>{'确认删除会话'}</div>
+            <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>{'删除会话'}</div>
           ) : (
             ''
           )

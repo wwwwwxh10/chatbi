@@ -98,7 +98,7 @@ export default function DashboardChatPage() {
       setMessages((prev) => [...prev, botMsg])
       setSending(false)
       setPendingTimer(null)
-    }, 5000)
+    }, 3000)
     setPendingTimer(tId)
   }
 
@@ -143,15 +143,23 @@ export default function DashboardChatPage() {
                 >
                   {m.role === 'assistant' ? <VirtualAvatar size={28} style={{ flex: 'none', marginRight: 10 }} /> : null}
                   <div
-                    style={{
-                      maxWidth: 520,
-                      padding: '10px 12px',
-                      borderRadius: 10,
-                      background: m.role === 'user' ? token.colorPrimary : token.colorFillTertiary,
-                      color: m.role === 'user' ? token.colorTextLightSolid : token.colorText,
-                      border: `1px solid ${m.role === 'user' ? token.colorPrimary : token.colorSplit}`,
-                      whiteSpace: 'pre-wrap',
-                    }}
+                    className={m.role === 'assistant' ? 'llmOutputBox' : undefined}
+                    style={
+                      m.role === 'user'
+                        ? {
+                            maxWidth: 520,
+                            padding: '10px 12px',
+                            borderRadius: 10,
+                            background: token.colorPrimary,
+                            color: token.colorTextLightSolid,
+                            border: `1px solid ${token.colorPrimary}`,
+                            whiteSpace: 'pre-wrap',
+                          }
+                        : {
+                            maxWidth: 520,
+                            whiteSpace: 'pre-wrap',
+                          }
+                    }
                   >
                     {m.content}
                   </div>
@@ -187,7 +195,7 @@ export default function DashboardChatPage() {
 
       <Card title={t('dashboard.result')} size="small">
         {!result ? (
-          <Empty description={t('dashboard.resultEmpty')} />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('dashboard.resultEmpty')} />
         ) : (
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <div>
@@ -229,7 +237,7 @@ export default function DashboardChatPage() {
             </div>
             {view === 'chart' ? (
               <div style={{ height: 320 }}>
-                {chartOption ? <EChart option={chartOption} /> : <Empty description={t('dashboard.resultEmpty')} />}
+                {chartOption ? <EChart option={chartOption} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('dashboard.resultEmpty')} />}
               </div>
             ) : result.table ? (
               <Table

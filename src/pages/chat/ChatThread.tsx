@@ -41,7 +41,7 @@ export function ChatThread({
                   style={{
                     maxWidth: 420,
                     padding: '10px 12px',
-                    borderRadius: 12,
+                    borderRadius: 10,
                     background: m.role === 'user' ? token.colorPrimary : token.colorFillTertiary,
                     color: m.role === 'user' ? token.colorTextLightSolid : token.colorText,
                     border: `1px solid ${m.role === 'user' ? token.colorPrimary : isActive ? token.colorPrimary : token.colorSplit}`,

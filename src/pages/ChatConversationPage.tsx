@@ -1,4 +1,4 @@
-import { Button, Card, Drawer, Input, Space, Typography, message, theme } from 'antd'
+import { Button, Card, Drawer, Input, Modal, Space, Typography, message, theme } from 'antd'
 import { HistoryOutlined, SendOutlined, StopOutlined } from '@ant-design/icons'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -99,7 +99,7 @@ export default function ChatConversationPage() {
       setSending(false)
       setPendingAssistantId(null)
       timerRef.current = null
-    }, 5000)
+    }, 3000)
   }
 
   const stop = () => {
@@ -134,7 +134,7 @@ export default function ChatConversationPage() {
       resultsByAssistantId: { ...prev.resultsByAssistantId, [assistantId]: { status: 'running', answerText: '分析中…' } },
       activeAssistantId: assistantId,
     }))
-    await new Promise((r) => setTimeout(r, 5000))
+    await new Promise((r) => setTimeout(r, 3000))
     const next = buildMockResult(q)
     setState((prev) => ({
       ...prev,
@@ -180,7 +180,23 @@ export default function ChatConversationPage() {
           <Button icon={<HistoryOutlined />} onClick={mockAll}>
             Mock 对话数据
           </Button>
-          <Button danger onClick={clearAll}>
+          <Button
+            danger
+            onClick={() => {
+              Modal.confirm({
+                title: <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>清空对话</div>,
+                content: '将清空当前对话内容。清空后不可恢复。',
+                okText: '清空',
+                cancelText: '取消',
+                okButtonProps: { danger: true },
+                width: 360,
+                centered: true,
+                zIndex: 20000,
+                getContainer: () => document.body,
+                onOk: clearAll,
+              })
+            }}
+          >
             清空并重来
           </Button>
           <Button onClick={() => navigate('/dashboard')}>返回仪表盘</Button>

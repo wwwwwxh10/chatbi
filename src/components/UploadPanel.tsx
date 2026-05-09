@@ -9,6 +9,7 @@ export function UploadPanel({
   description,
   height = 140,
   templateAction,
+  helperAction,
   seedFileName,
   seedStatus = 'done',
   seedKey,
@@ -18,6 +19,7 @@ export function UploadPanel({
   description?: string
   height?: number
   templateAction?: { label: string; onClick: () => void }
+  helperAction?: { label: string; onClick: () => void }
   seedFileName?: string
   seedStatus?: UploadFile['status']
   seedKey?: string | number
@@ -189,23 +191,44 @@ export function UploadPanel({
             </div>
             <div style={{ fontSize: 14, color: token.colorText }}>{titleNode}</div>
             {description ? <div style={{ marginTop: 6, fontSize: 12, color: token.colorTextSecondary }}>{description}</div> : null}
-            {templateAction ? (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={templateAction.onClick}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') templateAction.onClick()
-                }}
-                style={{
-                  marginTop: 6,
-                  fontSize: 12,
-                  color: token.colorPrimary,
-                  fontWeight: 650,
-                  cursor: 'pointer',
-                }}
-              >
-                {templateAction.label}
+            {templateAction || helperAction ? (
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+                {templateAction ? (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={templateAction.onClick}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') templateAction.onClick()
+                    }}
+                    style={{
+                      fontSize: 12,
+                      color: token.colorPrimary,
+                      fontWeight: 650,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {templateAction.label}
+                  </div>
+                ) : null}
+                {helperAction ? (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={helperAction.onClick}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') helperAction.onClick()
+                    }}
+                    style={{
+                      fontSize: 12,
+                      color: token.colorPrimary,
+                      fontWeight: 650,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {helperAction.label}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
