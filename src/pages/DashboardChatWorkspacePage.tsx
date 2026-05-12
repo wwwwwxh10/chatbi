@@ -264,6 +264,7 @@ function NeutralDashboardCanvas({ selectedKey, onSelect }: { selectedKey: string
 
   const CardPlaceholder = ({ children, clickable, active, onClick }: { children?: ReactNode; clickable?: boolean; active?: boolean; onClick?: () => void }) => (
     <div
+      className="dashboardChartCard"
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
       onClick={onClick}

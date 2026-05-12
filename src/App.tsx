@@ -268,7 +268,7 @@ export default function App() {
             padding: isChatWorkspace || isLogin ? 0 : 16,
             minHeight: 0,
             height: isChatWorkspace ? '100vh' : isLogin ? '100vh' : 'calc(100vh - 56px)',
-            overflow: isChatWorkspace || isLogin ? 'hidden' : 'auto',
+            overflow: isLogin ? 'hidden' : isChatWorkspace ? 'visible' : 'auto',
           }}
         >
           <Routes>

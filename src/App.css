@@ -207,8 +207,8 @@ body.appModalInset .ant-modal-root .ant-modal-wrap {
 .headerMenu .ant-dropdown-menu,
 .headerMenu .ant-dropdown-menu-item,
 .headerMenu .ant-dropdown-menu-title-content {
-  font-size: calc(var(--font-size-base) - 1px) !important;
-  line-height: calc(var(--line-height-base) - 2px) !important;
+  font-size: calc(var(--font-size-base) + 1px) !important;
+  line-height: calc(var(--line-height-base) + 2px) !important;
   font-weight: 400 !important;
 }
 
@@ -217,8 +217,8 @@ body.appModalInset .ant-modal-root .ant-modal-wrap {
 .headerMenu .ant-dropdown-menu-item-selected,
 .headerMenu .ant-dropdown-menu-submenu-title:hover,
 .headerMenu .ant-dropdown-menu-submenu-title-active {
-  font-size: calc(var(--font-size-base) - 1px) !important;
-  line-height: calc(var(--line-height-base) - 2px) !important;
+  font-size: calc(var(--font-size-base) + 1px) !important;
+  line-height: calc(var(--line-height-base) + 2px) !important;
   font-weight: 400 !important;
 }
 
@@ -342,6 +342,25 @@ html[data-mode='dark'] .appHeaderActionButton:hover {
 
 .dsCard {
   position: relative;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.dsCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+}
+
+.dsCardActive {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+}
+
+html[data-mode='dark'] .dsCard:hover {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+}
+
+html[data-mode='dark'] .dsCardActive {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
 }
 
 .dsCardActions {
@@ -537,6 +556,29 @@ html[data-mode='dark'] .chatInputBox:focus-within {
 .dashboardCaseCard {
   border-radius: 14px;
   overflow: hidden;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.dashboardCaseCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+}
+
+html[data-mode='dark'] .dashboardCaseCard:hover {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+}
+
+.dashboardChartCard {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.dashboardChartCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+}
+
+html[data-mode='dark'] .dashboardChartCard:hover {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
 }
 
 .dashboardInspirationGrid {

@@ -1,6 +1,6 @@
 import { Upload, theme } from 'antd'
 import type { UploadProps } from 'antd'
-import { UploadOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, UploadOutlined, WarningOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import type { UploadFile } from 'antd/es/upload/interface'
 
@@ -46,6 +46,11 @@ export function UploadPanel({
 
   const fileList = props.fileList ?? internalFileList
   const maxCount = typeof props.maxCount === 'number' ? props.maxCount : 5
+
+  const shouldFailByName = (name: string) => {
+    const lower = String(name ?? '').toLowerCase()
+    return lower.includes('fail') || lower.includes('error')
+  }
 
   const fileExt = (name: string) => {
     const s = String(name ?? '').trim().toLowerCase()
@@ -113,43 +118,30 @@ export function UploadPanel({
           if (v === false) return false
           return true
         }}
-        customRequest={(options: any) => {
-          const { onSuccess, onProgress } = options
-          let pct = 0
-          const timer = window.setInterval(() => {
-            pct = Math.min(100, pct + 12)
-            onProgress?.({ percent: pct })
-            if (pct >= 100) {
-              window.clearInterval(timer)
-              window.setTimeout(() => onSuccess?.('ok'), 120)
-            }
-          }, 80)
-        }}
-        onChange={(info) => {
-          const incoming = info.fileList
-          const f = info.file
-
-          const emit = (nextList: UploadFile[]) => {
-            if (!props.fileList) setInternalFileList(nextList)
-            props.onChange?.({ ...info, fileList: nextList, file: f } as any)
-          }
-
-          if (!f?.status) {
-            const base: UploadFile = { ...f, status: 'uploading', percent: 0 }
-            const nextList = [...incoming.filter((x) => x.uid !== base.uid), base].slice(0, maxCount)
-            emit(nextList)
-
+        customRequest={
+          props.customRequest ??
+          ((options: any) => {
+            const { onSuccess, onProgress, onError, file, filename } = options
+            const rawName = String(file?.name ?? filename ?? '')
+            const shouldFail = shouldFailByName(rawName)
             let pct = 0
             const timer = window.setInterval(() => {
-              pct = Math.min(100, pct + 14)
-              const updated: UploadFile = { ...base, percent: pct, status: pct >= 100 ? 'done' : 'uploading' }
-              emit(nextList.map((x) => (x.uid === base.uid ? updated : x)))
-              if (pct >= 100) window.clearInterval(timer)
+              pct = Math.min(100, pct + 10)
+              onProgress?.({ percent: pct })
+              if (pct >= 100) {
+                window.clearInterval(timer)
+                window.setTimeout(() => {
+                  if (shouldFail) onError?.(new Error('Upload failed'), { status: 500 }, file)
+                  else onSuccess?.('ok')
+                }, 120)
+              }
             }, 90)
-            return
-          }
-
-          emit(incoming.slice(0, maxCount))
+          })
+        }
+        onChange={(info) => {
+          const incoming = info.fileList.slice(0, maxCount)
+          if (!props.fileList) setInternalFileList(incoming)
+          props.onChange?.({ ...info, fileList: incoming } as any)
         }}
         onRemove={(file) => {
           if (!props.fileList) setInternalFileList((prev) => prev.filter((x) => x.uid !== file.uid))
@@ -240,6 +232,7 @@ export function UploadPanel({
           {fileList.map((f) => (
             <div
               key={f.uid}
+              className="uploadRow"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -278,28 +271,34 @@ export function UploadPanel({
                 {String(f.name ?? '')}
               </div>
 
+              {f.status === 'done' ? (
+                <span aria-label="成功" style={{ flex: 'none', display: 'grid', placeItems: 'center', width: 14, height: 14, color: token.colorTextTertiary, marginRight: 10 }}>
+                  <CheckCircleOutlined style={{ fontSize: 12 }} />
+                </span>
+              ) : null}
+              {f.status === 'error' ? (
+                <span aria-label="失败" style={{ flex: 'none', display: 'grid', placeItems: 'center', width: 14, height: 14, color: token.colorError, marginRight: 10 }}>
+                  <WarningOutlined style={{ fontSize: 12 }} />
+                </span>
+              ) : null}
+
               {f.status === 'uploading' ? (
                 <div style={{ flex: 'none', width: 120, height: 4, borderRadius: 2, background: token.colorFillTertiary, overflow: 'hidden', marginRight: 12 }}>
-                  <div style={{ width: `${percentOf(f)}%`, height: '100%', borderRadius: 2, background: token.colorPrimary, transition: 'width 120ms linear' }} />
+                  <div
+                    style={{
+                      width: `${percentOf(f)}%`,
+                      height: '100%',
+                      borderRadius: 2,
+                      background: token.colorTextTertiary,
+                      transition: 'width 120ms linear',
+                    }}
+                  />
                 </div>
               ) : (
                 <div style={{ flex: 'none', width: 120, marginRight: 12 }} />
               )}
 
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                {f.status === 'error' ? (
-                  <button
-                    type="button"
-                    aria-label="重试"
-                    onClick={() => {
-                      if (props.fileList) return
-                      setInternalFileList((prev) => prev.map((x) => (x.uid === f.uid ? { ...x, status: 'uploading', percent: 0 } : x)))
-                    }}
-                    style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', color: token.colorTextSecondary }}
-                  >
-                    ↻
-                  </button>
-                ) : null}
+              <div className="uploadRowActions" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
                   type="button"
                   aria-label="删除"
@@ -313,7 +312,24 @@ export function UploadPanel({
                     }
                     setInternalFileList(nextList)
                   }}
-                  style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', color: token.colorTextSecondary }}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 8,
+                    display: 'grid',
+                    placeItems: 'center',
+                    cursor: 'pointer',
+                    color: token.colorTextSecondary,
+                    border: 'none',
+                    background: 'transparent',
+                    padding: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    ;(e.currentTarget as HTMLButtonElement).style.background = token.colorFillTertiary
+                  }}
+                  onMouseLeave={(e) => {
+                    ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                  }}
                 >
                   ✕
                 </button>

@@ -12,6 +12,7 @@ import {
   Select,
   Row,
   Space,
+  Steps,
   Table,
   Tag,
   Tooltip,
@@ -464,6 +465,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
   ])
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [createStep, setCreateStep] = useState(0)
   const [cfgFile, setCfgFile] = useState<File | null>(null)
   const [cfgText, setCfgText] = useState<string>('')
   const [cfgError, setCfgError] = useState<string>('')
@@ -486,6 +488,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
 
   const openCreate = () => {
     setCreateOpen(true)
+    setCreateStep(0)
     setCfgFile(null)
     setCfgText('')
     setCfgError('')
@@ -508,6 +511,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
 
   const closeCreate = () => {
     setCreateOpen(false)
+    setCreateStep(0)
     setCfgFile(null)
     setCfgText('')
     setCfgError('')
@@ -534,6 +538,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
   const [layoutExamplesOpen, setLayoutExamplesOpen] = useState(false)
   const [editing, setEditing] = useState<CustomDashboard | null>(null)
   const [editOpen, setEditOpen] = useState(false)
+  const [editStep, setEditStep] = useState(0)
   const [editTitle, setEditTitle] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [editConfig, setEditConfig] = useState('')
@@ -554,6 +559,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
   const [editChartPalette, setEditChartPalette] = useState<DashboardAppearance['chartPalette']>('tech')
 
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewStep, setPreviewStep] = useState(0)
   const [previewTargetId, setPreviewTargetId] = useState<string>('')
   const [previewTitle, setPreviewTitle] = useState('')
   const [previewDesc, setPreviewDesc] = useState('')
@@ -631,6 +637,36 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
     [previewDataSourceId, previewTables, dataSources],
   )
 
+  const cfgLayoutValid =
+    cfgLayoutMode === 'template'
+      ? !!cfgLayoutTemplate
+      : cfgFreeCols >= 4 &&
+        cfgFreeCols <= 24 &&
+        cfgFreeRowHeight >= 50 &&
+        cfgFreeRowHeight <= 300 &&
+        cfgFreeGap >= 8 &&
+        cfgFreeGap <= 32
+
+  const cfgStep1Valid = !!cfgTitle.trim() && !!cfgDataSourceId && cfgTables.length > 0 && !!cfgLanguage && !!cfgTimeZone
+  const cfgStep2Valid = !!cfgThemeSystem && !!cfgChartPalette && cfgLayoutValid
+  const cfgStep3Valid = !!cfgFile && !!cfgText.trim() && !cfgError
+  const cfgAllValid = cfgStep1Valid && cfgStep2Valid && cfgStep3Valid
+
+  const editLayoutValid =
+    editLayoutMode === 'template'
+      ? !!editLayoutTemplate
+      : editFreeCols >= 4 &&
+        editFreeCols <= 24 &&
+        editFreeRowHeight >= 50 &&
+        editFreeRowHeight <= 300 &&
+        editFreeGap >= 8 &&
+        editFreeGap <= 32
+
+  const editStep1Valid = !!editTitle.trim() && !!editDataSourceId && editTables.length > 0 && !!editLanguage && !!editTimeZone
+  const editStep2Valid = !!editThemeSystem && !!editChartPalette && editLayoutValid
+  const editStep3Valid = !!editConfig.trim() && !editCfgError
+  const editAllValid = editStep1Valid && editStep2Valid && editStep3Valid
+
   const openEditModal = (r: CustomDashboard) => {
     setEditing(r)
     setEditTitle(r.title)
@@ -670,6 +706,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
       setEditThemeSystem('obsidian')
       setEditChartPalette('tech')
     }
+    setEditStep(0)
     setEditOpen(true)
   }
 
@@ -707,6 +744,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
       setPreviewThemeSystem('obsidian')
       setPreviewChartPalette('tech')
     }
+    setPreviewStep(0)
     setPreviewOpen(true)
   }
 
@@ -894,10 +932,10 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
               {
                 title: t('knowledge.table.actions'),
                 key: 'actions',
-                width: 120,
+                width: 150,
                 className: 'actionCol',
                 onHeaderCell: () => ({ className: 'actionCol' }),
-                onCell: () => ({ className: 'actionCol', style: { width: 120, minWidth: 120, maxWidth: 120 } }),
+                onCell: () => ({ className: 'actionCol', style: { width: 150, minWidth: 150, maxWidth: 150 } }),
                 align: 'center' as const,
                 render: (_: unknown, r: CustomDashboard) => (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 2, width: '100%', justifyItems: 'center' }}>
@@ -993,88 +1031,95 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
         centered
         destroyOnHidden
         footer={
-          <Space style={{ width: '100%', justifyContent: 'flex-end' }} size={12}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <Button onClick={closeCreate}>{t('actions.cancel')}</Button>
-            <Button
-              type="primary"
-              disabled={
-                !cfgTitle.trim() ||
-                !cfgDesc.trim() ||
-                !cfgFile ||
-                !cfgText.trim() ||
-                !!cfgError ||
-                !cfgDataSourceId ||
-                cfgTables.length === 0 ||
-                (cfgLayoutMode === 'template'
-                  ? !cfgLayoutTemplate
-                  : !(cfgFreeCols >= 4 && cfgFreeCols <= 24 && cfgFreeRowHeight >= 50 && cfgFreeRowHeight <= 300 && cfgFreeGap >= 8 && cfgFreeGap <= 32))
-              }
-              aria-disabled={
-                !cfgTitle.trim() ||
-                !cfgDesc.trim() ||
-                !cfgFile ||
-                !cfgText.trim() ||
-                !!cfgError ||
-                !cfgDataSourceId ||
-                cfgTables.length === 0 ||
-                (cfgLayoutMode === 'template'
-                  ? !cfgLayoutTemplate
-                  : !(cfgFreeCols >= 4 && cfgFreeCols <= 24 && cfgFreeRowHeight >= 50 && cfgFreeRowHeight <= 300 && cfgFreeGap >= 8 && cfgFreeGap <= 32))
-              }
-              loading={applying}
-              onClick={async () => {
-                setApplying(true)
-                await new Promise((r) => setTimeout(r, 650))
-                setApplying(false)
-                const layout =
-                  cfgLayoutMode === 'template'
-                    ? { mode: 'template', template: cfgLayoutTemplate }
-                    : { mode: 'free', cols: cfgFreeCols, rowHeight: cfgFreeRowHeight, gap: cfgFreeGap }
 
-                const appearance: DashboardAppearance = {
-                  language: cfgLanguage,
-                  timeZone: cfgTimeZone,
-                  theme: cfgThemeSystem,
-                  chartPalette: cfgChartPalette,
-                }
+            <Space size={12}>
+              {createStep > 0 ? (
+                <Button onClick={() => setCreateStep((s) => Math.max(0, s - 1))}>{locale === 'zh-CN' ? '上一步' : 'Back'}</Button>
+              ) : null}
 
-                let mergedCfgText = cfgText
-                try {
-                  const obj = JSON.parse(cfgText)
-                  if (obj && typeof obj === 'object') {
-                    ;(obj as any).layout = layout
-                    ;(obj as any).appearance = appearance
-                    mergedCfgText = JSON.stringify(obj, null, 2)
-                  }
-                } catch {
-                }
+              {createStep < 2 ? (
+                <Button
+                  type="primary"
+                  disabled={createStep === 0 ? !cfgStep1Valid : !cfgStep2Valid}
+                  onClick={() => setCreateStep((s) => Math.min(2, s + 1))}
+                >
+                  {locale === 'zh-CN' ? '下一步' : 'Next'}
+                </Button>
+              ) : (
+                <Button
+                  type="primary"
+                  disabled={!cfgAllValid}
+                  aria-disabled={!cfgAllValid}
+                  loading={applying}
+                  onClick={async () => {
+                    setApplying(true)
+                    await new Promise((r) => setTimeout(r, 650))
+                    setApplying(false)
+                    const layout =
+                      cfgLayoutMode === 'template'
+                        ? { mode: 'template', template: cfgLayoutTemplate }
+                        : { mode: 'free', cols: cfgFreeCols, rowHeight: cfgFreeRowHeight, gap: cfgFreeGap }
 
-                setCustomDashboards((prev) => [
-                  {
-                    id: `custom-${Date.now()}`,
-                    title: cfgTitle.trim(),
-                    description: cfgDesc.trim(),
-                    tables: cfgTables.slice(0, 10),
-                    updatedAt: nowText(),
-                    published: false,
-                    configText: mergedCfgText,
-                  },
-                  ...prev,
-                ])
-                void message.success(locale === 'zh-CN' ? '已保存' : 'Saved')
-                closeCreate()
-              }}
-            >
-              {locale === 'zh-CN' ? '保存' : 'Save'}
-            </Button>
-          </Space>
+                    const appearance: DashboardAppearance = {
+                      language: cfgLanguage,
+                      timeZone: cfgTimeZone,
+                      theme: cfgThemeSystem,
+                      chartPalette: cfgChartPalette,
+                    }
+
+                    let mergedCfgText = cfgText
+                    try {
+                      const obj = JSON.parse(cfgText)
+                      if (obj && typeof obj === 'object') {
+                        ;(obj as any).layout = layout
+                        ;(obj as any).appearance = appearance
+                        mergedCfgText = JSON.stringify(obj, null, 2)
+                      }
+                    } catch {
+                    }
+
+                    setCustomDashboards((prev) => [
+                      {
+                        id: `custom-${Date.now()}`,
+                        title: cfgTitle.trim(),
+                        description: cfgDesc.trim(),
+                        tables: cfgTables.slice(0, 10),
+                        updatedAt: nowText(),
+                        published: false,
+                        configText: mergedCfgText,
+                      },
+                      ...prev,
+                    ])
+                    void message.success(locale === 'zh-CN' ? '已保存' : 'Saved')
+                    closeCreate()
+                  }}
+                >
+                  {locale === 'zh-CN' ? '保存' : 'Save'}
+                </Button>
+              )}
+            </Space>
+          </div>
         }
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Steps
+            size="small"
+            current={createStep}
+            items={[
+              { title: locale === 'zh-CN' ? '基础信息' : 'Basics' },
+              { title: locale === 'zh-CN' ? '界面样式' : 'Appearance' },
+              { title: locale === 'zh-CN' ? '图表配置' : 'Chart config' },
+            ]}
+          />
+
+          {createStep === 0 ? (
+            <>
           <div>
             <Typography.Text type="secondary">
               <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
-              {locale === 'zh-CN' ? '主题' : 'Topic'}
+              {locale === 'zh-CN' ? '名称' : 'Name'}
             </Typography.Text>
             <div style={{ height: 8 }} />
             <Input
@@ -1314,17 +1359,23 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
 
           <div>
             <Typography.Text type="secondary">
-              <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
               {locale === 'zh-CN' ? '描述' : 'Description'}
             </Typography.Text>
             <div style={{ height: 8 }} />
             <Input.TextArea
               value={cfgDesc}
               onChange={(e) => setCfgDesc(e.target.value)}
-              autoSize={{ minRows: 3, maxRows: 5 }}
+              autoSize={{ minRows: 1, maxRows: 1 }}
+              style={{ resize: 'none' }}
               placeholder={locale === 'zh-CN' ? '补充说明该仪表盘的用途与口径范围' : 'Describe the purpose and scope'}
             />
           </div>
+
+            </>
+          ) : null}
+
+          {createStep === 1 ? (
+            <>
 
           <div>
             <Typography.Text type="secondary">
@@ -1467,6 +1518,12 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
             <ChartPalettePicker value={cfgChartPalette} onChange={(v) => setCfgChartPalette(v)} />
           </div>
 
+            </>
+          ) : null}
+
+          {createStep === 2 ? (
+            <>
+
           <Space direction="vertical" size={10} style={{ width: '100%' }}>
             <Typography.Text type="secondary">
               <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
@@ -1497,6 +1554,9 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
 
             {cfgError ? <Typography.Text style={{ color: token.colorError }}>{cfgError}</Typography.Text> : null}
           </Space>
+
+            </>
+          ) : null}
         </Space>
       </Modal>
 
@@ -1703,61 +1763,110 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
         onCancel={() => {
           setEditOpen(false)
           setEditing(null)
+          setEditStep(0)
         }}
         title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>{locale === 'zh-CN' ? '编辑仪表盘' : 'Edit dashboard'}</div>}
-        cancelText={t('actions.cancel')}
-        okText={t('actions.save')}
         destroyOnHidden
         centered
         width={920}
-        onOk={() => {
-          if (!editing) return
-          const layout =
-            editLayoutMode === 'template'
-              ? { mode: 'template', template: editLayoutTemplate }
-              : { mode: 'free', cols: editFreeCols, rowHeight: editFreeRowHeight, gap: editFreeGap }
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Button
+              onClick={() => {
+                setEditOpen(false)
+                setEditing(null)
+                setEditStep(0)
+              }}
+            >
+              {t('actions.cancel')}
+            </Button>
 
-          const appearance: DashboardAppearance = {
-            language: editLanguage,
-            timeZone: editTimeZone,
-            theme: editThemeSystem,
-            chartPalette: editChartPalette,
-          }
+            <Space size={12}>
+              {editStep > 0 ? (
+                <Button onClick={() => setEditStep((s) => Math.max(0, s - 1))}>{locale === 'zh-CN' ? '上一步' : 'Back'}</Button>
+              ) : null}
 
-          let mergedCfgText = editConfig
-          try {
-            const obj = JSON.parse(editConfig)
-            if (obj && typeof obj === 'object') {
-              ;(obj as any).layout = layout
-              ;(obj as any).appearance = appearance
-              mergedCfgText = JSON.stringify(obj, null, 2)
-            }
-          } catch {
-          }
+              {editStep < 2 ? (
+                <Button
+                  type="primary"
+                  disabled={editStep === 0 ? !editStep1Valid : !editStep2Valid}
+                  onClick={() => setEditStep((s) => Math.min(2, s + 1))}
+                >
+                  {locale === 'zh-CN' ? '下一步' : 'Next'}
+                </Button>
+              ) : (
+                <Button
+                  type="primary"
+                  disabled={!editAllValid}
+                  aria-disabled={!editAllValid}
+                  onClick={() => {
+                    if (!editing) return
+                    const layout =
+                      editLayoutMode === 'template'
+                        ? { mode: 'template', template: editLayoutTemplate }
+                        : { mode: 'free', cols: editFreeCols, rowHeight: editFreeRowHeight, gap: editFreeGap }
 
-          setCustomDashboards((prev) =>
-            prev.map((x) =>
-              x.id === editing.id
-                ? {
-                    ...x,
-                    title: editTitle.trim() || x.title,
-                    description: editDesc.trim(),
-                    tables: editTables.slice(0, 10),
-                    configText: mergedCfgText,
-                    updatedAt: nowText(),
-                  }
-                : x,
-            ),
-          )
-          setEditOpen(false)
-          setEditing(null)
-        }}
+                    const appearance: DashboardAppearance = {
+                      language: editLanguage,
+                      timeZone: editTimeZone,
+                      theme: editThemeSystem,
+                      chartPalette: editChartPalette,
+                    }
+
+                    let mergedCfgText = editConfig
+                    try {
+                      const obj = JSON.parse(editConfig)
+                      if (obj && typeof obj === 'object') {
+                        ;(obj as any).layout = layout
+                        ;(obj as any).appearance = appearance
+                        mergedCfgText = JSON.stringify(obj, null, 2)
+                      }
+                    } catch {
+                    }
+
+                    setCustomDashboards((prev) =>
+                      prev.map((x) =>
+                        x.id === editing.id
+                          ? {
+                              ...x,
+                              title: editTitle.trim() || x.title,
+                              description: editDesc.trim(),
+                              tables: editTables.slice(0, 10),
+                              configText: mergedCfgText,
+                              updatedAt: nowText(),
+                            }
+                          : x,
+                      ),
+                    )
+                    setEditOpen(false)
+                    setEditing(null)
+                    setEditStep(0)
+                  }}
+                >
+                  {locale === 'zh-CN' ? '保存' : 'Save'}
+                </Button>
+              )}
+            </Space>
+          </div>
+        }
       >
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Steps
+            size="small"
+            current={editStep}
+            items={[
+              { title: locale === 'zh-CN' ? '基础信息' : 'Basics' },
+              { title: locale === 'zh-CN' ? '界面样式' : 'Appearance' },
+              { title: locale === 'zh-CN' ? '图表配置' : 'Chart config' },
+            ]}
+          />
+
+          {editStep === 0 ? (
+            <>
           <div>
             <Typography.Text type="secondary">
               <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
-              {locale === 'zh-CN' ? '主题' : 'Topic'}
+              {locale === 'zh-CN' ? '名称' : 'Name'}
             </Typography.Text>
             <div style={{ height: 8 }} />
             <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
@@ -1986,17 +2095,23 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
 
           <div>
             <Typography.Text type="secondary">
-              <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
               {locale === 'zh-CN' ? '描述' : 'Description'}
             </Typography.Text>
             <div style={{ height: 8 }} />
             <Input.TextArea
               value={editDesc}
               onChange={(e) => setEditDesc(e.target.value)}
-              autoSize={{ minRows: 3, maxRows: 5 }}
+              autoSize={{ minRows: 1, maxRows: 1 }}
+              style={{ resize: 'none' }}
               placeholder={locale === 'zh-CN' ? '补充说明该仪表盘的用途与口径范围' : 'Describe the purpose and scope'}
             />
           </div>
+
+            </>
+          ) : null}
+
+          {editStep === 1 ? (
+            <>
 
           <div>
             <Typography.Text type="secondary">
@@ -2139,6 +2254,12 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
             <ChartPalettePicker value={editChartPalette} onChange={(v) => setEditChartPalette(v)} />
           </div>
 
+            </>
+          ) : null}
+
+          {editStep === 2 ? (
+            <>
+
           <div>
             <Typography.Text type="secondary">
               <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
@@ -2179,28 +2300,55 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
 
             </div>
           </div>
+
+            </>
+          ) : null}
         </Space>
       </Modal>
 
       <Modal
         open={previewOpen}
-        onCancel={() => setPreviewOpen(false)}
+        onCancel={() => {
+          setPreviewOpen(false)
+          setPreviewStep(0)
+        }}
         title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>{locale === 'zh-CN' ? '预览仪表盘' : 'Preview dashboard'}</div>}
         footer={
-          <Space style={{ width: '100%', justifyContent: 'flex-end' }} size={12}>
-            <Button onClick={() => setPreviewOpen(false)}>{t('actions.cancel')}</Button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <Button
-              type="primary"
               onClick={() => {
-                const id = previewTargetId
                 setPreviewOpen(false)
-                const target = customDashboards.find((x) => x.id === id)
-                if (target) openEditModal(target)
+                setPreviewStep(0)
               }}
             >
-              {locale === 'zh-CN' ? '编辑' : 'Edit'}
+              {t('actions.cancel')}
             </Button>
-          </Space>
+
+            <Space size={12}>
+              {previewStep > 0 ? (
+                <Button onClick={() => setPreviewStep((s) => Math.max(0, s - 1))}>{locale === 'zh-CN' ? '上一步' : 'Back'}</Button>
+              ) : null}
+
+              {previewStep < 2 ? (
+                <Button type="primary" onClick={() => setPreviewStep((s) => Math.min(2, s + 1))}>
+                  {locale === 'zh-CN' ? '下一步' : 'Next'}
+                </Button>
+              ) : null}
+
+              <Button
+                type="primary"
+                onClick={() => {
+                  const id = previewTargetId
+                  setPreviewOpen(false)
+                  setPreviewStep(0)
+                  const target = customDashboards.find((x) => x.id === id)
+                  if (target) openEditModal(target)
+                }}
+              >
+                {locale === 'zh-CN' ? '编辑' : 'Edit'}
+              </Button>
+            </Space>
+          </div>
         }
         destroyOnHidden
         centered
@@ -2208,10 +2356,22 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
         zIndex={1200}
       >
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Steps
+            size="small"
+            current={previewStep}
+            items={[
+              { title: locale === 'zh-CN' ? '基础信息' : 'Basics' },
+              { title: locale === 'zh-CN' ? '界面样式' : 'Appearance' },
+              { title: locale === 'zh-CN' ? '图表配置' : 'Chart config' },
+            ]}
+          />
+
+          {previewStep === 0 ? (
+            <>
           <div>
             <Typography.Text type="secondary">
               <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
-              {locale === 'zh-CN' ? '主题' : 'Topic'}
+              {locale === 'zh-CN' ? '名称' : 'Name'}
             </Typography.Text>
             <div style={{ height: 8 }} />
             <Input value={previewTitle} disabled />
@@ -2219,11 +2379,10 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
 
           <div>
             <Typography.Text type="secondary">
-              <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
               {locale === 'zh-CN' ? '描述' : 'Description'}
             </Typography.Text>
             <div style={{ height: 8 }} />
-            <Input.TextArea value={previewDesc} disabled autoSize={{ minRows: 3, maxRows: 5 }} />
+            <Input.TextArea value={previewDesc} disabled autoSize={{ minRows: 1, maxRows: 1 }} style={{ resize: 'none' }} />
           </div>
 
           <div>
@@ -2261,6 +2420,196 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
               </Col>
             </Row>
           </div>
+
+          <div>
+            <Typography.Text type="secondary">
+              <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
+              {locale === 'zh-CN' ? '数据' : 'Data'}
+            </Typography.Text>
+            <div style={{ height: 8 }} />
+            <TreeSelect
+              style={{ width: '100%' }}
+              dropdownStyle={{ width: 760 }}
+              value={previewDisplayDataSourceId ? previewTables.map((tb) => `${previewDisplayDataSourceId}::${tb}`) : []}
+              treeCheckable
+              showCheckedStrategy={TreeSelect.SHOW_CHILD}
+              maxTagCount="responsive"
+              placeholder={locale === 'zh-CN' ? '选择数据表' : 'Select tables'}
+              showSearch
+              filterTreeNode={false}
+              onSearch={(v) => setPreviewTableSearch(String(v ?? ''))}
+              searchValue={previewTableSearch}
+              allowClear
+              suffixIcon={<SearchOutlined />}
+              dropdownRender={() => {
+                const q = previewTableSearch.trim().toLowerCase()
+                const dsVisible = dataSources.filter((ds) => {
+                  if (!q) return true
+                  if (ds.name.toLowerCase().includes(q)) return true
+                  return ds.tables.some((tb) => tb.toLowerCase().includes(q))
+                })
+                const activeDs = dataSources.find((x) => x.id === previewDataSourceId) ?? dsVisible[0] ?? dataSources[0]
+                const activeTables = (activeDs?.tables ?? []).filter((tb) => {
+                  if (!q) return true
+                  return tb.toLowerCase().includes(q) || (activeDs?.name ?? '').toLowerCase().includes(q)
+                })
+
+                return (
+                  <div style={{ padding: 10 }}>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '2fr 3fr',
+                        border: `1px solid ${token.colorSplit}`,
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        height: 280,
+                        background: token.colorBgContainer,
+                      }}
+                    >
+                      <div style={{ overflow: 'auto', padding: 10, borderRight: `1px solid ${token.colorSplit}` }}>
+                        <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                          {dsVisible.map((ds) => {
+                            const active = activeDs?.id === ds.id
+                            const lower = String(q)
+                            const fullCandidate = ds.tables.filter((tb) => {
+                              if (!lower) return true
+                              if (ds.name.toLowerCase().includes(lower)) return true
+                              return tb.toLowerCase().includes(lower)
+                            })
+                            const limited = Array.from(new Set(fullCandidate)).slice(0, 10)
+                            const selectedCount = active ? previewTables.filter((tb) => limited.includes(tb)).length : 0
+                            const allChecked = active && limited.length > 0 && selectedCount === limited.length
+                            const indeterminate = active && selectedCount > 0 && !allChecked
+                            return (
+                              <div
+                                key={ds.id}
+                                onClick={() => {
+                                  if (previewDataSourceId !== ds.id) {
+                                    setPreviewDataSourceId(ds.id)
+                                    setPreviewTables([])
+                                  }
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 10,
+                                  padding: '8px 10px',
+                                  borderRadius: 10,
+                                  border: `1px solid ${token.colorSplit}`,
+                                  background: token.colorBgContainer,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <Checkbox
+                                  checked={allChecked}
+                                  indeterminate={indeterminate}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={() => {
+                                    setPreviewDataSourceId(ds.id)
+                                    if (active && selectedCount > 0) {
+                                      setPreviewTables([])
+                                      return
+                                    }
+                                    setPreviewTables(limited)
+                                    if (fullCandidate.length > 10) void message.warning(t('dashboard.tablesLimit'))
+                                  }}
+                                />
+                                <DatabaseOutlined style={{ opacity: 0.75 }} />
+                                <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ds.name}</div>
+                              </div>
+                            )
+                          })}
+                        </Space>
+                      </div>
+
+                      <div style={{ overflow: 'auto', padding: 10 }}>
+                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                          {activeTables.map((tb) => {
+                            const checked = previewTables.includes(tb)
+                            return (
+                              <Checkbox
+                                key={tb}
+                                checked={checked}
+                                style={{ width: '100%', fontSize: 14 }}
+                                onChange={() => {
+                                  if (!activeDs) return
+                                  setPreviewDataSourceId(activeDs.id)
+                                  setPreviewTables((prev) => {
+                                    const next = checked ? prev.filter((x) => x !== tb) : [...prev, tb]
+                                    const sliced = next.slice(0, 10)
+                                    if (next.length > 10) void message.warning(t('dashboard.tablesLimit'))
+                                    return sliced
+                                  })
+                                }}
+                              >
+                                <Space size={10}>
+                                  <DataTableIcon size={14} color={token.colorTextSecondary} />
+                                  <span style={{ fontSize: 14 }}>{tb}</span>
+                                </Space>
+                              </Checkbox>
+                            )
+                          })}
+                        </Space>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }}
+              tagRender={(p) => {
+                const raw = String(p.value ?? '')
+                const tb = raw.includes('::') ? raw.split('::')[1] : ''
+                return (
+                  <Tag
+                    style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, marginInlineEnd: 4 }}
+                    closable={false}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
+                    onClick={() => {
+                      if (tb) openTableFields(previewTables, tb)
+                    }}
+                  >
+                    <DataTableIcon size={14} color={token.colorTextSecondary} />
+                    <span>{tb || String(p.label ?? '')}</span>
+                  </Tag>
+                )
+              }}
+              treeData={dataSources.map((ds) => ({
+                title: ds.name,
+                value: ds.id,
+                selectable: false,
+                children: ds.tables.map((tb) => ({
+                  title: (
+                    <Space size={8}>
+                      <DataTableIcon size={14} color={token.colorTextSecondary} />
+                      <span>{tb}</span>
+                    </Space>
+                  ),
+                  value: `${ds.id}::${tb}`,
+                })),
+              }))}
+              onChange={(values) => {
+                const arr = (Array.isArray(values) ? values : []).map((v) => String(v))
+                if (arr.length === 0) {
+                  setPreviewTables([])
+                  return
+                }
+                const first = arr[0]
+                const dsId = first.includes('::') ? first.split('::')[0] : ''
+                const tables = arr.map((v) => (v.includes('::') ? v.split('::')[1] : '')).filter(Boolean).slice(0, 10)
+                if (dsId) setPreviewDataSourceId(dsId)
+                setPreviewTables(tables)
+              }}
+            />
+          </div>
+
+            </>
+          ) : null}
+
+          {previewStep === 1 ? (
+            <>
 
           <div>
             <Typography.Text type="secondary">
@@ -2610,6 +2959,12 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
             <ChartPalettePicker value={previewChartPalette} onChange={() => {}} disabled />
           </div>
 
+            </>
+          ) : null}
+
+          {previewStep === 2 ? (
+            <>
+
           <div>
             <Typography.Text type="secondary">
               <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
@@ -2631,6 +2986,9 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
               />
             </Space>
           </div>
+
+            </>
+          ) : null}
 
         </Space>
       </Modal>

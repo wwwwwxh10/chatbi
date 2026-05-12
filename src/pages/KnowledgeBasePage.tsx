@@ -209,9 +209,12 @@ export default function KnowledgeBasePage() {
     </div>
   )
 
-  const ACTION_COL_WIDTH = 120
+  const ACTION_COL_WIDTH_DEFAULT = 180
+  const ACTION_COL_WIDTH_NARROW = 140
 
   const columns = useMemo(() => {
+    const actionColWidth = tab === 'terms' ? ACTION_COL_WIDTH_NARROW : ACTION_COL_WIDTH_DEFAULT
+    const actionColClassName = tab === 'terms' ? 'actionCol actionColNarrow' : 'actionCol'
     if (tab === 'terms') {
       return [
         {
@@ -245,10 +248,10 @@ export default function KnowledgeBasePage() {
         {
           title: t('knowledge.table.actions'),
           key: 'actions',
-          width: ACTION_COL_WIDTH,
-          className: 'actionCol',
-          onHeaderCell: () => ({ className: 'actionCol' }),
-          onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+          width: actionColWidth,
+          className: actionColClassName,
+          onHeaderCell: () => ({ className: actionColClassName }),
+          onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
           align: 'center' as const,
           render: renderActions,
         },
@@ -270,10 +273,10 @@ export default function KnowledgeBasePage() {
         {
           title: t('knowledge.table.actions'),
           key: 'actions',
-          width: ACTION_COL_WIDTH,
-          className: 'actionCol',
-          onHeaderCell: () => ({ className: 'actionCol' }),
-          onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+          width: actionColWidth,
+          className: actionColClassName,
+          onHeaderCell: () => ({ className: actionColClassName }),
+          onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
           align: 'center' as const,
           render: renderActions,
         },
@@ -288,10 +291,10 @@ export default function KnowledgeBasePage() {
         {
           title: t('knowledge.table.actions'),
           key: 'actions',
-          width: ACTION_COL_WIDTH,
-          className: 'actionCol',
-          onHeaderCell: () => ({ className: 'actionCol' }),
-          onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+          width: actionColWidth,
+          className: actionColClassName,
+          onHeaderCell: () => ({ className: actionColClassName }),
+          onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
           align: 'center' as const,
           render: renderActions,
         },
@@ -307,10 +310,10 @@ export default function KnowledgeBasePage() {
         {
           title: t('knowledge.table.actions'),
           key: 'actions',
-          width: ACTION_COL_WIDTH,
-          className: 'actionCol',
-          onHeaderCell: () => ({ className: 'actionCol' }),
-          onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+          width: actionColWidth,
+          className: actionColClassName,
+          onHeaderCell: () => ({ className: actionColClassName }),
+          onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
           align: 'center' as const,
           render: renderActions,
         },
@@ -334,10 +337,10 @@ export default function KnowledgeBasePage() {
       {
         title: t('knowledge.table.actions'),
         key: 'actions',
-        width: ACTION_COL_WIDTH,
-        className: 'actionCol',
-        onHeaderCell: () => ({ className: 'actionCol' }),
-        onCell: () => ({ className: 'actionCol', style: { width: ACTION_COL_WIDTH, minWidth: ACTION_COL_WIDTH, maxWidth: ACTION_COL_WIDTH } }),
+        width: actionColWidth,
+        className: actionColClassName,
+        onHeaderCell: () => ({ className: actionColClassName }),
+        onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
         align: 'center' as const,
         render: renderActions,
       },

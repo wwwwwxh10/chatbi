@@ -121,9 +121,9 @@ html[data-mode='dark'] .ant-card-bordered {
 
 .ant-table-thead > tr > th.actionCol,
 .ant-table-tbody > tr > td.actionCol {
-  width: 120px !important;
-  min-width: 120px !important;
-  max-width: 120px !important;
+  width: 150px !important;
+  min-width: 150px !important;
+  max-width: 150px !important;
   padding-left: 8px !important;
   padding-right: 8px !important;
 }
@@ -140,6 +140,17 @@ html[data-mode='dark'] .ant-card-bordered {
 
 .ant-table table {
   table-layout: fixed !important;
+}
+
+.uploadRowActions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.uploadRow:hover .uploadRowActions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 html[data-mode='dark'] .ant-table,

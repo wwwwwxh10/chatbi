@@ -1,4 +1,4 @@
-import { Button, Card, Form, Input, Modal, Select, Space, Switch, Table, Tag, Upload, message, theme } from 'antd'
+import { Button, Card, Form, Input, Modal, Popover, Select, Space, Switch, Table, Tag, Upload, message, theme } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { PageIntro } from '../components/PageIntro'
 import { useMemo, useState } from 'react'
@@ -6,7 +6,7 @@ import { UploadPanel } from '../components/UploadPanel'
 import { useSystemStore } from '../store/systemStore'
 import { useUsersStore } from '../store/usersStore'
 import type { SystemUser, UserRole, UserStatus } from '../store/usersStore'
-import { DeleteOutlined, EditOutlined, InfoCircleOutlined, KeyOutlined, PlusOutlined, RadarChartOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, InfoCircleOutlined, KeyOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 
 export default function SystemManagementPage({ mode }: { mode: 'users' | 'settings' }) {
   const { t } = useTranslation()
@@ -25,7 +25,6 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
   const [editing, setEditing] = useState<SystemUser | null>(null)
   const [userForm] = Form.useForm<{ accountId: string; accountName: string; role: UserRole }>()
 
-  const [roleHelpOpen, setRoleHelpOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<SystemUser | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SystemUser | null>(null)
 
@@ -34,20 +33,48 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
   const ROLE_META: Record<UserRole, { name: string; desc: string; tag: string }> = {
     Admin: {
       name: '系统管理员',
-      desc: '负责平台的全局运行维护与安全管控。具备用户账号分配、角色权限授权及系统参数配置权限，是系统稳定运行的核心保障。',
+      desc: '负责平台整体运行与安全管理，拥有账号分配、权限授权和系统配置权限，保障系统稳定。',
       tag: 'geekblue',
     },
     Analyst: {
       name: '数据分析师',
-      desc: '负责数据资产的建设与AI语义建模。通过配置数据源、维护指标口径与语义知识库，以及搭建可视化仪表盘，将原始数据转化为AI可理解的业务洞察。',
+      desc: '负责数据建设与AI语义建模，配置数据源、维护指标与知识库，并搭建可视化仪表盘，将数据转化为可用业务洞察。',
       tag: 'blue',
     },
     Viewer: {
       name: '普通用户',
-      desc: '负责数据的消费与业务探索。支持通过自然语言对话（问数）即时获取分析结果，查看并订阅已发布的报表，实现零门槛的数据决策。',
+      desc: '负责数据消费与业务探索，可通过自然语言查询分析结果，查看已发布的报表，实现零门槛决策。',
       tag: 'default',
     },
   }
+
+  const roleHelpContent = (
+    <div style={{ width: 520, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {([
+        { k: 'Admin' as const },
+        { k: 'Analyst' as const },
+        { k: 'Viewer' as const },
+      ] as const).map((it) => (
+        <div key={it.k} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontWeight: 750, fontSize: 14, lineHeight: 1.35, color: token.colorText }}>{ROLE_META[it.k].name}</div>
+          <div
+            title={ROLE_META[it.k].desc}
+            style={{
+              color: token.colorTextSecondary,
+              fontSize: 13,
+              lineHeight: 1.6,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {ROLE_META[it.k].desc}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 
   const visibleUsers = useMemo(() => {
     const q = keyword.trim().toLowerCase()
@@ -127,7 +154,16 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
                 { title: '账号ID', dataIndex: 'accountId', key: 'accountId', width: 160, ellipsis: true },
                 { title: '账号名', dataIndex: 'accountName', key: 'accountName', width: 180, ellipsis: true },
                 {
-                  title: '角色',
+                  title: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span>角色</span>
+                      <Popover placement="bottomLeft" trigger={['hover', 'click']} content={roleHelpContent}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                          <InfoCircleOutlined style={{ fontSize: 12, color: token.colorTextTertiary }} />
+                        </span>
+                      </Popover>
+                    </span>
+                  ),
                   dataIndex: 'role',
                   key: 'role',
                   width: 140,
@@ -149,10 +185,10 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
                 {
                   title: '操作',
                   key: 'actions',
-                  width: 120,
-                  className: 'actionCol',
-                  onHeaderCell: () => ({ className: 'actionCol' }),
-                  onCell: () => ({ className: 'actionCol', style: { width: 120, minWidth: 120, maxWidth: 120 } }),
+                  width: 140,
+                  className: 'actionCol actionColNarrow',
+                  onHeaderCell: () => ({ className: 'actionCol actionColNarrow' }),
+                  onCell: () => ({ className: 'actionCol actionColNarrow', style: { width: 140, minWidth: 140, maxWidth: 140 } }),
                   align: 'center' as const,
                   render: (_: unknown, r: SystemUser) => (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 2, width: '100%', justifyItems: 'center' }}>
@@ -287,13 +323,13 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
                   padding: '10px 12px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
                   background: token.colorFillTertiary,
                   color: token.colorText,
+                  fontSize: 13,
+                  fontWeight: 650,
                 }}
               >
-                <InfoCircleOutlined style={{ color: token.colorPrimary, fontSize: 16 }} />
-                <span style={{ fontSize: 13, fontWeight: 650 }}>提示：初始密码为 88888888（首次登录需修改）</span>
+                提示：初始密码为 88888888（首次登录需修改）
               </div>
             ) : null}
 
@@ -309,11 +345,12 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
                 name="role"
                 label={
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    角色
-                    <InfoCircleOutlined
-                      style={{ color: token.colorTextTertiary, fontSize: 12, cursor: 'pointer' }}
-                      onClick={() => setRoleHelpOpen(true)}
-                    />
+                    <span>角色</span>
+                    <Popover placement="bottomLeft" trigger={['hover', 'click']} content={roleHelpContent}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <InfoCircleOutlined style={{ fontSize: 12, color: token.colorTextTertiary }} />
+                      </span>
+                    </Popover>
                   </span>
                 }
                 rules={[{ required: true, message: t('validation.required') }]}
@@ -323,60 +360,6 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
             </Form>
           </Modal>
 
-          <Modal
-            open={roleHelpOpen}
-            onCancel={() => setRoleHelpOpen(false)}
-            footer={null}
-            centered
-            width={920}
-            destroyOnHidden
-            title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>角色说明</div>}
-          >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
-              {([
-                { k: 'Admin' as const, icon: <SafetyCertificateOutlined style={{ fontSize: 18 }} />, color: 'linear-gradient(135deg, rgba(43,92,246,0.26) 0%, rgba(43,92,246,0.06) 55%, rgba(20,24,33,0) 100%)' },
-                { k: 'Analyst' as const, icon: <RadarChartOutlined style={{ fontSize: 18 }} />, color: 'linear-gradient(135deg, rgba(99,102,241,0.22) 0%, rgba(99,102,241,0.06) 55%, rgba(20,24,33,0) 100%)' },
-                { k: 'Viewer' as const, icon: <UserOutlined style={{ fontSize: 18 }} />, color: 'linear-gradient(135deg, rgba(34,211,238,0.18) 0%, rgba(34,211,238,0.05) 55%, rgba(20,24,33,0) 100%)' },
-              ] as const).map((it) => (
-                <Card key={it.k} styles={{ body: { padding: 14 } }} style={{ borderRadius: 14, borderColor: token.colorSplit, background: token.colorBgContainer }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 14,
-                        background: it.color,
-                        border: `1px solid ${token.colorSplit}`,
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontWeight: 900,
-                        color: token.colorText,
-                      }}
-                    >
-                      {it.icon}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 850, fontSize: 16, lineHeight: 1.2 }}>{ROLE_META[it.k].name}</div>
-                    </div>
-                  </div>
-                  <div
-                    title={ROLE_META[it.k].desc}
-                      style={{
-                      color: token.colorTextSecondary,
-                      lineHeight: 1.7,
-                        fontSize: 12,
-                      display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {ROLE_META[it.k].desc}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </Modal>
         </Card>
       ) : (
         <Card size="small" title={t('system.settings.title')}>

@@ -418,7 +418,7 @@ export default function DataSourcesPage() {
                   />
                 </Popover>
                 <Card
-                  className="dsCard"
+                  className={cardMenuOpenId === ds.id ? 'dsCard dsCardActive' : 'dsCard'}
                   hoverable
                   onClick={() => navigate(`/data-sources/${ds.id}`)}
                   styles={{ body: { padding: 16, height: '100%', display: 'flex', flexDirection: 'column' } }}
@@ -432,7 +432,6 @@ export default function DataSourcesPage() {
                           height: 34,
                           borderRadius: 10,
                           background: token.colorFillTertiary,
-                          border: `1px solid ${token.colorSplit}`,
                           display: 'grid',
                           placeItems: 'center',
                         }}
@@ -456,9 +455,9 @@ export default function DataSourcesPage() {
 
                   <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 }}>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         <DataTableIcon size={14} color={token.colorTextSecondary} />
-                      {ds.datasetSelected ?? 0}
+                        {ds.datasetSelected ?? 0}
                       </span>
                     </Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
