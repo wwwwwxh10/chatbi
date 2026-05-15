@@ -838,17 +838,53 @@ html[data-mode='dark'] .studioMoveOverlayMask {
   background: rgba(0, 0, 0, 0.42);
 }
 
-.studioMoveOverlayIcon {
-  border: 2px dashed var(--studio-accent);
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10), 0 14px 30px rgba(0, 0, 0, 0.20);
-  color: var(--studio-accent);
-  transform: scale(1.06);
+.studioSlotMoveOver .studioSlotAdd {
+  transform: scale(1.10);
+  background: rgba(43, 92, 246, 0.10);
+  box-shadow: inset 0 0 0 1px rgba(43, 92, 246, 0.35), 0 12px 26px rgba(43, 92, 246, 0.16);
+  color: var(--ant-color-primary);
 }
 
-.studioMoveOverlayHint {
+html[data-mode='dark'] .studioSlotMoveOver .studioSlotAdd {
+  background: rgba(51, 112, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(51, 112, 255, 0.35), 0 14px 30px rgba(0, 0, 0, 0.35);
+}
+
+.studioSlotMoveOver .studioSlotHint {
   color: var(--ant-color-primary) !important;
   text-shadow: 0 0 18px rgba(43, 92, 246, 0.22);
+}
+
+.studioSlotActions {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.studioSlotFilled:hover .studioSlotActions,
+.studioSlotFilled:focus-within .studioSlotActions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.studioSlotIconBtn {
+  opacity: 0.6;
+  transition: opacity 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.studioSlotFilled:hover .studioSlotIconBtn,
+.studioSlotFilled:focus-within .studioSlotIconBtn {
+  opacity: 0.82;
+}
+
+html[data-mode='dark'] .studioSlotIconBtn:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+html[data-mode='light'] .studioSlotIconBtn:hover {
+  background: rgba(31, 36, 48, 0.05) !important;
 }
 
 .studioPaletteGrid {

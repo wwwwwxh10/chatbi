@@ -837,28 +837,57 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     onChange: (v: StudioAppearance['theme']) => void
     disabled?: boolean
   }) => {
-    const themePalette: Array<{ key: StudioAppearance['theme']; label: string; palette: ChartPaletteId }> = [
-      { key: 'obsidian', label: '曜石蓝黑', palette: 'obsidian' },
-      { key: 'cyber', label: '暗影墨蓝', palette: 'cyber' },
-      { key: 'tech', label: '深海湛蓝', palette: 'deepsea' },
+    const items = [
+      {
+        key: 'obsidian' as const,
+        label: '曜石蓝黑',
+        desc: '沉稳克制，适合运维监控',
+        palette: 'obsidian' as const,
+      },
+      {
+        key: 'cyber' as const,
+        label: '暗影墨蓝',
+        desc: '幽邃暗沉，适合科技感主题',
+        palette: 'cyber' as const,
+      },
+      {
+        key: 'tech' as const,
+        label: '深海湛蓝',
+        desc: '睿智深邃，适合指挥大屏',
+        palette: 'deepsea' as const,
+      },
     ]
     return (
-      <div className="studioPaletteGrid" style={{ ['--studio-accent' as any]: accent }}>
-        {themePalette.map((it) => {
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+        {items.map((it) => {
           const selected = value === it.key
-          const cols = (CHART_PALETTES[it.palette]?.colors ?? []).slice(0, 6)
+          const cols = (CHART_PALETTES[it.palette]?.colors ?? []).slice(0, 3)
           return (
             <div
               key={it.key}
-              className={`studioPaletteCard${selected ? ' studioPaletteCardActive' : ''}${disabled ? ' studioPaletteCardDisabled' : ''}`}
               onClick={() => {
                 if (disabled) return
                 onChange(it.key)
               }}
+              style={{
+                borderRadius: 14,
+                border: `2px solid ${selected ? accent : token.colorSplit}`,
+                background: 'rgba(255,255,255,0.02)',
+                cursor: disabled ? 'default' : 'pointer',
+                padding: 12,
+                opacity: disabled ? 0.9 : 1,
+              }}
             >
-              <div className="studioPaletteRow">
-                <Typography.Text className="studioPaletteLabel">{it.label}</Typography.Text>
-                <div className="studioPaletteSwatches">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+                <div style={{ minWidth: 0 }}>
+                  <Typography.Text style={{ display: 'block', fontSize: 14, fontWeight: 800, lineHeight: 1.25 }}>
+                    {it.label}
+                  </Typography.Text>
+                  <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, lineHeight: 1.3, marginTop: 4 }}>
+                    {it.desc}
+                  </Typography.Text>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
                   {cols.map((c, i) => (
                     <span key={`${c}-${i}`} className="studioPaletteSwatch" style={{ background: c }} />
                   ))}
@@ -1447,14 +1476,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         <div className="studioMoveOverlay" style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}>
                           <div className="studioMoveOverlayMask" style={{ position: 'absolute', inset: 0 }} />
                           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
-                            <div style={{ display: 'grid', justifyItems: 'center', gap: 10 }}>
-                              <div
-                                className="studioMoveOverlayIcon"
-                                style={{ width: 64, height: 64, borderRadius: 16, display: 'grid', placeItems: 'center' }}
-                              >
-                                <ArrowDownUp size={22} />
+                            <div style={{ display: 'grid', justifyItems: 'center', gap: 8, color: token.colorTextSecondary }}>
+                              <div className="studioSlotAdd" style={{ width: 46, height: 46, borderRadius: 14, display: 'grid', placeItems: 'center' }}>
+                                <ArrowDownUp size={20} />
                               </div>
-                              <Typography.Text className="studioMoveOverlayHint" style={{ fontSize: 14, fontWeight: 700 }}>
+                              <Typography.Text className="studioSlotHint" style={{ fontSize: 12, color: 'inherit', fontWeight: 600 }}>
                                 移入此位置
                               </Typography.Text>
                             </div>
@@ -1665,32 +1691,33 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 <div>
                   <RequiredLabel label="图表色系" />
                   <div style={{ height: 8 }} />
-                  <div className="studioPaletteGrid" style={{ ['--studio-accent' as any]: accent }}>
-                    {(Object.keys(CHART_PALETTES) as Array<keyof typeof CHART_PALETTES>).map((id) => {
+                  <Select
+                    value={appearance.chartPalette}
+                    disabled={readOnly}
+                    onChange={(v) => setAppearance((p) => ({ ...p, chartPalette: safeChartPalette(v) }))}
+                    style={{ width: '100%' }}
+                    optionLabelProp="label"
+                    options={(Object.keys(CHART_PALETTES) as Array<keyof typeof CHART_PALETTES>).map((id) => {
                       const meta = CHART_PALETTES[id]
-                      const selected = appearance.chartPalette === id
-                      const cols = meta.colors.slice(0, 6)
-                      return (
-                        <div
-                          key={id}
-                          className={`studioPaletteCard${selected ? ' studioPaletteCardActive' : ''}${readOnly ? ' studioPaletteCardDisabled' : ''}`}
-                          onClick={() => {
-                            if (readOnly) return
-                            setAppearance((p) => ({ ...p, chartPalette: safeChartPalette(id) }))
-                          }}
-                        >
-                          <div className="studioPaletteRow">
-                            <Typography.Text className="studioPaletteLabel">{meta.name}</Typography.Text>
-                            <div className="studioPaletteSwatches">
-                              {cols.map((c, i) => (
-                                <span key={`${c}-${i}`} className="studioPaletteSwatch" style={{ background: c }} />
+                      return {
+                        value: id,
+                        label: (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%' }}>
+                            <div style={{ minWidth: 0 }}>
+                              <Typography.Text strong style={{ display: 'block', lineHeight: 1.25 }}>
+                                {meta.name}
+                              </Typography.Text>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'nowrap', flex: 'none' }}>
+                              {meta.colors.slice(0, 10).map((hex, i) => (
+                                <span key={`${hex}-${i}`} className="studioPaletteSwatch" style={{ width: 14, height: 14, borderRadius: 4, background: hex }} />
                               ))}
                             </div>
                           </div>
-                        </div>
-                      )
+                        ),
+                      }
                     })}
-                  </div>
+                  />
                 </div>
 
                 <div>
