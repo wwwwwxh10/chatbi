@@ -54,7 +54,7 @@ import {
   THEME_NAME,
   validateWidget,
 } from './studioModel'
-import type { ChartPaletteId, StudioAppearance, StudioLayout, WidgetKind, WidgetSlot } from './studioModel'
+import type { StudioAppearance, StudioLayout, WidgetKind, WidgetSlot } from './studioModel'
 import {
   buildAreaOption,
   buildBarOption,
@@ -254,7 +254,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const panelBg = appearance.theme === 'obsidian' ? token.colorFillQuaternary : 'rgba(255,255,255,0.020)'
 
   const cyberPageBg =
-    'repeating-linear-gradient(0deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), radial-gradient(1200px 700px at 30% 10%, rgba(45, 100, 255, 0.18), transparent 55%), radial-gradient(900px 520px at 80% 30%, rgba(121, 54, 255, 0.12), transparent 55%), radial-gradient(1200px 900px at 60% 120%, rgba(20, 255, 185, 0.08), transparent 60%), #03060c'
+    'repeating-linear-gradient(0deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), radial-gradient(1200px 700px at 30% 10%, rgba(45, 100, 255, 0.18), transparent 55%), radial-gradient(900px 520px at 80% 30%, rgba(20, 160, 255, 0.14), transparent 58%), radial-gradient(1200px 900px at 60% 120%, rgba(20, 255, 185, 0.08), transparent 60%), #03060c'
 
   const techPageBg =
     'repeating-linear-gradient(0deg, rgba(255,255,255,0.028), rgba(255,255,255,0.028) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(255,255,255,0.028), rgba(255,255,255,0.028) 1px, transparent 1px, transparent 22px), radial-gradient(1200px 700px at 28% 8%, rgba(43, 123, 255, 0.22), transparent 55%), radial-gradient(900px 520px at 78% 30%, rgba(20, 160, 255, 0.16), transparent 58%), radial-gradient(1200px 900px at 60% 120%, rgba(90, 200, 255, 0.10), transparent 60%), #03060c'
@@ -653,7 +653,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       return (
         <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <Space size={6}>
+            <Space size={4}>
               <span
                 style={{
                   width: 22,
@@ -696,7 +696,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             onDragEnd={onSlotDragEnd}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <Space size={6} style={{ minWidth: 0 }}>
+              <Space size={4} style={{ minWidth: 0 }}>
                 <span
                   style={{
                     width: 22,
@@ -837,31 +837,33 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     onChange: (v: StudioAppearance['theme']) => void
     disabled?: boolean
   }) => {
+    const themeSwatches: Record<StudioAppearance['theme'], string[]> = {
+      obsidian: ['#1677FF', '#0E1117', '#101827'],
+      cyber: ['#2D64FF', '#14A0FF', '#14FFB9'],
+      tech: ['#2B7BFF', '#14A0FF', '#5AC8FF'],
+    }
     const items = [
       {
         key: 'obsidian' as const,
         label: '曜石蓝黑',
         desc: '沉稳克制，适合运维监控',
-        palette: 'obsidian' as const,
       },
       {
         key: 'cyber' as const,
         label: '暗影墨蓝',
         desc: '幽邃暗沉，适合科技感主题',
-        palette: 'cyber' as const,
       },
       {
         key: 'tech' as const,
         label: '深海湛蓝',
         desc: '睿智深邃，适合指挥大屏',
-        palette: 'deepsea' as const,
       },
     ]
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
         {items.map((it) => {
           const selected = value === it.key
-          const cols = (CHART_PALETTES[it.palette]?.colors ?? []).slice(0, 3)
+          const cols = themeSwatches[it.key]
           return (
             <div
               key={it.key}
@@ -871,8 +873,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               }}
               style={{
                 borderRadius: 14,
-                border: `2px solid ${selected ? accent : token.colorSplit}`,
-                background: 'rgba(255,255,255,0.02)',
+                border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
+                background: 'var(--studio-panel-card-bg)',
                 cursor: disabled ? 'default' : 'pointer',
                 padding: 12,
                 opacity: disabled ? 0.9 : 1,
@@ -887,7 +889,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     {it.desc}
                   </Typography.Text>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 'none' }}>
                   {cols.map((c, i) => (
                     <span key={`${c}-${i}`} className="studioPaletteSwatch" style={{ background: c }} />
                   ))}
@@ -1088,18 +1090,51 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const gap = layout.mode === 'free' ? Math.max(8, Math.min(32, layout.gap)) : 14
   const freeRows = layout.mode === 'free' ? Math.max(2, Math.min(24, Math.floor(layout.rows || 8))) : 0
 
+  const fieldBg =
+    appearance.theme === 'obsidian'
+      ? token.colorBgContainer
+      : appearance.theme === 'tech'
+        ? 'rgba(10, 20, 38, 0.70)'
+        : 'rgba(10, 16, 32, 0.70)'
+  const fieldBorder =
+    appearance.theme === 'obsidian'
+      ? token.colorSplit
+      : appearance.theme === 'tech'
+        ? 'rgba(43, 123, 255, 0.22)'
+        : 'rgba(45, 100, 255, 0.22)'
+  const panelCardBg =
+    appearance.theme === 'obsidian'
+      ? token.colorBgContainer
+      : appearance.theme === 'tech'
+        ? 'rgba(10, 20, 38, 0.76)'
+        : 'rgba(10, 16, 32, 0.76)'
+
   return (
-    <div style={{ height: '100%', width: '100%', background: studioShellBg }}>
-      <div style={{ height: '100%', display: 'grid', gridTemplateColumns: previewMode ? '1fr' : '320px 1fr 360px', minHeight: 0 }}>
+    <div
+      className="studioThemeRoot"
+      style={{
+        height: '100%',
+        width: '100%',
+        background: studioShellBg,
+        ['--studio-accent' as any]: accent,
+        ['--studio-field-bg' as any]: fieldBg,
+        ['--studio-field-border' as any]: fieldBorder,
+        ['--studio-panel-card-bg' as any]: panelCardBg,
+      }}
+    >
+      <div
+        className="studioShellGrid"
+        style={{ height: '100%', display: 'grid', gridTemplateColumns: previewMode ? '1fr' : '300px 1fr 300px', minHeight: 0, position: 'relative' }}
+      >
         {previewMode ? null : (
           <div style={{ borderRight: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: 14, borderBottom: `1px solid ${token.colorSplit}` }}>
+            <div className="studioColHeader" style={{ background: sidePanelBg }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10 }}>
                 <Button type="text" onClick={() => navigate('/dashboard')} className="iconOnly" aria-label="返回" icon={<ArrowLeft size={18} />} />
                 <Typography.Text strong>组件库</Typography.Text>
               </div>
             </div>
-            <div style={{ padding: 12, overflow: 'auto', minHeight: 0 }}>
+            <div className="studioColBody" style={{ padding: 12 }}>
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 {libraryGroups.map((g) => (
                   <div key={g.label}>
@@ -1111,6 +1146,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       {g.items.map((it) => (
                         <div
                           key={it.kind}
+                          className="studioLibraryCard"
                           draggable={!readOnly}
                           onDragStart={(e) => {
                             setDraggingKind(it.kind)
@@ -1130,13 +1166,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             setDraggingKind(null)
                             setDragOverIdx(null)
                           }}
-                          style={{
-                            border: `1px solid ${token.colorSplit}`,
-                            background: token.colorBgContainer,
-                            borderRadius: 14,
-                            padding: 12,
-                            cursor: readOnly ? 'default' : 'grab',
-                          }}
+                          style={{ border: `1px solid var(--studio-field-border)`, background: 'var(--studio-panel-card-bg)', borderRadius: 14, padding: 12, cursor: readOnly ? 'default' : 'grab' }}
                         >
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                             <div
@@ -1160,7 +1190,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                               <Typography.Text strong style={{ display: 'block', lineHeight: 1.25 }}>
                                 {it.title}
                               </Typography.Text>
-                              <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, lineHeight: 1.25, marginTop: 4 }}>
+                              <Typography.Text
+                                type="secondary"
+                                style={{ display: 'block', fontSize: 12, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                              >
                                 {it.desc}
                               </Typography.Text>
                             </div>
@@ -1176,7 +1209,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
         )}
 
         <div style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'transparent' }}>
-          <div style={{ padding: 14, borderBottom: `1px solid ${token.colorSplit}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: sidePanelBg }}>
+          <div className="studioColHeader" style={{ justifyContent: 'space-between', gap: 12, background: sidePanelBg }}>
             <Space size={10}>
               <div style={{ minWidth: 0 }}>
                 <Typography.Text strong style={{ display: 'block', lineHeight: 1.1 }}>
@@ -1540,7 +1573,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           width={editorFullscreen ? 'calc(100vw - 24px)' : 720}
           title={
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <Space size={6}>
+              <Space size={4}>
                 <CodeOutlined />
                 <span>代码编辑器</span>
               </Space>
@@ -1575,7 +1608,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 >
                   重置
                 </Button>
-                <Space size={6}>
+                <Space size={4}>
                   <Button onClick={() => setEditingSlotId(null)}>取消</Button>
                   <Button
                     type="primary"
@@ -1618,10 +1651,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
         {previewMode ? null : (
           <div style={{ borderLeft: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: 14, borderBottom: `1px solid ${token.colorSplit}` }}>
+            <div className="studioColHeader" style={{ background: sidePanelBg }}>
               <Typography.Text strong>页面配置</Typography.Text>
             </div>
-            <div style={{ padding: 12, overflow: 'auto', minHeight: 0 }}>
+            <div className="studioColBody" style={{ padding: 12 }}>
               <Space direction="vertical" size={14} style={{ width: '100%' }}>
                 {(() => {
                   const RequiredLabel = ({ label }: { label: string }) => (
@@ -1704,11 +1737,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         label: (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%' }}>
                             <div style={{ minWidth: 0 }}>
-                              <Typography.Text strong style={{ display: 'block', lineHeight: 1.25 }}>
+                              <Typography.Text style={{ display: 'block', lineHeight: 1.25, fontSize: 14 }}>
                                 {meta.name}
                               </Typography.Text>
                             </div>
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'nowrap', flex: 'none' }}>
+                            <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap', flex: 'none' }}>
                               {meta.colors.slice(0, 10).map((hex, i) => (
                                 <span key={`${hex}-${i}`} className="studioPaletteSwatch" style={{ width: 14, height: 14, borderRadius: 4, background: hex }} />
                               ))}
@@ -1745,8 +1778,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           }}
                           style={{
                             borderRadius: 14,
-                            border: `2px solid ${selected ? accent : token.colorSplit}`,
-                            background: token.colorBgContainer,
+                            border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
+                            background: 'var(--studio-panel-card-bg)',
                             cursor: readOnly ? 'default' : 'pointer',
                             padding: 4,
                             opacity: readOnly ? 0.9 : 1,

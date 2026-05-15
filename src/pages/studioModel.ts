@@ -3,7 +3,7 @@ import { THEMES } from '../theme/themes'
 
 export type LayoutTemplate = 'main-sub' | 'three-col' | 'sidebar' | 'matrix-10' | 'analysis-7' | 'free'
 export type ThemeStyle = 'obsidian' | 'cyber' | 'tech'
-export type ChartPaletteId = 'cyber' | 'aurora' | 'ember' | 'deepsea' | 'obsidian'
+export type ChartPaletteId = 'cyber' | 'aurora' | 'ember' | 'deepsea' | 'obsidian' | 'royal' | 'azuregold' | 'sunset' | 'neon'
 export type WidgetKind =
   | 'kpi'
   | 'flip'
@@ -40,29 +40,49 @@ export type StudioAppearance = {
 
 export const CHART_PALETTES: Record<ChartPaletteId, { name: string; desc: string; colors: string[] }> = {
   cyber: {
-    name: '赛博蓝紫',
-    desc: '冷色霓虹，适合科技感主题',
+    name: '蓝紫',
+    desc: '以蓝紫为主的配色',
     colors: ['#6AA6FF', '#7C3AED', '#22D3EE', '#A855F7', '#38BDF8', '#34D399', '#F472B6', '#93C5FD', '#14B8A6', '#C4B5FD'],
   },
   deepsea: {
-    name: '深海湛蓝',
-    desc: '偏冷科技感，适合 Tech 主题',
+    name: '深蓝',
+    desc: '以深蓝为主的配色',
     colors: ['#2B7BFF', '#22D3EE', '#38BDF8', '#60A5FA', '#0EA5E9', '#34D399', '#A855F7', '#93C5FD', '#14B8A6', '#C4B5FD'],
   },
   obsidian: {
-    name: '曜石蓝黑',
-    desc: '沉稳克制，适合 Obsidian 主题',
+    name: '蓝黑',
+    desc: '以蓝黑为主的配色',
     colors: ['#6AA6FF', '#7C3AED', '#22D3EE', '#A855F7', '#38BDF8', '#34D399', '#F472B6', '#93C5FD', '#14B8A6', '#C4B5FD'],
   },
   aurora: {
-    name: '极光青绿',
-    desc: '清新通透，适合增长/运营',
+    name: '青绿',
+    desc: '以青绿为主的配色',
     colors: ['#2DD4BF', '#22D3EE', '#34D399', '#4ADE80', '#10B981', '#38BDF8', '#A7F3D0', '#86EFAC', '#5EEAD4', '#84CC16'],
   },
   ember: {
-    name: '霓虹熔金',
-    desc: '高对比醒目，适合活动/告警',
+    name: '橙红',
+    desc: '以橙红为主的配色',
     colors: ['#F97316', '#F59E0B', '#F43F5E', '#FB7185', '#F472B6', '#A855F7', '#FDBA74', '#FDE047', '#C084FC', '#60A5FA'],
+  },
+  royal: {
+    name: '宝蓝',
+    desc: '以宝蓝为主的配色',
+    colors: ['#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD', '#0EA5E9', '#22D3EE', '#A855F7', '#7C3AED', '#C4B5FD'],
+  },
+  azuregold: {
+    name: '蓝金',
+    desc: '以蓝金为主的配色',
+    colors: ['#2563EB', '#60A5FA', '#0EA5E9', '#22D3EE', '#F59E0B', '#FBBF24', '#FDE047', '#FB7185', '#A855F7', '#34D399'],
+  },
+  sunset: {
+    name: '橙紫',
+    desc: '以橙紫为主的配色',
+    colors: ['#F97316', '#FB7185', '#F43F5E', '#A855F7', '#7C3AED', '#F59E0B', '#FDE047', '#FDBA74', '#93C5FD', '#34D399'],
+  },
+  neon: {
+    name: '荧光',
+    desc: '以荧光为主的配色',
+    colors: ['#22D3EE', '#A855F7', '#F43F5E', '#FDE047', '#34D399', '#60A5FA', '#F97316', '#2DD4BF', '#C084FC', '#93C5FD'],
   },
 }
 
@@ -320,7 +340,17 @@ export function layoutSpecs(layout: StudioLayout): LayoutSlotSpec[] {
 
 export function safeChartPalette(v: unknown): ChartPaletteId {
   const id = typeof v === 'string' ? v : ''
-  return id === 'aurora' || id === 'ember' || id === 'cyber' || id === 'deepsea' || id === 'obsidian' ? (id as ChartPaletteId) : 'cyber'
+  return id === 'aurora' ||
+    id === 'ember' ||
+    id === 'cyber' ||
+    id === 'deepsea' ||
+    id === 'obsidian' ||
+    id === 'royal' ||
+    id === 'azuregold' ||
+    id === 'sunset' ||
+    id === 'neon'
+    ? (id as ChartPaletteId)
+    : 'cyber'
 }
 
 export function mapThemeIdToChartPalette(v: unknown): ChartPaletteId {

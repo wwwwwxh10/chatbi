@@ -31,6 +31,7 @@ import {
 import * as XLSX from 'xlsx'
 import type { EChartsOption } from 'echarts'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Activity, AreaChart, BarChart3, ChartScatter, CircleDot, CopyPlus, Donut, Droplets, Filter, Flower2, Layers, LineChart, Network, PieChart, Radar, Sigma, Workflow } from 'lucide-react'
 import { EChart } from '../components/EChart'
 import { VirtualAvatar } from '../components/VirtualAvatar'
 import { DatasetPreviewModal } from '../components/DatasetPreviewModal'
@@ -38,7 +39,7 @@ import { DataTableSearchIcon } from '../components/icons/DataTableIcon'
 import { FlipCounter } from '../components/MetricCards'
 import { buildMockResult } from './chat/chatUtils'
 import type { MessageResult } from './chat/chatUtils'
-import { CHART_PALETTES, KIND_NAME } from './studioModel'
+import { CHART_PALETTES, KIND_NAME, THEME_ACCENT } from './studioModel'
 import type { StudioAppearance, StudioLayout, WidgetKind } from './studioModel'
 import {
   buildAreaOption,
@@ -432,12 +433,8 @@ type StudioDebugPayload = {
 
 function StudioDebugDashboardCanvas({
   payload,
-  selectedKey,
-  onSelect,
 }: {
   payload: StudioDebugPayload
-  selectedKey: string
-  onSelect: (key: string, context: string) => void
 }) {
   const { token } = theme.useToken()
 
@@ -445,6 +442,31 @@ function StudioDebugDashboardCanvas({
   const layout = payload.layout ?? { mode: 'template', template: 'main-sub' }
   const palette = CHART_PALETTES[appearance.chartPalette] ?? CHART_PALETTES.cyber
   const themeColors = palette.colors ?? []
+  const accent = appearance.theme === 'obsidian' ? token.colorPrimary : THEME_ACCENT[appearance.theme]
+
+  const cyberPageBg =
+    'repeating-linear-gradient(0deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), radial-gradient(1200px 700px at 30% 10%, rgba(45, 100, 255, 0.18), transparent 55%), radial-gradient(900px 520px at 80% 30%, rgba(121, 54, 255, 0.12), transparent 55%), radial-gradient(1200px 900px at 60% 120%, rgba(20, 255, 185, 0.08), transparent 60%), #03060c'
+  const techPageBg =
+    'repeating-linear-gradient(0deg, rgba(255,255,255,0.028), rgba(255,255,255,0.028) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(255,255,255,0.028), rgba(255,255,255,0.028) 1px, transparent 1px, transparent 22px), radial-gradient(1200px 700px at 28% 8%, rgba(43, 123, 255, 0.22), transparent 55%), radial-gradient(900px 520px at 78% 30%, rgba(20, 160, 255, 0.16), transparent 58%), radial-gradient(1200px 900px at 60% 120%, rgba(90, 200, 255, 0.10), transparent 60%), #03060c'
+  const studioShellBg = appearance.theme === 'obsidian' ? token.colorBgLayout : appearance.theme === 'cyber' ? cyberPageBg : techPageBg
+
+  const surfaceBg =
+    appearance.theme === 'obsidian'
+      ? token.colorBgContainer
+      : appearance.theme === 'tech'
+        ? 'linear-gradient(135deg, rgba(18, 44, 96, 0.62), rgba(10, 16, 28, 0.86))'
+        : appearance.theme === 'cyber'
+          ? 'linear-gradient(135deg, rgba(20, 30, 50, 0.60), rgba(10, 15, 25, 0.80))'
+          : 'rgba(10, 14, 24, 0.76)'
+
+  const emptyBg =
+    appearance.theme === 'obsidian'
+      ? token.colorBgContainer
+      : appearance.theme === 'tech'
+        ? 'linear-gradient(135deg, rgba(18, 44, 96, 0.45), rgba(10, 16, 28, 0.84))'
+        : appearance.theme === 'cyber'
+          ? 'linear-gradient(135deg, rgba(20, 30, 50, 0.60), rgba(10, 15, 25, 0.80))'
+          : 'rgba(10, 14, 24, 0.76)'
 
   const templatePositions = (tpl: Exclude<NonNullable<StudioLayout>['mode'], 'free'> extends never ? never : any) => {
     const t = String(tpl ?? '')
@@ -508,7 +530,7 @@ function StudioDebugDashboardCanvas({
     ]
   }
 
-  const slotOption = (kind: WidgetKind, name: string): EChartsOption | null => {
+  const optionForSlot = (kind: WidgetKind, name: string): EChartsOption | null => {
     if (kind === 'bar') return buildBarOption(name, themeColors)
     if (kind === 'bar-h') return buildHBarOption(name, themeColors)
     if (kind === 'bar-stacked') return buildStackedBarOption(name, themeColors)
@@ -533,7 +555,7 @@ function StudioDebugDashboardCanvas({
     return null
   }
 
-  const renderSlot = (raw: { kind: WidgetKind | null; configText: string } | undefined, idx: number) => {
+  const renderSlotBody = (raw: { kind: WidgetKind | null; configText: string } | undefined) => {
     const kind = raw?.kind ?? null
     const parsed = (() => {
       try {
@@ -542,39 +564,53 @@ function StudioDebugDashboardCanvas({
         return null
       }
     })()
-    const title = String(parsed?.title ?? (kind ? KIND_NAME[kind] : ''))
-    const key = `slot-${idx}`
+    const chartTitle = String(parsed?.title ?? (kind ? KIND_NAME[kind] : ''))
 
     if (!kind) {
       return (
-        <div className="dashboardChartCard" style={{ height: '100%', borderRadius: 14, background: token.colorBgContainer, border: `1px dashed ${token.colorSplit}` }} />
+        <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: token.colorTextSecondary }}>
+          <div style={{ display: 'grid', placeItems: 'center', gap: 8 }}>
+            <div className="studioSlotAdd" style={{ width: 46, height: 46, borderRadius: 14, display: 'grid', placeItems: 'center' }}>
+              <CopyPlus size={20} />
+            </div>
+            <Typography.Text className="studioSlotHint" style={{ fontSize: 12, color: 'inherit', fontWeight: 600 }}>
+              从左侧拖拽图表到此处
+            </Typography.Text>
+          </div>
+        </div>
       )
     }
 
     if (kind === 'kpi') {
       const format = String(parsed?.format ?? 'currency')
       return (
-        <div
-          className="dashboardChartCard"
-          style={{
-            height: '100%',
-            borderRadius: 14,
-            background: token.colorBgContainer,
-            border: `1px solid ${selectedKey === key ? token.colorPrimary : token.colorSplit}`,
-            padding: 14,
-            cursor: 'pointer',
-          }}
-          onClick={() => onSelect(key, title)}
-        >
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {title}
-          </Typography.Text>
-          <div style={{ height: 10 }} />
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: 0.2 }}>{kpiValue(format)}</div>
-          <div style={{ height: 10 }} />
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {appearance.timeZone}
-          </Typography.Text>
+        <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <Space size={6}>
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: accent,
+                }}
+              >
+                <Sigma size={14} />
+              </span>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {chartTitle}
+              </Typography.Text>
+            </Space>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 0.2 }}>{kpiValue(format)}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <Typography.Text style={{ fontSize: 12, color: '#22c55e' }}>同比 +12.4%</Typography.Text>
+          </div>
         </div>
       )
     }
@@ -585,26 +621,29 @@ function StudioDebugDashboardCanvas({
       const value = Math.max(0, Math.round(base))
       const unit = String(parsed?.unit ?? '次')
       return (
-        <div
-          className="dashboardChartCard"
-          style={{
-            height: '100%',
-            borderRadius: 14,
-            background: token.colorBgContainer,
-            border: `1px solid ${selectedKey === key ? token.colorPrimary : token.colorSplit}`,
-            padding: 14,
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-          }}
-          onClick={() => onSelect(key, title)}
-        >
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {title}
-          </Typography.Text>
+        <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <Space size={6}>
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: accent,
+                }}
+              >
+                <CircleDot size={14} />
+              </span>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {chartTitle}
+              </Typography.Text>
+            </Space>
+          </div>
           <div style={{ display: 'grid', alignContent: 'center', minHeight: 0 }}>
-            <FlipCounter title={title} unit={unit} target={value} />
+            <FlipCounter title={chartTitle} unit={unit} target={value} />
           </div>
         </div>
       )
@@ -614,55 +653,108 @@ function StudioDebugDashboardCanvas({
       const pct = Math.max(0, Math.min(100, Number(parsed?.percent ?? 78) || 0))
       const v = String(parsed?.value ?? '15.6k')
       const unit = String(parsed?.unit ?? '个')
+      const c0 = themeColors[0] ?? accent
       return (
-        <div
-          className="dashboardChartCard"
-          style={{
-            height: '100%',
-            borderRadius: 14,
-            background: token.colorBgContainer,
-            border: `1px solid ${selectedKey === key ? token.colorPrimary : token.colorSplit}`,
-            padding: 14,
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: 10,
-          }}
-          onClick={() => onSelect(key, title)}
-        >
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {title}
-          </Typography.Text>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 24, fontWeight: 800 }}>{v}</div>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {unit}
-            </Typography.Text>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="studioSlotHeader" style={{ padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <Space size={6}>
+                <span
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 8,
+                    background: 'transparent',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: token.colorTextTertiary,
+                    opacity: 0.85,
+                  }}
+                >
+                  <Workflow size={14} />
+                </span>
+                <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>{chartTitle}</Typography.Text>
+              </Space>
+            </div>
           </div>
-          <div style={{ height: 10, borderRadius: 999, background: token.colorFillQuaternary, overflow: 'hidden' }}>
-            <div style={{ width: `${pct}%`, height: '100%', background: token.colorPrimary }} />
+          <div style={{ padding: 12, flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10 }}>
+            <div style={{ position: 'relative', height: 6, display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: c0, borderRadius: 3, boxShadow: `0 0 10px ${c0}66` }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13, fontWeight: 600 }}>
+              <div style={{ color: c0, fontFamily: 'tabular-nums' }}>
+                {v} {unit}
+              </div>
+              <div style={{ color: c0, fontFamily: 'tabular-nums' }}>{pct}%</div>
+            </div>
           </div>
         </div>
       )
     }
 
-    const opt = slotOption(kind, title)
-    return (
-      <div
-        className="dashboardChartCard"
-        style={{
-          height: '100%',
-          borderRadius: 14,
-          background: token.colorBgContainer,
-          border: `1px solid ${selectedKey === key ? token.colorPrimary : token.colorSplit}`,
-          overflow: 'hidden',
-          cursor: 'pointer',
-        }}
-        onClick={() => onSelect(key, title)}
-      >
-        {opt ? <EChart option={opt as any} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="" />}
+    const opt = optionForSlot(kind, chartTitle)
+    return opt ? (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div className="studioSlotHeader" style={{ padding: '12px 12px 8px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <Space size={6} style={{ minWidth: 0 }}>
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: token.colorTextTertiary,
+                  opacity: 0.85,
+                  flex: '0 0 22px',
+                }}
+              >
+                {(() => {
+                  const Icon =
+                    kind === 'line'
+                      ? LineChart
+                      : kind === 'line-area'
+                        ? AreaChart
+                        : kind === 'line-curve'
+                          ? LineChart
+                          : kind === 'bar' || kind === 'bar-h' || kind === 'bar-grouped' || kind === 'bar-stacked' || kind === 'bar-gradient' || kind === 'waterfall'
+                            ? BarChart3
+                            : kind === 'pie'
+                              ? PieChart
+                              : kind === 'donut'
+                                ? Donut
+                                : kind === 'rose'
+                                  ? Flower2
+                                  : kind === 'scatter'
+                                    ? ChartScatter
+                                    : kind === 'bubble'
+                                      ? Droplets
+                                      : kind === 'funnel'
+                                        ? Filter
+                                        : kind === 'radar'
+                                          ? Radar
+                                          : kind === 'heatmap' || kind === 'treemap'
+                                            ? Layers
+                                            : kind === 'sankey' || kind === 'graph'
+                                              ? Network
+                                              : Activity
+                  return <Icon size={14} />
+                })()}
+              </span>
+              <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>{chartTitle}</Typography.Text>
+            </Space>
+          </div>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, paddingTop: kind === 'funnel' ? 0 : 10 }}>
+          <EChart option={opt as any} />
+        </div>
       </div>
+    ) : (
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="" />
     )
   }
 
@@ -682,16 +774,66 @@ function StudioDebugDashboardCanvas({
           : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)'
       : `repeat(${freeRows}, minmax(0, 1fr))`
 
-  const gap = layout.mode === 'free' ? Math.max(8, Math.min(32, Number((layout as any).gap ?? 16))) : 12
+  const gap = layout.mode === 'free' ? Math.max(8, Math.min(32, Number((layout as any).gap ?? 16))) : 10
 
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gridTemplateRows: gridRows, gap }}>
-        {positions.map((pos: any, idx: number) => (
-          <div key={idx} style={{ gridColumn: `${pos.colStart} / span ${pos.colSpan}`, gridRow: `${pos.rowStart} / span ${pos.rowSpan}`, height: '100%' }}>
-            {renderSlot(slots[idx], idx)}
+    <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: studioShellBg }}>
+      <div style={{ padding: 14, borderBottom: `1px solid ${token.colorSplit}`, background: 'rgba(0,0,0,0.10)' }}>
+        <Typography.Text strong style={{ display: 'block', lineHeight: 1.2 }}>
+          {String(payload.title ?? '').trim() || '未命名仪表盘'}
+        </Typography.Text>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, padding: 10 }}>
+        <div
+          style={{
+            height: '100%',
+            minHeight: 0,
+            borderRadius: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 0 : 16,
+            border: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 'none' : `1px solid ${token.colorSplit}`,
+            background: appearance.theme === 'obsidian' ? token.colorBgLayout : appearance.theme === 'cyber' || appearance.theme === 'tech' ? 'transparent' : 'rgba(8, 12, 22, 0.70)',
+            overflow: 'auto',
+            padding: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 0 : 12,
+            backdropFilter: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? undefined : 'blur(14px)',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+              height: '100%',
+              gridTemplateRows: gridRows,
+              gap,
+              alignItems: 'stretch',
+              minHeight: 0,
+            }}
+          >
+            {positions.map((pos: any, idx: number) => {
+              const raw = slots[idx]
+              const kind = raw?.kind ?? null
+              const borderColor = kind ? token.colorSplit : token.colorSplit
+              return (
+                <div
+                  key={idx}
+                  className={`studioSlot${kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}`}
+                  style={{
+                    ['--studio-accent' as any]: accent,
+                    gridColumn: `${pos.colStart} / span ${pos.colSpan}`,
+                    gridRow: `${pos.rowStart} / span ${pos.rowSpan}`,
+                    height: '100%',
+                    borderRadius: 14,
+                    border: kind ? `1px solid ${borderColor}` : `1px dashed ${borderColor}`,
+                    background: kind ? surfaceBg : emptyBg,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    cursor: 'default',
+                  }}
+                >
+                  {renderSlotBody(raw)}
+                </div>
+              )
+            })}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   )
@@ -1348,15 +1490,6 @@ export default function DashboardChatWorkspacePage() {
         {debugStudio && studioPayload ? (
           <StudioDebugDashboardCanvas
             payload={studioPayload}
-            selectedKey={selectedDashboardKey}
-            onSelect={(key, context) => {
-              if (key === selectedDashboardKey) {
-                setSelectedDashboardKey('')
-                return
-              }
-              setSelectedDashboardKey(key)
-              runPresetAnalysis(context)
-            }}
           />
         ) : (
           <NeutralDashboardCanvas

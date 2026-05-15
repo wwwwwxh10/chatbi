@@ -953,12 +953,79 @@ html[data-mode='dark'] .studioPaletteCard:not(.studioPaletteCardDisabled):hover 
 }
 
 .studioPaletteSwatch {
-  width: 16px;
-  height: 16px;
-  border-radius: 6px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10);
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--ant-color-split);
+  box-shadow: none;
 }
 
 html[data-mode='light'] .studioPaletteSwatch {
-  box-shadow: 0 0 0 1px rgba(31, 36, 48, 0.10);
+  border: 1px solid var(--ant-color-split);
+}
+
+html[data-mode='dark'] .studioPaletteSwatch {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+.studioLibraryCard {
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.studioColHeader {
+  height: 50px;
+  padding-inline: 14px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.studioShellGrid::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50px;
+  height: 1px;
+  background: var(--ant-color-split);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.studioColBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.studioThemeRoot .ant-input,
+.studioThemeRoot .ant-input-affix-wrapper,
+.studioThemeRoot .ant-input-number,
+.studioThemeRoot .ant-select-selector {
+  background: var(--studio-field-bg) !important;
+  border-color: var(--studio-field-border) !important;
+}
+
+.studioThemeRoot .ant-input:hover,
+.studioThemeRoot .ant-input-affix-wrapper:hover,
+.studioThemeRoot .ant-input-number:hover,
+.studioThemeRoot .ant-select:hover .ant-select-selector {
+  border-color: var(--studio-accent) !important;
+}
+
+.studioThemeRoot .ant-input:focus,
+.studioThemeRoot .ant-input-affix-wrapper-focused,
+.studioThemeRoot .ant-input-number-focused,
+.studioThemeRoot .ant-select-focused .ant-select-selector {
+  border-color: var(--studio-accent) !important;
+  box-shadow: 0 0 0 2px rgba(43, 92, 246, 0.16) !important;
+}
+
+html[data-mode='dark'] .studioThemeRoot .ant-input:focus,
+html[data-mode='dark'] .studioThemeRoot .ant-input-affix-wrapper-focused,
+html[data-mode='dark'] .studioThemeRoot .ant-input-number-focused,
+html[data-mode='dark'] .studioThemeRoot .ant-select-focused .ant-select-selector {
+  box-shadow: 0 0 0 2px rgba(51, 112, 255, 0.18) !important;
 }

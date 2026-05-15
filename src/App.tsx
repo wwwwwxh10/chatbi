@@ -46,6 +46,7 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false)
   const isChatWorkspace = location.pathname.startsWith('/dashboard/chat-workspace')
   const isLogin = location.pathname === '/login'
+  const isStudio = location.pathname.startsWith('/dashboard/studio')
   const isDashboardModule = location.pathname.startsWith('/dashboard') && !location.pathname.startsWith('/dashboard/chat') && !isChatWorkspace
 
   const [systemOpen, setSystemOpen] = useState(false)
@@ -84,7 +85,7 @@ export default function App() {
   }, [pageMeta.title])
 
   useEffect(() => {
-    const enabled = !isChatWorkspace && !isLogin
+    const enabled = !isChatWorkspace && !isLogin && !isStudio
     document.body.classList.toggle('appModalInset', enabled)
     document.body.style.setProperty('--app-sidebar-width', enabled ? (collapsed ? '72px' : '260px') : '0px')
     document.body.style.setProperty('--app-header-height', enabled ? '56px' : '0px')
@@ -93,7 +94,7 @@ export default function App() {
       document.body.style.removeProperty('--app-sidebar-width')
       document.body.style.removeProperty('--app-header-height')
     }
-  }, [collapsed, isChatWorkspace, isLogin])
+  }, [collapsed, isChatWorkspace, isLogin, isStudio])
 
   useEffect(() => {
     if (!isAuthed && location.pathname !== '/login') {
@@ -176,7 +177,7 @@ export default function App() {
 
   return (
     <Layout className={isChatWorkspace ? 'appRoot chatWorkspace' : 'appRoot'}>
-      {isChatWorkspace || isLogin ? null : (
+      {isChatWorkspace || isLogin || isStudio ? null : (
         <Layout.Header className="appHeader" style={{ height: 56, paddingInline: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
             <button type="button" className="appHeaderBrand" onClick={() => navigate('/dashboard')} aria-label="ChatBI">
@@ -262,14 +263,14 @@ export default function App() {
       )}
 
       <Layout style={{ minHeight: 0 }}>
-        {isChatWorkspace || isLogin ? null : <Sidebar collapsed={collapsed} onCollapsedChange={setCollapsed} />}
+        {isChatWorkspace || isLogin || isStudio ? null : <Sidebar collapsed={collapsed} onCollapsedChange={setCollapsed} />}
         <Layout.Content
           className={isDashboardModule ? 'dashboardContentNoScrollbar' : undefined}
           style={{
-            padding: isChatWorkspace || isLogin ? 0 : 16,
+            padding: isChatWorkspace || isLogin || isStudio ? 0 : 16,
             minHeight: 0,
-            height: isChatWorkspace ? '100vh' : isLogin ? '100vh' : 'calc(100vh - 56px)',
-            overflow: isLogin ? 'hidden' : isChatWorkspace ? 'visible' : 'auto',
+            height: isChatWorkspace || isLogin || isStudio ? '100vh' : 'calc(100vh - 56px)',
+            overflow: isLogin ? 'hidden' : isChatWorkspace ? 'visible' : isStudio ? 'hidden' : 'auto',
           }}
         >
           <Routes>
