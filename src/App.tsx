@@ -9,6 +9,7 @@ import DashboardChatWorkspacePage from './pages/DashboardChatWorkspacePage'
 import ChatConversationPage from './pages/ChatConversationPage'
 import DashboardDetailPage from './pages/DashboardDetailPage'
 import DashboardPreviewPage from './pages/DashboardPreviewPage'
+import DashboardStudioPageV2 from './pages/DashboardStudioPageV2'
 import KnowledgeBasePage from './pages/KnowledgeBasePage'
 import DataSourcesPage from './pages/DataSourcesPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -277,6 +278,9 @@ export default function App() {
             <Route path="/dashboard/chat" element={<DashboardChatPage />} />
             <Route path="/dashboard/chat-workspace" element={<DashboardChatWorkspacePage />} />
             <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
+            <Route path="/dashboard/studio/new" element={<DashboardStudioPageV2 mode="new" />} />
+            <Route path="/dashboard/studio/:id/preview" element={<DashboardStudioPageV2 mode="preview" />} />
+            <Route path="/dashboard/studio/:id" element={<DashboardStudioPageV2 mode="edit" />} />
             <Route path="/dashboard/preview" element={<DashboardPreviewPage />} />
             <Route path="/dashboard/detail" element={<DashboardDetailPage />} />
             <Route path="/dashboard" element={<DashboardPage refreshKey={0} />} />

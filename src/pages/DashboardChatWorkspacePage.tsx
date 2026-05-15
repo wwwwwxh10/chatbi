@@ -35,8 +35,35 @@ import { EChart } from '../components/EChart'
 import { VirtualAvatar } from '../components/VirtualAvatar'
 import { DatasetPreviewModal } from '../components/DatasetPreviewModal'
 import { DataTableSearchIcon } from '../components/icons/DataTableIcon'
+import { FlipCounter } from '../components/MetricCards'
 import { buildMockResult } from './chat/chatUtils'
 import type { MessageResult } from './chat/chatUtils'
+import { CHART_PALETTES, KIND_NAME } from './studioModel'
+import type { StudioAppearance, StudioLayout, WidgetKind } from './studioModel'
+import {
+  buildAreaOption,
+  buildBarOption,
+  buildBubbleOption,
+  buildCurveOption,
+  buildDonutOption,
+  buildFunnelOption,
+  buildGaugeOption,
+  buildGraphOption,
+  buildGradientBarOption,
+  buildGroupedBarOption,
+  buildHBarOption,
+  buildHeatmapOption,
+  buildLineOption,
+  buildPieOption,
+  buildRadarOption,
+  buildRoseOption,
+  buildSankeyOption,
+  buildScatterOption,
+  buildStackedBarOption,
+  buildTreemapOption,
+  buildWaterOption,
+  kpiValue,
+} from './studioCharts'
 
 type ChartTypeKey =
   | 'bar'
@@ -394,6 +421,282 @@ function NeutralDashboardCanvas({ selectedKey, onSelect }: { selectedKey: string
   )
 }
 
+type StudioDebugPayload = {
+  title?: string
+  description?: string
+  tables?: string[]
+  layout?: StudioLayout
+  appearance?: StudioAppearance
+  slots?: Array<{ kind: WidgetKind | null; configText: string }>
+}
+
+function StudioDebugDashboardCanvas({
+  payload,
+  selectedKey,
+  onSelect,
+}: {
+  payload: StudioDebugPayload
+  selectedKey: string
+  onSelect: (key: string, context: string) => void
+}) {
+  const { token } = theme.useToken()
+
+  const appearance = payload.appearance ?? { language: 'zh-CN', timeZone: 'Asia/Shanghai', theme: 'obsidian', chartPalette: 'cyber' }
+  const layout = payload.layout ?? { mode: 'template', template: 'main-sub' }
+  const palette = CHART_PALETTES[appearance.chartPalette] ?? CHART_PALETTES.cyber
+  const themeColors = palette.colors ?? []
+
+  const templatePositions = (tpl: Exclude<NonNullable<StudioLayout>['mode'], 'free'> extends never ? never : any) => {
+    const t = String(tpl ?? '')
+    if (t === 'main-sub') {
+      return [
+        { colStart: 1, colSpan: 3, rowStart: 1, rowSpan: 1 },
+        { colStart: 4, colSpan: 3, rowStart: 1, rowSpan: 1 },
+        { colStart: 7, colSpan: 3, rowStart: 1, rowSpan: 1 },
+        { colStart: 10, colSpan: 3, rowStart: 1, rowSpan: 1 },
+        { colStart: 1, colSpan: 8, rowStart: 2, rowSpan: 1 },
+        { colStart: 9, colSpan: 4, rowStart: 2, rowSpan: 1 },
+        { colStart: 1, colSpan: 6, rowStart: 3, rowSpan: 1 },
+        { colStart: 7, colSpan: 6, rowStart: 3, rowSpan: 1 },
+      ]
+    }
+    if (t === 'matrix-10') {
+      return [
+        { colStart: 1, colSpan: 3, rowStart: 1, rowSpan: 1 },
+        { colStart: 4, colSpan: 3, rowStart: 1, rowSpan: 1 },
+        { colStart: 7, colSpan: 3, rowStart: 1, rowSpan: 1 },
+        { colStart: 10, colSpan: 3, rowStart: 1, rowSpan: 1 },
+        { colStart: 1, colSpan: 3, rowStart: 2, rowSpan: 1 },
+        { colStart: 4, colSpan: 6, rowStart: 2, rowSpan: 1 },
+        { colStart: 10, colSpan: 3, rowStart: 2, rowSpan: 1 },
+        { colStart: 1, colSpan: 3, rowStart: 3, rowSpan: 1 },
+        { colStart: 4, colSpan: 6, rowStart: 3, rowSpan: 1 },
+        { colStart: 10, colSpan: 3, rowStart: 3, rowSpan: 1 },
+      ]
+    }
+    if (t === 'three-col') {
+      return [
+        { colStart: 1, colSpan: 4, rowStart: 1, rowSpan: 1 },
+        { colStart: 5, colSpan: 4, rowStart: 1, rowSpan: 1 },
+        { colStart: 9, colSpan: 4, rowStart: 1, rowSpan: 1 },
+        { colStart: 1, colSpan: 4, rowStart: 2, rowSpan: 1 },
+        { colStart: 5, colSpan: 4, rowStart: 2, rowSpan: 1 },
+        { colStart: 9, colSpan: 4, rowStart: 2, rowSpan: 1 },
+      ]
+    }
+    if (t === 'analysis-7') {
+      return [
+        { colStart: 1, colSpan: 4, rowStart: 1, rowSpan: 2 },
+        { colStart: 5, colSpan: 4, rowStart: 1, rowSpan: 1 },
+        { colStart: 5, colSpan: 4, rowStart: 2, rowSpan: 1 },
+        { colStart: 9, colSpan: 4, rowStart: 1, rowSpan: 2 },
+        { colStart: 1, colSpan: 4, rowStart: 3, rowSpan: 1 },
+        { colStart: 5, colSpan: 4, rowStart: 3, rowSpan: 1 },
+        { colStart: 9, colSpan: 4, rowStart: 3, rowSpan: 1 },
+      ]
+    }
+    return [
+      { colStart: 1, colSpan: 3, rowStart: 1, rowSpan: 1 },
+      { colStart: 4, colSpan: 6, rowStart: 1, rowSpan: 2 },
+      { colStart: 10, colSpan: 3, rowStart: 1, rowSpan: 1 },
+      { colStart: 1, colSpan: 3, rowStart: 2, rowSpan: 1 },
+      { colStart: 10, colSpan: 3, rowStart: 2, rowSpan: 1 },
+      { colStart: 1, colSpan: 3, rowStart: 3, rowSpan: 1 },
+      { colStart: 4, colSpan: 3, rowStart: 3, rowSpan: 1 },
+      { colStart: 7, colSpan: 3, rowStart: 3, rowSpan: 1 },
+      { colStart: 10, colSpan: 3, rowStart: 3, rowSpan: 1 },
+    ]
+  }
+
+  const slotOption = (kind: WidgetKind, name: string): EChartsOption | null => {
+    if (kind === 'bar') return buildBarOption(name, themeColors)
+    if (kind === 'bar-h') return buildHBarOption(name, themeColors)
+    if (kind === 'bar-stacked') return buildStackedBarOption(name, themeColors)
+    if (kind === 'bar-grouped') return buildGroupedBarOption(name, themeColors)
+    if (kind === 'bar-gradient') return buildGradientBarOption(name, themeColors)
+    if (kind === 'line') return buildLineOption(name, themeColors)
+    if (kind === 'line-area') return buildAreaOption(name, themeColors)
+    if (kind === 'line-curve') return buildCurveOption(name, themeColors)
+    if (kind === 'scatter') return buildScatterOption(name, themeColors)
+    if (kind === 'bubble') return buildBubbleOption(name, themeColors)
+    if (kind === 'pie') return buildPieOption(name, themeColors)
+    if (kind === 'donut') return buildDonutOption(name, themeColors)
+    if (kind === 'rose') return buildRoseOption(name, themeColors)
+    if (kind === 'radar') return buildRadarOption(name, themeColors)
+    if (kind === 'heatmap') return buildHeatmapOption(name, themeColors)
+    if (kind === 'funnel') return buildFunnelOption(name, themeColors)
+    if (kind === 'treemap') return buildTreemapOption(name, themeColors)
+    if (kind === 'sankey') return buildSankeyOption(name, themeColors)
+    if (kind === 'graph') return buildGraphOption(name, themeColors)
+    if (kind === 'gauge') return buildGaugeOption(name, themeColors)
+    if (kind === 'wave') return buildWaterOption(name, themeColors)
+    return null
+  }
+
+  const renderSlot = (raw: { kind: WidgetKind | null; configText: string } | undefined, idx: number) => {
+    const kind = raw?.kind ?? null
+    const parsed = (() => {
+      try {
+        return raw?.configText ? JSON.parse(raw.configText) : null
+      } catch {
+        return null
+      }
+    })()
+    const title = String(parsed?.title ?? (kind ? KIND_NAME[kind] : ''))
+    const key = `slot-${idx}`
+
+    if (!kind) {
+      return (
+        <div className="dashboardChartCard" style={{ height: '100%', borderRadius: 14, background: token.colorBgContainer, border: `1px dashed ${token.colorSplit}` }} />
+      )
+    }
+
+    if (kind === 'kpi') {
+      const format = String(parsed?.format ?? 'currency')
+      return (
+        <div
+          className="dashboardChartCard"
+          style={{
+            height: '100%',
+            borderRadius: 14,
+            background: token.colorBgContainer,
+            border: `1px solid ${selectedKey === key ? token.colorPrimary : token.colorSplit}`,
+            padding: 14,
+            cursor: 'pointer',
+          }}
+          onClick={() => onSelect(key, title)}
+        >
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {title}
+          </Typography.Text>
+          <div style={{ height: 10 }} />
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: 0.2 }}>{kpiValue(format)}</div>
+          <div style={{ height: 10 }} />
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {appearance.timeZone}
+          </Typography.Text>
+        </div>
+      )
+    }
+
+    if (kind === 'flip') {
+      const baseRaw = Number(parsed?.value ?? 6_894)
+      const base = Number.isFinite(baseRaw) ? baseRaw : 0
+      const value = Math.max(0, Math.round(base))
+      const unit = String(parsed?.unit ?? '次')
+      return (
+        <div
+          className="dashboardChartCard"
+          style={{
+            height: '100%',
+            borderRadius: 14,
+            background: token.colorBgContainer,
+            border: `1px solid ${selectedKey === key ? token.colorPrimary : token.colorSplit}`,
+            padding: 14,
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+          }}
+          onClick={() => onSelect(key, title)}
+        >
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {title}
+          </Typography.Text>
+          <div style={{ display: 'grid', alignContent: 'center', minHeight: 0 }}>
+            <FlipCounter title={title} unit={unit} target={value} />
+          </div>
+        </div>
+      )
+    }
+
+    if (kind === 'progress') {
+      const pct = Math.max(0, Math.min(100, Number(parsed?.percent ?? 78) || 0))
+      const v = String(parsed?.value ?? '15.6k')
+      const unit = String(parsed?.unit ?? '个')
+      return (
+        <div
+          className="dashboardChartCard"
+          style={{
+            height: '100%',
+            borderRadius: 14,
+            background: token.colorBgContainer,
+            border: `1px solid ${selectedKey === key ? token.colorPrimary : token.colorSplit}`,
+            padding: 14,
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: 10,
+          }}
+          onClick={() => onSelect(key, title)}
+        >
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {title}
+          </Typography.Text>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>{v}</div>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {unit}
+            </Typography.Text>
+          </div>
+          <div style={{ height: 10, borderRadius: 999, background: token.colorFillQuaternary, overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: token.colorPrimary }} />
+          </div>
+        </div>
+      )
+    }
+
+    const opt = slotOption(kind, title)
+    return (
+      <div
+        className="dashboardChartCard"
+        style={{
+          height: '100%',
+          borderRadius: 14,
+          background: token.colorBgContainer,
+          border: `1px solid ${selectedKey === key ? token.colorPrimary : token.colorSplit}`,
+          overflow: 'hidden',
+          cursor: 'pointer',
+        }}
+        onClick={() => onSelect(key, title)}
+      >
+        {opt ? <EChart option={opt as any} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="" />}
+      </div>
+    )
+  }
+
+  const slots = Array.isArray(payload.slots) ? payload.slots : []
+  const positions =
+    layout.mode === 'free'
+      ? (layout.cards ?? []).map((c) => ({ ...c }))
+      : templatePositions((layout as any).template)
+
+  const freeRows = layout.mode === 'free' ? Math.max(2, Math.min(24, Math.floor((layout as any).rows || 8))) : 0
+  const gridRows =
+    layout.mode === 'template'
+      ? (layout as any).template === 'main-sub' || (layout as any).template === 'matrix-10'
+        ? '140px minmax(0, 1fr) minmax(0, 1fr)'
+        : (layout as any).template === 'three-col'
+          ? 'minmax(0, 1fr) minmax(0, 1fr)'
+          : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)'
+      : `repeat(${freeRows}, minmax(0, 1fr))`
+
+  const gap = layout.mode === 'free' ? Math.max(8, Math.min(32, Number((layout as any).gap ?? 16))) : 12
+
+  return (
+    <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gridTemplateRows: gridRows, gap }}>
+        {positions.map((pos: any, idx: number) => (
+          <div key={idx} style={{ gridColumn: `${pos.colStart} / span ${pos.colSpan}`, gridRow: `${pos.rowStart} / span ${pos.rowSpan}`, height: '100%' }}>
+            {renderSlot(slots[idx], idx)}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 type ChatRole = 'user' | 'assistant'
 
 type ChatMessage = {
@@ -417,6 +720,22 @@ function nowId() {
 
 export default function DashboardChatWorkspacePage() {
   const { token } = theme.useToken()
+
+  const debugStudio = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    return new URLSearchParams(window.location.search).get('debug') === 'studio'
+  }, [])
+
+  const studioPayload = useMemo(() => {
+    if (!debugStudio) return null
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = localStorage.getItem('studio:debug-dashboard-v1')
+      return raw ? (JSON.parse(raw) as StudioDebugPayload) : null
+    } catch {
+      return null
+    }
+  }, [debugStudio])
 
   const sessionRowClass = 'sessionRow'
   const sessionActionsClass = 'sessionActions'
@@ -1026,17 +1345,32 @@ export default function DashboardChatWorkspacePage() {
           position: 'relative',
         }}
       >
-        <NeutralDashboardCanvas
-          selectedKey={selectedDashboardKey}
-          onSelect={(key, context) => {
-            if (key === selectedDashboardKey) {
-              setSelectedDashboardKey('')
-              return
-            }
-            setSelectedDashboardKey(key)
-            runPresetAnalysis(context)
-          }}
-        />
+        {debugStudio && studioPayload ? (
+          <StudioDebugDashboardCanvas
+            payload={studioPayload}
+            selectedKey={selectedDashboardKey}
+            onSelect={(key, context) => {
+              if (key === selectedDashboardKey) {
+                setSelectedDashboardKey('')
+                return
+              }
+              setSelectedDashboardKey(key)
+              runPresetAnalysis(context)
+            }}
+          />
+        ) : (
+          <NeutralDashboardCanvas
+            selectedKey={selectedDashboardKey}
+            onSelect={(key, context) => {
+              if (key === selectedDashboardKey) {
+                setSelectedDashboardKey('')
+                return
+              }
+              setSelectedDashboardKey(key)
+              runPresetAnalysis(context)
+            }}
+          />
+        )}
       </div>
 
       <div

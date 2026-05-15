@@ -23,9 +23,12 @@ import {
 } from 'antd'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
  
 import { PageIntro } from '../components/PageIntro'
+import { confirmDelete } from '../components/confirmDelete'
 import { useAppStore } from '../store/appStore'
+import { touchUpdatedAt, useDashboardsStore } from '../store/dashboardsStore'
 import {
   CloudDownloadOutlined,
   CloudUploadOutlined,
@@ -80,7 +83,7 @@ function nowText() {
   return new Date().toISOString().slice(0, 16).replace('T', ' ')
 }
 
-export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
+export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
   const { t } = useTranslation()
   const { token } = theme.useToken()
   const locale = useAppStore((s) => s.locale)
@@ -3077,6 +3080,352 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
               : `Delete dashboard "${deleteDashboardTarget.title}". This action cannot be undone.`
             : ''}
         </div>
+      </Modal>
+    </Space>
+  )
+}
+
+export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
+  const { t } = useTranslation()
+  const { token } = theme.useToken()
+  const navigate = useNavigate()
+  const locale = useAppStore((s) => s.locale)
+  const themeMode = useAppStore((s) => s.themeMode)
+
+  const dashboards = useDashboardsStore((s) => s.items)
+  const updateDashboard = useDashboardsStore((s) => s.updateItem)
+  const removeDashboard = useDashboardsStore((s) => s.removeItem)
+
+  const [casesOpen, setCasesOpen] = useState(false)
+
+  const [tablePreviewOpen, setTablePreviewOpen] = useState(false)
+  const [tablePreviewTables, setTablePreviewTables] = useState<string[]>([])
+  const [tablePreviewActive, setTablePreviewActive] = useState('')
+  const [tablePreviewDefaultTab, setTablePreviewDefaultTab] = useState<'preview' | 'fields'>('preview')
+
+  const chartLibraryUrl = '/chart-library.html'
+
+  const primaryButtonStyle = useMemo(
+    () => ({
+      borderRadius: 12,
+      fontWeight: 700,
+    }),
+    [],
+  )
+
+  const templates: DashboardTemplate[] = useMemo(
+    () => [
+      { id: 'ops-core', title: '核心运营指标', desc: '适用于日常运营看板与异常定位，覆盖关键 KPI、趋势与分布。', cover: tplCover1 },
+      { id: 'channel-growth', title: '渠道增长分析', desc: '拆解渠道结构变化，观察投放、自然流量与活动带来的增量。', cover: tplCover2 },
+      { id: 'retention', title: '留存与转化', desc: '关注漏斗与留存路径，定位转化瓶颈并输出优化建议。', cover: tplCover3 },
+      { id: 'product-insight', title: '产品洞察', desc: '按功能与人群切片，观察功能使用、偏好与关键行为变化。', cover: tplCover4 },
+    ],
+    [refreshKey],
+  )
+
+  const openChatWorkspace = ({ template, dashboardId }: { template?: string; dashboardId?: string }) => {
+    const qs = new URLSearchParams()
+    if (template) qs.set('template', template)
+    if (dashboardId) qs.set('dashboardId', dashboardId)
+    window.open(`/dashboard/chat-workspace?${qs.toString()}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const openTablePreview = (tables: string[], active: string) => {
+    setTablePreviewTables(tables)
+    setTablePreviewActive(active)
+    setTablePreviewDefaultTab('preview')
+    setTablePreviewOpen(true)
+  }
+
+  const openTableFields = (tables: string[], active: string) => {
+    setTablePreviewTables(tables)
+    setTablePreviewActive(active)
+    setTablePreviewDefaultTab('fields')
+    setTablePreviewOpen(true)
+  }
+
+  const customDashboards = dashboards
+
+  return (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <PageIntro title={t('intro.dashboard.title')} description={t('intro.dashboard.desc')} />
+
+      <Card className="dashboardInspiration" styles={{ body: { padding: 14 } }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <Typography.Title level={5} style={{ margin: 0 }}>
+            {t('dashboard.inspirationTitle')}
+          </Typography.Title>
+          <Button type="link" onClick={() => setCasesOpen(true)} style={{ paddingInline: 0 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {t('dashboard.viewAllCases')}
+              <RightOutlined style={{ fontSize: 12, opacity: 0.85 }} />
+            </span>
+          </Button>
+        </div>
+
+        <div className="dashboardInspirationGrid" style={{ marginTop: 12 }}>
+          {templates.map((tpl) => (
+            <Card
+              key={tpl.id}
+              hoverable
+              className="dashboardCaseCard"
+              onClick={() => openChatWorkspace({ template: tpl.id })}
+              styles={{ body: { padding: 12 } }}
+              cover={
+                <div className="dashboardCaseCover">
+                  <div className="dashboardTemplateBadge">
+                    <TemplateBadge size={28} />
+                  </div>
+                  <img src={tpl.cover} alt={tpl.title} loading="lazy" />
+                </div>
+              }
+            >
+              <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                <Typography.Text strong>{tpl.title}</Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {tpl.desc}
+                </Typography.Text>
+              </Space>
+            </Card>
+          ))}
+        </div>
+      </Card>
+
+      <Card styles={{ body: { padding: 14 } }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div>
+            <Typography.Title level={5} style={{ margin: 0 }}>
+              {t('dashboard.customSection')}
+            </Typography.Title>
+          </div>
+          <Space>
+            <Button
+              icon={
+                <AppGridIcon
+                  size={18}
+                  primary={token.colorPrimary}
+                  secondary={themeMode === 'dark' ? 'rgba(255,255,255,0.70)' : 'rgba(15,23,42,0.55)'}
+                />
+              }
+              style={primaryButtonStyle}
+              href={chartLibraryUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('dashboard.componentLibrary')}
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/dashboard/studio/new')}>
+              {t('dashboard.create')}
+            </Button>
+          </Space>
+        </div>
+
+        <Divider style={{ margin: '12px 0' }} />
+
+        {customDashboards.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('dashboard.customEmpty')} />
+        ) : (
+          <Table
+            size="middle"
+            tableLayout="fixed"
+            pagination={{ pageSize: 5 }}
+            dataSource={customDashboards.map((d) => ({ ...d, key: d.id }))}
+            columns={[
+              {
+                title: t('dashboard.table.name'),
+                dataIndex: 'title',
+                key: 'title',
+                width: 220,
+                ellipsis: true,
+                render: (v: string) => (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <DashboardIcon size={16} primaryColor={token.colorPrimary} secondaryColor={token.colorTextSecondary} />
+                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(v ?? '')}</span>
+                  </span>
+                ),
+              },
+              {
+                title: t('dashboard.table.publishStatus'),
+                dataIndex: 'published',
+                key: 'published',
+                width: 96,
+                render: (v: boolean) =>
+                  v ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 99, background: token.colorPrimary }} />
+                      <span style={{ color: token.colorText }}>{locale === 'zh-CN' ? '已发布' : 'Published'}</span>
+                    </span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 99, background: token.colorTextTertiary }} />
+                      <span style={{ color: token.colorTextSecondary }}>{locale === 'zh-CN' ? '已下线' : 'Offline'}</span>
+                    </span>
+                  ),
+              },
+              {
+                title: t('dashboard.table.tables'),
+                dataIndex: 'tables',
+                key: 'tables',
+                render: (v: string[]) => {
+                  const arr = Array.isArray(v) ? v.map((x) => String(x)) : []
+                  const tooLong = arr.some((x) => x.length > 12)
+                  const shown = tooLong ? [] : arr.slice(0, 3)
+                  const rest = arr.length - shown.length
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', overflow: 'hidden', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+                      {shown.map((x) => (
+                        <Tag
+                          key={x}
+                          style={{ maxWidth: 112, overflow: 'hidden', marginInlineEnd: 0, cursor: 'pointer' }}
+                          onClick={() => openTablePreview(arr, x)}
+                        >
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 96 }}>
+                            <DataTableIcon size={14} color={token.colorTextSecondary} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x}</span>
+                          </span>
+                        </Tag>
+                      ))}
+                      {rest > 0 ? (
+                        <Tooltip
+                          title={
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {arr.map((x) => (
+                                <div
+                                  key={x}
+                                  onClick={() => openTablePreview(arr, x)}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                                >
+                                  <DataTableIcon size={14} color={token.colorTextSecondary} />
+                                  <span>{x}</span>
+                                </div>
+                              ))}
+                            </div>
+                          }
+                        >
+                          <Tag style={{ marginInlineEnd: 0, cursor: 'pointer' }} onClick={() => openTableFields(arr, arr[0] ?? '')}>
+                            +{rest}
+                          </Tag>
+                        </Tooltip>
+                      ) : null}
+                      {tooLong ? (
+                        <Tooltip title={arr.join('、')}>
+                          <Tag style={{ marginInlineEnd: 0, cursor: 'pointer' }} onClick={() => openTablePreview(arr, arr[0] ?? '')}>
+                            {locale === 'zh-CN' ? `${arr.length} 张表` : `${arr.length} tables`}
+                          </Tag>
+                        </Tooltip>
+                      ) : null}
+                    </div>
+                  )
+                },
+              },
+              { title: t('dashboard.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 140 },
+              {
+                title: t('dashboard.table.actions'),
+                key: 'actions',
+                width: 84,
+                render: (_: unknown, r: CustomDashboard) => (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Dropdown
+                      trigger={['click']}
+                      menu={{
+                        items: [
+                          { key: 'preview', icon: <EyeOutlined />, label: locale === 'zh-CN' ? '预览' : 'Preview' },
+                          { key: 'edit', icon: <EditOutlined />, label: locale === 'zh-CN' ? '编辑' : 'Edit' },
+                          { type: 'divider' as const },
+                          { key: 'chat', icon: <CommentOutlined />, label: locale === 'zh-CN' ? '开始对话' : 'Chat' },
+                          { key: 'publish', icon: r.published ? <CloudDownloadOutlined /> : <CloudUploadOutlined />, label: r.published ? (locale === 'zh-CN' ? '下线' : 'Offline') : (locale === 'zh-CN' ? '发布' : 'Publish') },
+                          { key: 'delete', icon: <DeleteOutlined />, danger: true, label: locale === 'zh-CN' ? '删除' : 'Delete' },
+                        ],
+                        onClick: async ({ key }) => {
+                          if (key === 'preview') {
+                            navigate(`/dashboard/studio/${encodeURIComponent(String(r.id))}/preview`)
+                            return
+                          }
+                          if (key === 'edit') {
+                            navigate(`/dashboard/studio/${encodeURIComponent(String(r.id))}`)
+                            return
+                          }
+                          if (key === 'chat') {
+                            openChatWorkspace({ dashboardId: String(r.id) })
+                            return
+                          }
+                          if (key === 'publish') {
+                            updateDashboard(String(r.id), { published: !r.published, updatedAt: touchUpdatedAt() })
+                            void message.success(locale === 'zh-CN' ? (r.published ? '已下线' : '已发布') : r.published ? 'Offline' : 'Published')
+                            return
+                          }
+                          if (key === 'delete') {
+                            if (r.published) {
+                              void message.error(locale === 'zh-CN' ? '请先下线再删除' : 'Please offline first')
+                              return
+                            }
+                            confirmDelete({
+                              title: locale === 'zh-CN' ? '删除仪表盘' : 'Delete dashboard',
+                              description:
+                                locale === 'zh-CN'
+                                  ? `将删除仪表盘“${String(r.title)}”。删除后不可恢复。`
+                                  : `Delete dashboard "${String(r.title)}". This action cannot be undone.`,
+                              onOk: async () => {
+                                removeDashboard(String(r.id))
+                              },
+                            })
+                          }
+                        },
+                      }}
+                    >
+                      <Button type="text" className="iconOnly" size="small" icon={<MoreOutlined />} />
+                    </Dropdown>
+                  </div>
+                ),
+              },
+            ]}
+          />
+        )}
+      </Card>
+
+      <DatasetPreviewModal
+        open={tablePreviewOpen}
+        onClose={() => setTablePreviewOpen(false)}
+        tables={tablePreviewTables}
+        initialActive={tablePreviewActive}
+        defaultTab={tablePreviewDefaultTab}
+      />
+
+      <Modal
+        open={casesOpen}
+        onCancel={() => setCasesOpen(false)}
+        title={t('dashboard.viewAllCases')}
+        width={960}
+        footer={null}
+        destroyOnHidden
+        centered
+      >
+        <Row gutter={[12, 12]}>
+          {templates.map((tpl) => (
+            <Col key={tpl.id} xs={24} md={12} xl={8}>
+              <Card
+                hoverable
+                className="dashboardCaseCard"
+                onClick={() => openChatWorkspace({ template: tpl.id })}
+                cover={
+                  <div className="dashboardCaseCover">
+                    <div className="dashboardTemplateBadge">
+                      <TemplateBadge size={28} />
+                    </div>
+                    <img src={tpl.cover} alt={tpl.title} loading="lazy" />
+                  </div>
+                }
+              >
+                <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                  <Typography.Text strong>{tpl.title}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {tpl.desc}
+                  </Typography.Text>
+                </Space>
+              </Card>
+            </Col>
+          ))}
+        </Row>
       </Modal>
     </Space>
   )

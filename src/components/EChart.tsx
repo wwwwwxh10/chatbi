@@ -1,202 +1,187 @@
-import { useEffect, useMemo, useRef } from 'react'
+import type { CSSProperties } from 'react'
+import { useEffect, useRef } from 'react'
 import * as echarts from 'echarts'
-import type { ECElementEvent, EChartsOption } from 'echarts'
+import type { EChartsOption } from 'echarts'
 import 'echarts-liquidfill'
 
 export type ChartHover = {
   seriesName?: string
   name?: string
   value?: unknown
+  dataIndex?: number
+  seriesIndex?: number
 }
 
 export function EChart({
   option,
-  className,
   onHover,
   onLeave,
   onClick,
+  style,
+  className,
 }: {
   option: EChartsOption
-  className?: string
   onHover?: (v: ChartHover) => void
   onLeave?: () => void
   onClick?: (v: ChartHover) => void
+  style?: CSSProperties
+  className?: string
 }) {
   const elRef = useRef<HTMLDivElement | null>(null)
-  const instanceRef = useRef<echarts.EChartsType | null>(null)
+  const instRef = useRef<echarts.ECharts | null>(null)
   const baseSizeRef = useRef<number>(13)
+  const scaleRef = useRef<number>(1)
+  const selectedRef = useRef<{ seriesIndex: number; dataIndex: number } | null>(null)
 
-  const opt = useMemo(() => option, [option])
+  useEffect(() => {
+    const el = elRef.current
+    if (!el) return
+    const inst = echarts.init(el)
+    instRef.current = inst
 
-  const injectTypography = (raw: EChartsOption, baseSize: number) => {
-    const mergeAxis = (axis: any) => {
-      if (!axis) return axis
-      const next = { ...axis }
-      next.axisLabel = { ...(axis.axisLabel ?? {}), fontSize: baseSize }
-      next.nameTextStyle = { ...(axis.nameTextStyle ?? {}), fontSize: baseSize }
-      return next
+    const syncBase = () => {
+      const w = Math.max(1, el.clientWidth)
+      baseSizeRef.current = Math.max(11, Math.min(14, Math.round(w / 40)))
+      const h = Math.max(1, el.clientHeight)
+      scaleRef.current = Math.min(1, Math.max(0.5, Math.min(w / 420, h / 260)))
     }
 
-    const next: any = { ...raw }
-    next.textStyle = { ...(raw as any).textStyle, fontSize: baseSize }
-    if ((raw as any).title) {
-      const t = (raw as any).title
-      next.title = Array.isArray(t)
-        ? t.map((x) => ({ ...x, textStyle: { ...(x.textStyle ?? {}), fontSize: baseSize } }))
-        : { ...t, textStyle: { ...(t.textStyle ?? {}), fontSize: baseSize } }
+    syncBase()
+    inst.setOption(injectTypography(option, baseSizeRef.current, scaleRef.current), { notMerge: true, lazyUpdate: true })
+
+    const handleOver = (p: any) => {
+      onHover?.({ seriesName: p?.seriesName, name: p?.name, value: p?.value, dataIndex: p?.dataIndex })
     }
-    if ((raw as any).legend) {
-      const lg = (raw as any).legend
-      next.legend = Array.isArray(lg)
-        ? lg.map((x) => ({ ...x, textStyle: { ...(x.textStyle ?? {}), fontSize: baseSize } }))
-        : { ...lg, textStyle: { ...(lg.textStyle ?? {}), fontSize: baseSize } }
+    const handleOut = () => {
+      onLeave?.()
     }
-    if ((raw as any).tooltip) {
-      const t0: any = (raw as any).tooltip
-      const nextTooltip: any = { ...t0, textStyle: { ...(t0?.textStyle ?? {}), fontSize: baseSize } }
-      if (nextTooltip.backgroundColor == null) nextTooltip.backgroundColor = 'rgba(16, 18, 22, 0.92)'
-      if (nextTooltip.borderWidth == null) nextTooltip.borderWidth = 0
-      if (nextTooltip.borderColor == null) nextTooltip.borderColor = 'transparent'
-      if (!nextTooltip.textStyle?.color) nextTooltip.textStyle = { ...(nextTooltip.textStyle ?? {}), color: 'rgba(233, 236, 242, 0.92)' }
-      nextTooltip.appendToBody = true
-      nextTooltip.confine = false
-      nextTooltip.extraCssText = `${String(nextTooltip.extraCssText ?? '')}; z-index: 99999;`
-      if (!nextTooltip.position) {
-        nextTooltip.position = (point: any, _params: any, _dom: any, _rect: any, size: any) => {
-          const p = Array.isArray(point) ? point : [0, 0]
-          const viewSize = size?.viewSize ?? [window.innerWidth, window.innerHeight]
-          const contentSize = size?.contentSize ?? [0, 0]
-          const pad = 12
-          let x = p[0] + pad
-          let y = p[1] + pad
-          if (x + contentSize[0] > viewSize[0]) x = p[0] - contentSize[0] - pad
-          if (y + contentSize[1] > viewSize[1]) y = p[1] - contentSize[1] - pad
-          x = Math.max(0, Math.min(x, viewSize[0] - contentSize[0]))
-          y = Math.max(0, Math.min(y, viewSize[1] - contentSize[1]))
-          return [x, y]
+    const handleClick = (p: any) => {
+      const seriesIndex = Number(p?.seriesIndex)
+      const dataIndex = Number(p?.dataIndex)
+      if (Number.isFinite(seriesIndex) && Number.isFinite(dataIndex)) {
+        const prev = selectedRef.current
+        if (prev) {
+          inst.dispatchAction({ type: 'downplay', seriesIndex: prev.seriesIndex, dataIndex: prev.dataIndex })
         }
+        inst.dispatchAction({ type: 'highlight', seriesIndex, dataIndex })
+        inst.dispatchAction({ type: 'showTip', seriesIndex, dataIndex })
+        selectedRef.current = { seriesIndex, dataIndex }
       }
-      next.tooltip = nextTooltip
+      onClick?.({ seriesName: p?.seriesName, name: p?.name, value: p?.value, dataIndex: p?.dataIndex, seriesIndex: p?.seriesIndex })
     }
 
-    const xAxis = (raw as any).xAxis
-    const yAxis = (raw as any).yAxis
-    next.xAxis = Array.isArray(xAxis) ? xAxis.map(mergeAxis) : mergeAxis(xAxis)
-    next.yAxis = Array.isArray(yAxis) ? yAxis.map(mergeAxis) : mergeAxis(yAxis)
+    inst.on('mouseover', handleOver)
+    inst.on('globalout', handleOut)
+    inst.on('mouseout', handleOut)
+    inst.on('click', handleClick)
 
-    if (Array.isArray((raw as any).series)) {
-      next.series = (raw as any).series.map((s: any) => ({
-        ...s,
-        label: s?.label ? { ...s.label, fontSize: baseSize } : s?.label,
-      }))
+    const ro = new ResizeObserver(() => {
+      syncBase()
+      inst.resize()
+      inst.setOption(injectTypography(option, baseSizeRef.current, scaleRef.current), { notMerge: true, lazyUpdate: true })
+    })
+    ro.observe(el)
+
+    return () => {
+      try {
+        ro.disconnect()
+      } catch {
+        // ignore
+      }
+      try {
+        inst.off('mouseover', handleOver)
+        inst.off('globalout', handleOut)
+        inst.off('mouseout', handleOut)
+        inst.off('click', handleClick)
+      } catch {
+        // ignore
+      }
+      inst.dispose()
+      instRef.current = null
     }
+  }, [])
 
+  useEffect(() => {
+    const inst = instRef.current
+    if (!inst) return
+    inst.setOption(injectTypography(option, baseSizeRef.current, scaleRef.current), { notMerge: true, lazyUpdate: true })
+  }, [option])
+
+  return <div ref={elRef} className={className ? `chartCanvas ${className}` : 'chartCanvas'} style={style} />
+}
+
+function injectTypography(raw: EChartsOption, baseSize: number, scale: number) {
+  const mergeAxis = (axis: any) => {
+    if (!axis) return axis
+    const next = { ...axis }
+    next.axisLabel = { ...(axis.axisLabel ?? {}) }
+    if (next.axisLabel.fontSize == null) next.axisLabel.fontSize = baseSize
+    next.nameTextStyle = { ...(axis.nameTextStyle ?? {}) }
+    if (next.nameTextStyle.fontSize == null) next.nameTextStyle.fontSize = baseSize
+    return next
+  }
+
+  const next: any = { ...raw }
+  next.textStyle = { ...(raw as any).textStyle }
+  if (next.textStyle.fontSize == null) next.textStyle.fontSize = baseSize
+
+  if ((raw as any).legend) {
+    const lg = (raw as any).legend
+    next.legend = Array.isArray(lg)
+      ? lg.map((x) => {
+          const textStyle = { ...(x.textStyle ?? {}) }
+          if (textStyle.fontSize == null) textStyle.fontSize = baseSize
+          return { ...x, textStyle }
+        })
+      : (() => {
+          const textStyle = { ...((lg as any).textStyle ?? {}) }
+          if (textStyle.fontSize == null) textStyle.fontSize = baseSize
+          return { ...(lg as any), textStyle }
+        })()
+  }
+
+  if ((raw as any).tooltip) {
+    const t0: any = (raw as any).tooltip
+    const tt: any = { ...t0, textStyle: { ...(t0?.textStyle ?? {}) } }
+    if (tt.textStyle.fontSize == null) tt.textStyle.fontSize = baseSize
+    if (tt.backgroundColor == null) tt.backgroundColor = 'rgba(16, 18, 22, 0.92)'
+    if (tt.borderWidth == null) tt.borderWidth = 0
+    if (tt.borderColor == null) tt.borderColor = 'transparent'
+    if (!tt.textStyle?.color) tt.textStyle = { ...(tt.textStyle ?? {}), color: 'rgba(233, 236, 242, 0.92)' }
+    tt.appendToBody = false
+    tt.confine = true
+    tt.extraCssText = `${String(tt.extraCssText ?? '')}; z-index: 99999; max-width: 92vw;`
+    next.tooltip = tt
+  }
+
+  const xAxis = (raw as any).xAxis
+  const yAxis = (raw as any).yAxis
+  next.xAxis = Array.isArray(xAxis) ? xAxis.map(mergeAxis) : mergeAxis(xAxis)
+  next.yAxis = Array.isArray(yAxis) ? yAxis.map(mergeAxis) : mergeAxis(yAxis)
+
+  if (scale < 0.999) {
     const seen = new WeakSet<object>()
-    const forceFontSize = (v: any) => {
+    const walk = (v: any) => {
       if (!v) return
       if (typeof v !== 'object') return
       if (typeof v === 'function') return
       if (seen.has(v)) return
       seen.add(v)
       if (Array.isArray(v)) {
-        for (const x of v) forceFontSize(x)
+        for (const x of v) walk(x)
         return
       }
       for (const k of Object.keys(v)) {
         const val = v[k]
-        if (k === 'fontSize' && typeof val === 'number') {
-          v[k] = baseSize
+        if (k === 'fontSize' && typeof val === 'number' && Number.isFinite(val)) {
+          v[k] = Math.max(9, Math.round(val * scale))
           continue
         }
-        forceFontSize(val)
+        walk(val)
       }
     }
-    forceFontSize(next)
-
-    return next as EChartsOption
+    walk(next)
   }
 
-  useEffect(() => {
-    const el = elRef.current
-    if (!el) return
-
-    const syncBase = () => {
-      const fs = window.getComputedStyle(el).fontSize
-      const baseSize = Number.parseInt(fs || '13', 10) || 13
-      if (baseSizeRef.current !== baseSize) baseSizeRef.current = baseSize
-    }
-    syncBase()
-
-    const inst = echarts.init(el, undefined, { renderer: 'canvas' })
-    instanceRef.current = inst
-
-    const ro = new ResizeObserver(() => {
-      syncBase()
-      inst.resize()
-      inst.setOption(injectTypography(opt, baseSizeRef.current), { notMerge: true, lazyUpdate: true })
-    })
-    ro.observe(el)
-
-    const onMouseOver = (params: ECElementEvent) => {
-      if (
-        typeof params?.seriesIndex === 'number' &&
-        typeof params?.dataIndex === 'number'
-      ) {
-        inst.dispatchAction({
-          type: 'highlight',
-          seriesIndex: params.seriesIndex,
-          dataIndex: params.dataIndex,
-        })
-      }
-      onHover?.({
-        seriesName: params?.seriesName,
-        name: params?.name,
-        value: params?.value,
-      })
-    }
-
-    const onMouseOut = () => {
-      inst.dispatchAction({ type: 'downplay' })
-      onLeave?.()
-    }
-
-    const onClickInner = (params: ECElementEvent) => {
-      if (
-        typeof params?.seriesIndex === 'number' &&
-        typeof params?.dataIndex === 'number'
-      ) {
-        inst.dispatchAction({
-          type: 'select',
-          seriesIndex: params.seriesIndex,
-          dataIndex: params.dataIndex,
-        })
-      }
-      onClick?.({
-        seriesName: params?.seriesName,
-        name: params?.name,
-        value: params?.value,
-      })
-    }
-
-    inst.on('mouseover', onMouseOver)
-    inst.on('mouseout', onMouseOut)
-    inst.on('click', onClickInner)
-
-    return () => {
-      ro.disconnect()
-      inst.off('mouseover', onMouseOver)
-      inst.off('mouseout', onMouseOut)
-      inst.off('click', onClickInner)
-      inst.dispose()
-      instanceRef.current = null
-    }
-  }, [onClick, onHover, onLeave])
-
-  useEffect(() => {
-    const inst = instanceRef.current
-    if (!inst) return
-    inst.setOption(injectTypography(opt, baseSizeRef.current), { notMerge: true, lazyUpdate: true })
-  }, [opt])
-
-  return <div ref={elRef} className={className ?? 'chartCanvas'} style={{ fontSize: 'var(--font-size-base)' }} />
+  return next as EChartsOption
 }
