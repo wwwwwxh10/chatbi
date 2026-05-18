@@ -31,6 +31,7 @@ function withAlpha(hex: string, alpha: number) {
 }
 
 function baseOption(themeColors: string[], { showLegend, unit, tooltipTrigger }: { showLegend?: boolean; unit?: string; tooltipTrigger?: 'axis' | 'item' } = {}) {
+  void unit
   const primary = themeColors[0] ?? '#6AA6FF'
   return {
     backgroundColor: 'transparent',
@@ -58,7 +59,7 @@ function baseOption(themeColors: string[], { showLegend, unit, tooltipTrigger }:
       icon: 'roundRect',
       itemWidth: 14,
       itemHeight: 4,
-      textStyle: { color: UI_MUTED, fontSize: 12 },
+      textStyle: { color: UI_MUTED, fontSize: 13 },
       itemGap: 24,
       inactiveColor: 'rgba(255,255,255,0.2)',
       itemStyle: { borderWidth: 0 },
@@ -75,7 +76,7 @@ function baseOption(themeColors: string[], { showLegend, unit, tooltipTrigger }:
       axisTick: { show: false },
       axisLabel: { color: UI_MUTED, fontSize: 12, margin: 4 },
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)', type: 'dashed' } },
-      name: unit || '',
+      name: '',
       nameTextStyle: { color: UI_MUTED, padding: [0, 0, 10, 0] },
     },
   } as any
@@ -123,13 +124,13 @@ function regions() {
   return isEn() ? ['East', 'South', 'North', 'Southwest', 'Northeast'] : ['华东', '华南', '华北', '西南', '东北']
 }
 
-export function buildBarOption(title: string, themeColors: string[]): EChartsOption {
+export function buildBarOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   const cats = products()
   const vals = [18.4, 15.2, 12.6, 10.8, 9.7]
-  const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'axis' })
+  const common = baseOption(themeColors, { showLegend: true, unit, tooltipTrigger: 'axis' })
   return {
     ...common,
-    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter('') },
+    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter(unit) },
     xAxis: { ...(common as any).xAxis, type: 'category', data: cats },
     yAxis: { ...(common as any).yAxis, type: 'value' },
     series: [
@@ -150,15 +151,15 @@ export function buildBarOption(title: string, themeColors: string[]): EChartsOpt
   }
 }
 
-export function buildHBarOption(title: string, themeColors: string[]): EChartsOption {
+export function buildHBarOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   const values = [26.1, 22.8, 19.6, 16.4, 14.2]
   const data = regions()
     .map((name, i) => ({ name, value: values[i] ?? 0 }))
     .sort((a, b) => b.value - a.value)
-  const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'axis' })
+  const common = baseOption(themeColors, { showLegend: true, unit, tooltipTrigger: 'axis' })
   return {
     ...common,
-    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter('') },
+    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter(unit) },
     xAxis: {
       ...(common as any).xAxis,
       type: 'value',
@@ -190,13 +191,13 @@ export function buildHBarOption(title: string, themeColors: string[]): EChartsOp
   }
 }
 
-export function buildStackedBarOption(title: string, themeColors: string[]): EChartsOption {
+export function buildStackedBarOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   void title
   const cats = sources()
-  const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'axis' })
+  const common = baseOption(themeColors, { showLegend: true, unit, tooltipTrigger: 'axis' })
   return {
     ...common,
-    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter('') },
+    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter(unit) },
     xAxis: { ...(common as any).xAxis, type: 'category', data: cats },
     yAxis: { ...(common as any).yAxis, type: 'value' },
     barCategoryGap: '28%',
@@ -216,13 +217,13 @@ export function buildStackedBarOption(title: string, themeColors: string[]): ECh
   }
 }
 
-export function buildGroupedBarOption(title: string, themeColors: string[]): EChartsOption {
+export function buildGroupedBarOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   void title
   const cats = sources()
-  const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'axis' })
+  const common = baseOption(themeColors, { showLegend: true, unit, tooltipTrigger: 'axis' })
   return {
     ...common,
-    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter('') },
+    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter(unit) },
     xAxis: { ...(common as any).xAxis, type: 'category', data: cats },
     yAxis: { ...(common as any).yAxis, type: 'value' },
     barCategoryGap: '30%',
@@ -258,14 +259,15 @@ export function buildGroupedBarOption(title: string, themeColors: string[]): ECh
   }
 }
 
-export function buildGradientBarOption(title: string, themeColors: string[]): EChartsOption {
+export function buildGradientBarOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   void title
   const cats = ['A', 'B', 'C', 'D', 'E']
   const vals = [42, 58, 35, 66, 49]
   const primary = themeColors[0] ?? '#6AA6FF'
-  const common = baseOption(themeColors, { tooltipTrigger: 'axis' })
+  const common = baseOption(themeColors, { unit, tooltipTrigger: 'axis' })
   return {
     ...common,
+    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter(unit) },
     xAxis: { ...(common as any).xAxis, type: 'category', data: cats },
     yAxis: { ...(common as any).yAxis, type: 'value' },
     series: [
@@ -292,13 +294,13 @@ export function buildGradientBarOption(title: string, themeColors: string[]): EC
   }
 }
 
-export function buildLineOption(title: string, themeColors: string[]): EChartsOption {
+export function buildLineOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   void title
   const x = days()
-  const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'axis' })
+  const common = baseOption(themeColors, { showLegend: true, unit, tooltipTrigger: 'axis' })
   return {
     ...common,
-    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter('') },
+    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter(unit) },
     xAxis: { ...(common as any).xAxis, type: 'category', data: x },
     yAxis: { ...(common as any).yAxis, type: 'value' },
     series: [
@@ -328,13 +330,13 @@ export function buildLineOption(title: string, themeColors: string[]): EChartsOp
   }
 }
 
-export function buildAreaOption(title: string, themeColors: string[]): EChartsOption {
+export function buildAreaOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   void title
   const x = days()
-  const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'axis' })
+  const common = baseOption(themeColors, { showLegend: true, unit, tooltipTrigger: 'axis' })
   return {
     ...common,
-    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter('') },
+    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter(unit) },
     xAxis: { ...(common as any).xAxis, type: 'category', data: x },
     yAxis: { ...(common as any).yAxis, type: 'value' },
     series: [
@@ -372,13 +374,13 @@ export function buildAreaOption(title: string, themeColors: string[]): EChartsOp
   }
 }
 
-export function buildCurveOption(title: string, themeColors: string[]): EChartsOption {
+export function buildCurveOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   void title
   const x = days()
-  const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'axis' })
+  const common = baseOption(themeColors, { showLegend: true, unit, tooltipTrigger: 'axis' })
   return {
     ...common,
-    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter('') },
+    tooltip: { ...(common as any).tooltip, formatter: axisTooltipFormatter(unit) },
     xAxis: { ...(common as any).xAxis, type: 'category', data: x },
     yAxis: { ...(common as any).yAxis, type: 'value' },
     series: [
@@ -520,23 +522,22 @@ export function buildPieOption(title: string, themeColors: string[]): EChartsOpt
       inactiveColor: 'rgba(255,255,255,0.2)',
       itemStyle: { borderWidth: 0 },
       formatter: (name: string) => {
-        const it = data.find((x) => x.name === name)
-        const p = total > 0 && it ? ((it.value / total) * 100).toFixed(1) : '0.0'
-        return it ? `${name}  ${it.value} (${p}%)` : name
+        void total
+        return name
       },
     },
     series: [
       {
         name: title || (isEn() ? 'Share' : '占比'),
         type: 'pie',
-        radius: ['0%', '65%'],
+        radius: ['0%', '68%'],
         center: ['50%', '45%'],
         startAngle: 90,
         minAngle: 6,
         avoidLabelOverlap: true,
         labelLayout: { hideOverlap: true },
         data,
-        itemStyle: { borderRadius: 8, borderColor: 'rgba(8, 12, 22, 1)', borderWidth: 2 },
+        itemStyle: { borderRadius: 8, borderWidth: 0 },
         label: { show: true, color: UI_TEXT, fontSize: 13, formatter: '{b}\n{d}%' },
         labelLine: { show: true, length: 15, length2: 15, lineStyle: { color: 'rgba(255,255,255,0.2)' } },
         emphasis: { scale: true, scaleSize: 10, itemStyle: { shadowBlur: 20, shadowColor: withAlpha(themeColors[0], 0.5) } },
@@ -591,7 +592,7 @@ export function buildDonutOption(title: string, themeColors: string[]): EChartsO
         avoidLabelOverlap: true,
         labelLayout: { hideOverlap: true },
         data,
-        itemStyle: { borderRadius: 8, borderColor: 'rgba(8, 12, 22, 1)', borderWidth: 2 },
+        itemStyle: { borderRadius: 8, borderWidth: 0 },
         label: { show: true, color: UI_TEXT, fontSize: 13, formatter: '{b}\n{d}%' },
         labelLine: { show: true, length: 15, length2: 15, lineStyle: { color: 'rgba(255,255,255,0.2)' } },
         emphasis: { scale: true, scaleSize: 10, itemStyle: { shadowBlur: 20, shadowColor: withAlpha(themeColors[0], 0.5) } },
@@ -647,7 +648,7 @@ export function buildRoseOption(title: string, themeColors: string[]): EChartsOp
         center: ['50%', '45%'],
         data,
         labelLayout: { hideOverlap: true },
-        itemStyle: { borderRadius: 8, borderColor: 'rgba(8, 12, 22, 1)', borderWidth: 2 },
+        itemStyle: { borderRadius: 8, borderWidth: 0 },
         label: { show: true, color: UI_TEXT, fontSize: 13, formatter: '{b}\n{d}%' },
         labelLine: { show: true, length: 10, length2: 10, lineStyle: { color: 'rgba(255,255,255,0.2)' } },
         emphasis: { scale: true, itemStyle: { shadowBlur: 20, shadowColor: withAlpha(themeColors[0], 0.5) } },
@@ -879,15 +880,17 @@ export function buildFunnelOption(title: string, themeColors: string[]): ECharts
       {
         type: 'funnel',
         left: '10%',
-        top: 66,
-        bottom: 18,
+        top: '12%',
+        bottom: '12%',
         width: '80%',
         min: 0,
         max: 1000,
         sort: 'descending',
-        gap: 2,
+        gap: 0,
         itemStyle: { borderColor: 'rgba(0,0,0,0)', borderWidth: 0 },
-        label: { color: 'rgba(245, 248, 255, 0.86)' },
+        label: { color: 'rgba(245, 248, 255, 0.86)', position: 'inside', fontSize: 12, fontWeight: 600 },
+        labelLine: { show: false },
+        emphasis: { itemStyle: { borderColor: 'rgba(0,0,0,0)', borderWidth: 0 } },
         data,
       },
     ],

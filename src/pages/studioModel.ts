@@ -185,12 +185,14 @@ export function defaultConfig(kind: WidgetKind) {
   if (kind === 'progress') return { type: 'progress', title: en ? 'Alarm Resolution' : '告警处理进度', valueKey: 'progress', max: 100 }
   if (kind === 'wave') return { type: 'wave', title: en ? 'Capacity Level' : '容量水位', valueKey: 'capacity', max: 100 }
   if (kind === 'pie' || kind === 'donut' || kind === 'rose') return { type: kind, title: en ? 'Channel Mix' : '渠道分布', categoryKey: 'channel', valueKey: 'gmv' }
-  if (kind === 'line' || kind === 'line-area' || kind === 'line-curve') return { type: kind, title: en ? 'GMV Trend' : 'GMV 趋势', xKey: 'date', yKey: 'gmv' }
+  if (kind === 'line' || kind === 'line-area' || kind === 'line-curve')
+    return { type: kind, title: en ? 'GMV Trend' : 'GMV 趋势', unit: en ? 'k' : '万', xKey: 'date', yKey: 'gmv' }
   if (kind === 'scatter' || kind === 'bubble') return { type: kind, title: en ? 'Scatter Plot' : '散点分布', xKey: 'x', yKey: 'y', sizeKey: 'size' }
   if (kind === 'bar' || kind === 'bar-h' || kind === 'bar-stacked' || kind === 'bar-grouped' || kind === 'bar-gradient' || kind === 'waterfall')
     return {
       type: kind,
       title: en ? 'Category Comparison' : '品类对比',
+      unit: en ? 'k' : '万',
       xKey: 'category',
       yKey: 'gmv',
     }

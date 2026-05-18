@@ -120,6 +120,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const [slots, setSlots] = useState<WidgetSlot[]>(() => normalizeSlots(specs, []))
   const [freeStartPoint, setFreeStartPoint] = useState<{ r: number; c: number } | null>(null)
   const [freeHoverPoint, setFreeHoverPoint] = useState<{ r: number; c: number } | null>(null)
+  const [freeCursor, setFreeCursor] = useState<{ x: number; y: number } | null>(null)
+  const [moveTip, setMoveTip] = useState<{ x: number; y: number; text: string } | null>(null)
   const freeOverlayRef = useRef<HTMLDivElement | null>(null)
   const freeRafRef = useRef<number | null>(null)
   const previewMode = mode === 'preview'
@@ -253,22 +255,25 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const accent = appearance.theme === 'obsidian' ? token.colorPrimary : THEME_ACCENT[appearance.theme]
   const panelBg = appearance.theme === 'obsidian' ? token.colorFillQuaternary : 'rgba(255,255,255,0.020)'
 
-  const cyberPageBg =
-    'repeating-linear-gradient(0deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), radial-gradient(1200px 700px at 30% 10%, rgba(45, 100, 255, 0.18), transparent 55%), radial-gradient(900px 520px at 80% 30%, rgba(20, 160, 255, 0.14), transparent 58%), radial-gradient(1200px 900px at 60% 120%, rgba(20, 255, 185, 0.08), transparent 60%), #03060c'
+  const cyberPageBgNoGrid =
+    'radial-gradient(1200px 700px at 30% 10%, rgba(45, 100, 255, 0.18), transparent 55%), radial-gradient(900px 520px at 80% 30%, rgba(20, 160, 255, 0.14), transparent 58%), radial-gradient(1200px 900px at 60% 120%, rgba(20, 255, 185, 0.08), transparent 60%), #03060c'
 
-  const techPageBg =
-    'repeating-linear-gradient(0deg, rgba(255,255,255,0.028), rgba(255,255,255,0.028) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(255,255,255,0.028), rgba(255,255,255,0.028) 1px, transparent 1px, transparent 22px), radial-gradient(1200px 700px at 28% 8%, rgba(43, 123, 255, 0.22), transparent 55%), radial-gradient(900px 520px at 78% 30%, rgba(20, 160, 255, 0.16), transparent 58%), radial-gradient(1200px 900px at 60% 120%, rgba(90, 200, 255, 0.10), transparent 60%), #03060c'
+  const techPageBgNoGrid =
+    'radial-gradient(1200px 700px at 28% 8%, rgba(43, 123, 255, 0.22), transparent 55%), radial-gradient(900px 520px at 78% 30%, rgba(20, 160, 255, 0.16), transparent 58%), radial-gradient(1200px 900px at 60% 120%, rgba(90, 200, 255, 0.10), transparent 60%), #03060c'
 
   const canvasBg = appearance.theme === 'obsidian' ? token.colorBgLayout : 'transparent'
 
   const studioShellBg =
-    appearance.theme === 'obsidian' ? token.colorBgLayout : appearance.theme === 'tech' ? techPageBg : cyberPageBg
-  const sidePanelBg =
-    appearance.theme === 'obsidian'
-      ? token.colorBgContainer
-      : appearance.theme === 'tech'
-        ? 'linear-gradient(180deg, rgba(10, 18, 34, 0.72), rgba(8, 10, 18, 0.55))'
-        : 'linear-gradient(180deg, rgba(10, 14, 28, 0.70), rgba(8, 10, 18, 0.55))'
+    previewMode
+      ? appearance.theme === 'obsidian'
+        ? token.colorBgLayout
+        : '#03060c'
+      : appearance.theme === 'obsidian'
+        ? token.colorBgLayout
+        : appearance.theme === 'tech'
+          ? techPageBgNoGrid
+          : cyberPageBgNoGrid
+  const sidePanelBg = appearance.theme === 'obsidian' ? token.colorBgContainer : 'transparent'
 
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
@@ -382,6 +387,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setDragOverIdx(null)
     setSelectedSlotId(null)
     setDraggingKind(null)
+    setMoveTip(null)
   }
 
   useEffect(() => {
@@ -404,6 +410,29 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       window.removeEventListener('drop', clear)
     }
   }, [])
+
+  useEffect(() => {
+    if (readOnly || previewMode) return
+    if (dragFromIdx == null) return
+    const onDragOver = (e: globalThis.DragEvent) => {
+      e.preventDefault()
+      setMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+    }
+    window.addEventListener('dragover', onDragOver)
+    return () => {
+      window.removeEventListener('dragover', onDragOver)
+    }
+  }, [dragFromIdx, previewMode, readOnly])
+
+  useEffect(() => {
+    if (readOnly || previewMode) return
+    if (dragFromIdx == null) return
+    const prev = document.body.style.cursor
+    document.body.style.cursor = 'none'
+    return () => {
+      document.body.style.cursor = prev
+    }
+  }, [dragFromIdx, previewMode, readOnly])
 
   const canSave = useMemo(() => {
     if (readOnly) return false
@@ -467,27 +496,28 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       }
     })()
     if (!parsed) return null
+    const unit = typeof parsed.unit === 'string' ? String(parsed.unit) : ''
     const colors = CHART_PALETTES[appearance.chartPalette].colors.slice(0, 10)
     const name = String(parsed.title ?? KIND_NAME[slot.kind])
     const base =
       slot.kind === 'bar'
-        ? buildBarOption(name, colors)
+        ? buildBarOption(name, colors, unit)
         : slot.kind === 'bar-h'
-          ? buildHBarOption(name, colors)
+          ? buildHBarOption(name, colors, unit)
         : slot.kind === 'bar-stacked'
-          ? buildStackedBarOption(name, colors)
+          ? buildStackedBarOption(name, colors, unit)
           : slot.kind === 'bar-grouped'
-            ? buildGroupedBarOption(name, colors)
+            ? buildGroupedBarOption(name, colors, unit)
             : slot.kind === 'bar-gradient'
-              ? buildGradientBarOption(name, colors)
+              ? buildGradientBarOption(name, colors, unit)
                 : slot.kind === 'waterfall'
-                  ? buildBarOption(name, colors)
+                  ? buildBarOption(name, colors, unit)
               : slot.kind === 'line'
-          ? buildLineOption(name, colors)
+          ? buildLineOption(name, colors, unit)
           : slot.kind === 'line-area'
-            ? buildAreaOption(name, colors)
+            ? buildAreaOption(name, colors, unit)
             : slot.kind === 'line-curve'
-              ? buildCurveOption(name, colors)
+              ? buildCurveOption(name, colors, unit)
               : slot.kind === 'scatter'
                 ? buildScatterOption(name, colors)
                 : slot.kind === 'bubble'
@@ -521,13 +551,15 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const renderSlotBody = (slot: WidgetSlot, idx: number) => {
     if (!slot.kind) {
       return (
-        <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: token.colorTextSecondary }}>
-          <div style={{ display: 'grid', placeItems: 'center', gap: 8 }}>
+        <div style={{ height: '100%', position: 'relative', display: 'grid', placeItems: 'center', color: token.colorTextSecondary }}>
+          <div style={{ display: 'grid', placeItems: 'center' }}>
             <div className="studioSlotAdd" style={{ width: 46, height: 46, borderRadius: 14, display: 'grid', placeItems: 'center' }}>
               <CopyPlus size={20} />
             </div>
+          </div>
+          <div style={{ position: 'absolute', left: 0, right: 0, top: 'calc(50% + 34px)', display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
             <Typography.Text className="studioSlotHint" style={{ fontSize: 12, color: 'inherit', fontWeight: 600 }}>
-              从左侧拖拽图表到此处
+              从左侧拖拽组件到此处
             </Typography.Text>
           </div>
         </div>
@@ -551,40 +583,44 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       const unit = String(parsed?.unit ?? '次')
       const titleFixed = appearance.language === 'en-US' ? 'Total Subscribers' : '在网总用户数'
       return (
-        <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <Tooltip title={readOnly || previewMode ? undefined : '拖拽可移动/换位'}>
-            <div
-              className="studioSlotHeader"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
-              draggable={!readOnly && !previewMode}
-              onDragStart={(e) => onSlotDragStart(idx, e)}
-              onDragEnd={onSlotDragEnd}
+        <div style={{ padding: 16, height: '100%', display: 'grid', alignContent: 'center', justifyItems: 'center', gap: 10 }}>
+          <div
+            className="studioSlotHeader"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            draggable={!readOnly && !previewMode}
+            onMouseMove={(e) => {
+              if (readOnly || previewMode) return
+              if (dragFromIdx != null || draggingKind != null) return
+              setMoveTip({ x: e.clientX, y: e.clientY, text: '拖拽可移动换位' })
+            }}
+            onMouseLeave={() => setMoveTip(null)}
+            onDragStart={(e) => onSlotDragStart(idx, e)}
+            onDragEnd={onSlotDragEnd}
+          >
+            <span
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 8,
+                background: 'transparent',
+                display: 'grid',
+                placeItems: 'center',
+                color: accent,
+              }}
             >
-              <Space size={6}>
-                <span
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 8,
-                    background: 'transparent',
-                    display: 'grid',
-                    placeItems: 'center',
-                    color: accent,
-                  }}
-                >
-                  <CircleDot size={14} />
-                </span>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {titleFixed}
-                </Typography.Text>
-              </Space>
-            </div>
-          </Tooltip>
-
-          <div style={{ display: 'grid', alignContent: 'center', minHeight: 0 }}>
-            <FlipCounter title={titleFixed} unit={unit} target={value} />
+              <CircleDot size={14} />
+            </span>
+            <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>
+              {titleFixed}
+            </Typography.Text>
           </div>
-          {slot.error ? <div style={{ padding: '0 12px 12px 12px' }}><Tag color="error">解析失败</Tag></div> : null}
+
+          <FlipCounter title={titleFixed} unit={unit} target={value} showTitle={false} />
+          {slot.error ? (
+            <div style={{ paddingTop: 6 }}>
+              <Tag color="error">解析失败</Tag>
+            </div>
+          ) : null}
         </div>
       )
     }
@@ -595,35 +631,39 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       const unit = String(parsed?.unit ?? '个')
       return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <Tooltip title={readOnly || previewMode ? undefined : '拖拽可移动/换位'}>
-            <div
-              className="studioSlotHeader"
-              style={{ padding: '10px 12px' }}
-              draggable={!readOnly && !previewMode}
-              onDragStart={(e) => onSlotDragStart(idx, e)}
-              onDragEnd={onSlotDragEnd}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <Space size={6}>
-                  <span
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 8,
-                      background: 'transparent',
-                      display: 'grid',
-                      placeItems: 'center',
-                      color: token.colorTextTertiary,
-                      opacity: 0.85,
-                    }}
-                  >
-                    <Workflow size={14} />
-                  </span>
-                  <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>{chartTitle}</Typography.Text>
-                </Space>
-              </div>
+          <div
+            className="studioSlotHeader"
+            style={{ padding: '10px 12px' }}
+            draggable={!readOnly && !previewMode}
+            onMouseMove={(e) => {
+              if (readOnly || previewMode) return
+              if (dragFromIdx != null || draggingKind != null) return
+              setMoveTip({ x: e.clientX, y: e.clientY, text: '拖拽可移动换位' })
+            }}
+            onMouseLeave={() => setMoveTip(null)}
+            onDragStart={(e) => onSlotDragStart(idx, e)}
+            onDragEnd={onSlotDragEnd}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <Space size={4}>
+                <span
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 8,
+                    background: 'transparent',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: token.colorTextTertiary,
+                    opacity: 0.85,
+                  }}
+                >
+                  <Workflow size={14} />
+                </span>
+                <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>{chartTitle}</Typography.Text>
+              </Space>
             </div>
-          </Tooltip>
+          </div>
           <div style={{ padding: 12, flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10 }}>
             <div style={{ position: 'relative', height: 6, display: 'flex', alignItems: 'center' }}>
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
@@ -687,69 +727,73 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     const opt = optionForSlot(slot)
     return opt ? (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <Tooltip title={readOnly || previewMode ? undefined : '拖拽可移动/换位'}>
-          <div
-            className="studioSlotHeader"
-            style={{ padding: '12px 12px 8px 12px' }}
-            draggable={!readOnly && !previewMode}
-            onDragStart={(e) => onSlotDragStart(idx, e)}
-            onDragEnd={onSlotDragEnd}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <Space size={4} style={{ minWidth: 0 }}>
-                <span
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 8,
-                    background: 'transparent',
-                    display: 'grid',
-                    placeItems: 'center',
-                    color: token.colorTextTertiary,
-                    opacity: 0.85,
-                    flex: '0 0 22px',
-                  }}
-                >
-                  {(() => {
-                    const k = slot.kind
-                    const Icon =
-                      k === 'line'
-                        ? LineChart
-                        : k === 'line-area'
-                          ? AreaChart
-                          : k === 'line-curve'
-                            ? LineChart
-                            : k === 'bar' || k === 'bar-h' || k === 'bar-grouped' || k === 'bar-stacked' || k === 'bar-gradient' || k === 'waterfall'
-                              ? BarChart3
-                              : k === 'pie'
-                                ? PieChart
-                                : k === 'donut'
-                                  ? Donut
-                                  : k === 'rose'
-                                    ? Flower2
-                                    : k === 'scatter'
-                                      ? ChartScatter
-                                      : k === 'bubble'
-                                        ? Droplets
-                                        : k === 'funnel'
-                                          ? Filter
-                                          : k === 'radar'
-                                            ? Radar
-                                            : k === 'heatmap' || k === 'treemap'
-                                              ? Layers
-                                              : k === 'sankey' || k === 'graph'
-                                                ? Network
-                                                : Activity
-                    return <Icon size={14} />
-                  })()}
-                </span>
-                <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>
-                  {chartTitle}
-                </Typography.Text>
-              </Space>
-            </div>
+        <div
+          className="studioSlotHeader"
+          style={{ padding: '12px 12px 8px 12px' }}
+          draggable={!readOnly && !previewMode}
+          onMouseMove={(e) => {
+            if (readOnly || previewMode) return
+            if (dragFromIdx != null || draggingKind != null) return
+            setMoveTip({ x: e.clientX, y: e.clientY, text: '拖拽可移动换位' })
+          }}
+          onMouseLeave={() => setMoveTip(null)}
+          onDragStart={(e) => onSlotDragStart(idx, e)}
+          onDragEnd={onSlotDragEnd}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <Space size={4} style={{ minWidth: 0 }}>
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: token.colorTextTertiary,
+                  opacity: 0.85,
+                  flex: '0 0 22px',
+                }}
+              >
+                {(() => {
+                  const k = slot.kind
+                  const Icon =
+                    k === 'line'
+                      ? LineChart
+                      : k === 'line-area'
+                        ? AreaChart
+                        : k === 'line-curve'
+                          ? LineChart
+                          : k === 'bar' || k === 'bar-h' || k === 'bar-grouped' || k === 'bar-stacked' || k === 'bar-gradient' || k === 'waterfall'
+                            ? BarChart3
+                            : k === 'pie'
+                              ? PieChart
+                              : k === 'donut'
+                                ? Donut
+                                : k === 'rose'
+                                  ? Flower2
+                                  : k === 'scatter'
+                                    ? ChartScatter
+                                    : k === 'bubble'
+                                      ? Droplets
+                                      : k === 'funnel'
+                                        ? Filter
+                                        : k === 'radar'
+                                          ? Radar
+                                          : k === 'heatmap' || k === 'treemap'
+                                            ? Layers
+                                            : k === 'sankey' || k === 'graph'
+                                              ? Network
+                                              : Activity
+                  return <Icon size={14} />
+                })()}
+              </span>
+              <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>
+                {chartTitle}
+              </Typography.Text>
+            </Space>
           </div>
-        </Tooltip>
+        </div>
         <div style={{ flex: 1, minHeight: 0, paddingTop: slot.kind === 'funnel' ? 0 : 10 }}>
           <EChart option={opt as any} />
         </div>
@@ -838,9 +882,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     disabled?: boolean
   }) => {
     const themeSwatches: Record<StudioAppearance['theme'], string[]> = {
-      obsidian: ['#1677FF', '#0E1117', '#101827'],
-      cyber: ['#2D64FF', '#14A0FF', '#14FFB9'],
-      tech: ['#2B7BFF', '#14A0FF', '#5AC8FF'],
+      obsidian: [token.colorPrimary, token.colorBgLayout, token.colorBgContainer],
+      cyber: [THEME_ACCENT.cyber, '#03060c', 'rgba(10, 16, 32, 0.76)'],
+      tech: [THEME_ACCENT.tech, '#03060c', 'rgba(10, 20, 38, 0.76)'],
     }
     const items = [
       {
@@ -889,7 +933,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     {it.desc}
                   </Typography.Text>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 'none' }}>
+                <div className="studioPaletteSwatches">
                   {cols.map((c, i) => (
                     <span key={`${c}-${i}`} className="studioPaletteSwatch" style={{ background: c }} />
                   ))}
@@ -1235,6 +1279,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               ref={canvasRef}
               onDragOver={(e) => {
                 if (readOnly || previewMode) return
+                if (dragFromIdx != null) {
+                  e.preventDefault()
+                  setMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+                }
                 const t = e.target as HTMLElement
                 if (!t?.closest?.('.studioSlot')) {
                   if (dragOverIdx != null) setDragOverIdx(null)
@@ -1270,6 +1318,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   alignItems: 'stretch',
                   minHeight: 0,
                   position: 'relative',
+                  padding: layout.mode === 'free' ? gap : 0,
                 }}
               >
                 {layout.mode === 'free' && !readOnly && !previewMode ? (
@@ -1284,36 +1333,53 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       gap,
                       zIndex: 0,
                       pointerEvents: 'auto',
-                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08)',
+                      padding: gap,
+                      cursor: 'crosshair',
                     }}
                     onMouseMove={(e) => {
                       if (layout.mode !== 'free') return
                       const el = freeOverlayRef.current
                       if (!el) return
                       const rect = el.getBoundingClientRect()
-                      const x = Math.max(0, Math.min(rect.width - 1, e.clientX - rect.left))
-                      const y = Math.max(0, Math.min(rect.height - 1, e.clientY - rect.top))
-                      const col = Math.min(12, Math.max(1, Math.floor((x / rect.width) * 12) + 1))
-                      const row = Math.min(freeRows, Math.max(1, Math.floor((y / rect.height) * freeRows) + 1))
+                      const pad = gap
+                      const rawX = e.clientX - rect.left
+                      const rawY = e.clientY - rect.top
+                      const x = Math.max(pad, Math.min(rect.width - pad - 1, rawX))
+                      const y = Math.max(pad, Math.min(rect.height - pad - 1, rawY))
+                      const cw = Math.max(1, rect.width - pad * 2)
+                      const ch = Math.max(1, rect.height - pad * 2)
+                      const lx = x - pad
+                      const ly = y - pad
+                      const col = Math.min(12, Math.max(1, Math.floor((lx / cw) * 12) + 1))
+                      const row = Math.min(freeRows, Math.max(1, Math.floor((ly / ch) * freeRows) + 1))
                       if (freeRafRef.current != null) cancelAnimationFrame(freeRafRef.current)
                       freeRafRef.current = requestAnimationFrame(() => {
                         setFreeHoverPoint((prev) => (prev?.r === row && prev?.c === col ? prev : { r: row, c: col }))
+                        setFreeCursor((prev) => (prev?.x === rawX && prev?.y === rawY ? prev : { x: rawX, y: rawY }))
                       })
                     }}
                     onMouseLeave={() => {
                       if (freeRafRef.current != null) cancelAnimationFrame(freeRafRef.current)
                       freeRafRef.current = null
                       setFreeHoverPoint(null)
+                      setFreeCursor(null)
                     }}
                     onClick={(e) => {
                       if (layout.mode !== 'free') return
                       const el = freeOverlayRef.current
                       if (!el) return
                       const rect = el.getBoundingClientRect()
-                      const x = Math.max(0, Math.min(rect.width - 1, e.clientX - rect.left))
-                      const y = Math.max(0, Math.min(rect.height - 1, e.clientY - rect.top))
-                      const c = Math.min(12, Math.max(1, Math.floor((x / rect.width) * 12) + 1))
-                      const r = Math.min(freeRows, Math.max(1, Math.floor((y / rect.height) * freeRows) + 1))
+                      const pad = gap
+                      const rawX = e.clientX - rect.left
+                      const rawY = e.clientY - rect.top
+                      const x = Math.max(pad, Math.min(rect.width - pad - 1, rawX))
+                      const y = Math.max(pad, Math.min(rect.height - pad - 1, rawY))
+                      const cw = Math.max(1, rect.width - pad * 2)
+                      const ch = Math.max(1, rect.height - pad * 2)
+                      const lx = x - pad
+                      const ly = y - pad
+                      const c = Math.min(12, Math.max(1, Math.floor((lx / cw) * 12) + 1))
+                      const r = Math.min(freeRows, Math.max(1, Math.floor((ly / ch) * freeRows) + 1))
 
                       if (!freeStartPoint) {
                         setFreeStartPoint({ r, c })
@@ -1348,19 +1414,13 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       setFreeHoverPoint(null)
                     }}
                   >
-                    <div style={{ position: 'absolute', left: 10, top: 10, zIndex: 2, pointerEvents: 'none' }}>
-                      <div style={{ padding: '8px 10px', borderRadius: 12, background: 'rgba(9, 12, 18, 0.62)', color: token.colorTextSecondary, fontSize: 12, display: 'grid', gap: 4 }}>
-                        <div style={{ color: freeStartPoint ? token.colorTextSecondary : token.colorText, fontWeight: freeStartPoint ? 600 : 800 }}>
-                          1. 点击起点
-                        </div>
-                        <div style={{ color: freeStartPoint ? token.colorText : token.colorTextSecondary, fontWeight: freeStartPoint ? 800 : 600 }}>
-                          2. 移动鼠标
-                        </div>
-                        <div style={{ color: freeStartPoint ? token.colorText : token.colorTextSecondary, fontWeight: freeStartPoint ? 800 : 600 }}>
-                          3. 点击终点生成卡片
+                    {freeCursor ? (
+                      <div style={{ position: 'absolute', left: freeCursor.x + 12, top: freeCursor.y + 12, zIndex: 3, pointerEvents: 'none' }}>
+                        <div style={{ padding: '8px 10px', borderRadius: 12, background: 'rgba(9, 12, 18, 0.62)', color: token.colorText, fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                          {freeStartPoint ? '点击终点生成卡片' : '点击起点'}
                         </div>
                       </div>
-                    </div>
+                    ) : null}
                     {freeStartPoint && freeHoverPoint ? (
                       <div
                         style={{
@@ -1374,17 +1434,15 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     ) : null}
 
                     {Array.from({ length: freeRows * 12 }).map((_, i) => {
-                      const r = Math.floor(i / 12) + 1
-                      const c = (i % 12) + 1
-                      const isStart = freeStartPoint?.r === r && freeStartPoint?.c === c
+                      void i
                       return (
                         <div
                           key={i}
                           style={{
-                            borderRadius: 0,
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            background: isStart ? `radial-gradient(circle at 50% 50%, ${accent} 0 3px, transparent 4px)` : 'transparent',
-                            cursor: 'crosshair',
+                            borderRadius: 10,
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            background: 'rgba(255,255,255,0.02)',
+                            pointerEvents: 'none',
                           }}
                         />
                       )
@@ -1432,7 +1490,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         border:
                           slot.kind
                             ? `1px solid ${borderColor}`
-                            : `1px dashed ${borderColor}`,
+                            : `2px dashed ${borderColor}`,
                         background:
                           slot.kind
                             ? surfaceBg
@@ -1473,17 +1531,20 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         e.dataTransfer.dropEffect = isMove ? 'move' : 'copy'
                         if (dragFromIdx != null && dragFromIdx === idx) return
                         if (isMove || isAdd) setDragOverIdx((prev) => (prev === idx ? prev : idx))
+                        if (isMove) setMoveTip({ x: e.clientX, y: e.clientY, text: '' })
                       }}
                       onDragOverCapture={(e) => {
                         if (readOnly || previewMode) return
                         e.preventDefault()
                         if (dragFromIdx != null && dragFromIdx === idx) return
                         setDragOverIdx((prev) => (prev === idx ? prev : idx))
+                        const isMove = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-slot-index'))
+                        if (isMove) setMoveTip({ x: e.clientX, y: e.clientY, text: '' })
                       }}
-                      onDragLeave={() => {}}
                       onDrop={(e) => {
                         if (readOnly || previewMode) return
                         e.preventDefault()
+                        setMoveTip(null)
                         const movingIdxRaw = e.dataTransfer.getData('application/x-dashboard-slot-index')
                         if (movingIdxRaw) {
                           const from = Number(movingIdxRaw)
@@ -1505,21 +1566,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         requestAnimationFrame(() => setDragOverIdx(null))
                       }}
                     >
-                      {isMoveOver ? (
-                        <div className="studioMoveOverlay" style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}>
-                          <div className="studioMoveOverlayMask" style={{ position: 'absolute', inset: 0 }} />
-                          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
-                            <div style={{ display: 'grid', justifyItems: 'center', gap: 8, color: token.colorTextSecondary }}>
-                              <div className="studioSlotAdd" style={{ width: 46, height: 46, borderRadius: 14, display: 'grid', placeItems: 'center' }}>
-                                <ArrowDownUp size={20} />
-                              </div>
-                              <Typography.Text className="studioSlotHint" style={{ fontSize: 12, color: 'inherit', fontWeight: 600 }}>
-                                移入此位置
-                              </Typography.Text>
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
                       {slot.kind ? (
                         <div className="studioSlotActions" style={{ position: 'absolute', top: 8, right: 8, zIndex: 30, display: 'flex', gap: 6, alignItems: 'center' }}>
                           <Tooltip title={readOnly || previewMode ? '查看代码' : '编辑代码'}>
@@ -1741,9 +1787,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                 {meta.name}
                               </Typography.Text>
                             </div>
-                            <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap', flex: 'none' }}>
+                            <div className="studioPaletteSwatches">
                               {meta.colors.slice(0, 10).map((hex, i) => (
-                                <span key={`${hex}-${i}`} className="studioPaletteSwatch" style={{ width: 14, height: 14, borderRadius: 4, background: hex }} />
+                                <span key={`${hex}-${i}`} className="studioPaletteSwatch" style={{ background: hex }} />
                               ))}
                             </div>
                           </div>
@@ -1870,6 +1916,31 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             </div>
           </div>
         )}
+
+        {moveTip && !readOnly && !previewMode ? (
+          <div
+            style={{
+              position: 'fixed',
+              left: moveTip.x,
+              top: moveTip.y,
+              transform: 'translate(-5px, -7px)',
+              zIndex: 9999,
+              pointerEvents: 'none',
+              display: dragFromIdx != null || (draggingKind == null && moveTip.text) ? 'block' : 'none',
+            }}
+          >
+            <div style={{ padding: '8px 10px', borderRadius: 12, background: 'rgba(9, 12, 18, 0.62)', display: 'grid', justifyItems: 'center', gap: 4 }}>
+              <div style={{ width: 10, height: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', placeItems: 'center' }}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <span key={i} style={{ width: 3, height: 3, borderRadius: 1, background: '#C9CBD3', opacity: 0.92 }} />
+                ))}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: accent, whiteSpace: 'nowrap' }}>
+                {dragFromIdx != null ? (dragOverIdx != null && slots[dragOverIdx]?.kind ? '移入此位置' : '拖拽可移动换位') : moveTip.text}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   )

@@ -431,10 +431,32 @@ type StudioDebugPayload = {
   slots?: Array<{ kind: WidgetKind | null; configText: string }>
 }
 
+type StudioDatumSelection = {
+  slotIdx: number
+  kind: WidgetKind
+  seriesIndex: number
+  dataIndex: number
+  offsetX: number
+  offsetY: number
+  name?: string
+  seriesName?: string
+  value?: unknown
+  dataType?: string
+  color?: string
+}
+
 function StudioDebugDashboardCanvas({
   payload,
+  selectedCardIdx,
+  selectedDatum,
+  onCardSelect,
+  onDatumSelect,
 }: {
   payload: StudioDebugPayload
+  selectedCardIdx: number | null
+  selectedDatum: StudioDatumSelection | null
+  onCardSelect: (slotIdx: number, context: string) => void
+  onDatumSelect: (next: StudioDatumSelection | null, context: string) => void
 }) {
   const { token } = theme.useToken()
 
@@ -444,11 +466,7 @@ function StudioDebugDashboardCanvas({
   const themeColors = palette.colors ?? []
   const accent = appearance.theme === 'obsidian' ? token.colorPrimary : THEME_ACCENT[appearance.theme]
 
-  const cyberPageBg =
-    'repeating-linear-gradient(0deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, transparent 1px, transparent 22px), radial-gradient(1200px 700px at 30% 10%, rgba(45, 100, 255, 0.18), transparent 55%), radial-gradient(900px 520px at 80% 30%, rgba(121, 54, 255, 0.12), transparent 55%), radial-gradient(1200px 900px at 60% 120%, rgba(20, 255, 185, 0.08), transparent 60%), #03060c'
-  const techPageBg =
-    'repeating-linear-gradient(0deg, rgba(255,255,255,0.028), rgba(255,255,255,0.028) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(255,255,255,0.028), rgba(255,255,255,0.028) 1px, transparent 1px, transparent 22px), radial-gradient(1200px 700px at 28% 8%, rgba(43, 123, 255, 0.22), transparent 55%), radial-gradient(900px 520px at 78% 30%, rgba(20, 160, 255, 0.16), transparent 58%), radial-gradient(1200px 900px at 60% 120%, rgba(90, 200, 255, 0.10), transparent 60%), #03060c'
-  const studioShellBg = appearance.theme === 'obsidian' ? token.colorBgLayout : appearance.theme === 'cyber' ? cyberPageBg : techPageBg
+  const canvasBg = appearance.theme === 'obsidian' ? token.colorBgLayout : '#03060c'
 
   const surfaceBg =
     appearance.theme === 'obsidian'
@@ -530,15 +548,15 @@ function StudioDebugDashboardCanvas({
     ]
   }
 
-  const optionForSlot = (kind: WidgetKind, name: string): EChartsOption | null => {
-    if (kind === 'bar') return buildBarOption(name, themeColors)
-    if (kind === 'bar-h') return buildHBarOption(name, themeColors)
-    if (kind === 'bar-stacked') return buildStackedBarOption(name, themeColors)
-    if (kind === 'bar-grouped') return buildGroupedBarOption(name, themeColors)
-    if (kind === 'bar-gradient') return buildGradientBarOption(name, themeColors)
-    if (kind === 'line') return buildLineOption(name, themeColors)
-    if (kind === 'line-area') return buildAreaOption(name, themeColors)
-    if (kind === 'line-curve') return buildCurveOption(name, themeColors)
+  const optionForSlot = (kind: WidgetKind, name: string, unit: string): EChartsOption | null => {
+    if (kind === 'bar') return buildBarOption(name, themeColors, unit)
+    if (kind === 'bar-h') return buildHBarOption(name, themeColors, unit)
+    if (kind === 'bar-stacked') return buildStackedBarOption(name, themeColors, unit)
+    if (kind === 'bar-grouped') return buildGroupedBarOption(name, themeColors, unit)
+    if (kind === 'bar-gradient') return buildGradientBarOption(name, themeColors, unit)
+    if (kind === 'line') return buildLineOption(name, themeColors, unit)
+    if (kind === 'line-area') return buildAreaOption(name, themeColors, unit)
+    if (kind === 'line-curve') return buildCurveOption(name, themeColors, unit)
     if (kind === 'scatter') return buildScatterOption(name, themeColors)
     if (kind === 'bubble') return buildBubbleOption(name, themeColors)
     if (kind === 'pie') return buildPieOption(name, themeColors)
@@ -555,7 +573,66 @@ function StudioDebugDashboardCanvas({
     return null
   }
 
-  const renderSlotBody = (raw: { kind: WidgetKind | null; configText: string } | undefined) => {
+  const enhanceSelectableOption = (kind: WidgetKind, opt: EChartsOption) => {
+    const next: any = { ...(opt as any) }
+    const list = next.series
+    if (!Array.isArray(list)) return next as EChartsOption
+    const pointKinds = new Set<WidgetKind>(['line', 'line-area', 'line-curve', 'bubble', 'scatter'])
+    const blockKinds = new Set<WidgetKind>([
+      'bar',
+      'bar-h',
+      'bar-grouped',
+      'bar-stacked',
+      'bar-gradient',
+      'pie',
+      'donut',
+      'rose',
+      'funnel',
+      'sankey',
+    ])
+
+    const scaleSize = pointKinds.has(kind) ? 30 : blockKinds.has(kind) ? 36 : 24
+    const shadowColor = typeof accent === 'string' && accent.startsWith('#') ? `${accent}F0` : String(accent)
+
+    next.series = list.map((s: any, i: number) => {
+      const ss: any = { ...s }
+      if (ss.id == null) ss.id = `__studio_series_${i}`
+      const em = { ...(ss.emphasis ?? {}) }
+      const itemStyle = { ...((em.itemStyle ?? {}) as any) }
+      itemStyle.shadowBlur = Math.max(90, Number(itemStyle.shadowBlur ?? 0) || 0)
+      itemStyle.shadowColor = itemStyle.shadowColor ?? shadowColor
+      if (itemStyle.shadowOffsetX == null) itemStyle.shadowOffsetX = 0
+      if (itemStyle.shadowOffsetY == null) itemStyle.shadowOffsetY = 0
+      itemStyle.opacity = itemStyle.opacity ?? 1
+      em.itemStyle = itemStyle
+      ;(em as any).scale = true
+      ;(em as any).scaleSize = scaleSize
+      if (typeof ss.symbolSize === 'number' && Number.isFinite(ss.symbolSize)) {
+        ;(em as any).symbolSize = Math.max(ss.symbolSize, ss.symbolSize + 10)
+      }
+      ss.emphasis = em
+
+      const sel = { ...(ss.select ?? {}) }
+      const selItem = { ...((sel.itemStyle ?? {}) as any), ...itemStyle }
+      selItem.shadowBlur = Math.max(120, Number(selItem.shadowBlur ?? 0) || 0)
+      selItem.shadowColor = selItem.shadowColor ?? shadowColor
+      if (selItem.shadowOffsetX == null) selItem.shadowOffsetX = 0
+      if (selItem.shadowOffsetY == null) selItem.shadowOffsetY = 0
+      sel.itemStyle = selItem
+      ;(sel as any).scale = true
+      ;(sel as any).scaleSize = scaleSize
+      if (typeof ss.symbolSize === 'number' && Number.isFinite(ss.symbolSize)) {
+        ;(sel as any).symbolSize = Math.max(ss.symbolSize, ss.symbolSize + 8)
+      }
+      ss.select = sel
+      ss.selectedMode = ss.selectedMode ?? 'single'
+      return ss
+    })
+
+    return next as EChartsOption
+  }
+
+  const renderSlotBody = (idx: number, raw: { kind: WidgetKind | null; configText: string } | undefined) => {
     const kind = raw?.kind ?? null
     const parsed = (() => {
       try {
@@ -565,6 +642,8 @@ function StudioDebugDashboardCanvas({
       }
     })()
     const chartTitle = String(parsed?.title ?? (kind ? KIND_NAME[kind] : ''))
+    const dashboardTitle = String(payload.title ?? '').trim() || '仪表盘'
+    const cardContext = `${dashboardTitle}｜${chartTitle || '图表'}`
 
     if (!kind) {
       return (
@@ -621,30 +700,26 @@ function StudioDebugDashboardCanvas({
       const value = Math.max(0, Math.round(base))
       const unit = String(parsed?.unit ?? '次')
       return (
-        <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <Space size={6}>
-              <span
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 8,
-                  background: 'transparent',
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: accent,
-                }}
-              >
-                <CircleDot size={14} />
-              </span>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {chartTitle}
-              </Typography.Text>
-            </Space>
+        <div style={{ padding: 16, height: '100%', display: 'grid', alignContent: 'center', justifyItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 8,
+                background: 'transparent',
+                display: 'grid',
+                placeItems: 'center',
+                color: accent,
+              }}
+            >
+              <CircleDot size={14} />
+            </span>
+            <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>
+              {chartTitle}
+            </Typography.Text>
           </div>
-          <div style={{ display: 'grid', alignContent: 'center', minHeight: 0 }}>
-            <FlipCounter title={chartTitle} unit={unit} target={value} />
-          </div>
+          <FlipCounter title={chartTitle} unit={unit} target={value} showTitle={false} />
         </div>
       )
     }
@@ -694,7 +769,9 @@ function StudioDebugDashboardCanvas({
       )
     }
 
-    const opt = optionForSlot(kind, chartTitle)
+    const unit = typeof parsed?.unit === 'string' ? String(parsed.unit) : ''
+    const opt = optionForSlot(kind, chartTitle, unit)
+    const finalOpt = opt ? enhanceSelectableOption(kind, opt) : null
     return opt ? (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div className="studioSlotHeader" style={{ padding: '12px 12px 8px 12px' }}>
@@ -750,7 +827,55 @@ function StudioDebugDashboardCanvas({
           </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, paddingTop: kind === 'funnel' ? 0 : 10 }}>
-          <EChart option={opt as any} />
+          <EChart
+            option={finalOpt as any}
+            selected={selectedDatum && selectedDatum.slotIdx === idx ? { seriesIndex: selectedDatum.seriesIndex, dataIndex: selectedDatum.dataIndex } : null}
+            onSelectedChange={(next, click) => {
+              if (!kind) return
+              const pointKinds = new Set<WidgetKind>(['line', 'line-area', 'line-curve', 'bubble', 'scatter'])
+              const blockKinds = new Set<WidgetKind>([
+                'bar',
+                'bar-h',
+                'bar-grouped',
+                'bar-stacked',
+                'bar-gradient',
+                'pie',
+                'donut',
+                'rose',
+                'funnel',
+                'sankey',
+              ])
+              const labelKind = pointKinds.has(kind) ? '数据点' : blockKinds.has(kind) ? '数据块' : '数据点'
+              const nameText = String(click.name ?? click.seriesName ?? '').trim()
+              const v = click.value
+              const valueText = Array.isArray(v) ? v.map((x) => String(x)).join(', ') : String(v ?? '').trim()
+              const detail =
+                nameText && valueText ? `${labelKind}：${nameText}=${valueText}` : nameText ? `${labelKind}：${nameText}` : valueText ? `${labelKind}：${valueText}` : labelKind
+              const ctx = `${cardContext}｜${detail}`
+              if (!next) {
+                onDatumSelect(null, ctx)
+                return
+              }
+              const ox = typeof click.offsetX === 'number' ? click.offsetX : 0
+              const oy = typeof click.offsetY === 'number' ? click.offsetY : 0
+              onDatumSelect(
+                {
+                  slotIdx: idx,
+                  kind,
+                  seriesIndex: next.seriesIndex,
+                  dataIndex: next.dataIndex,
+                  offsetX: ox,
+                  offsetY: oy,
+                  name: click.name,
+                  seriesName: click.seriesName,
+                  value: click.value,
+                  dataType: click.dataType,
+                  color: click.color,
+                },
+                ctx,
+              )
+            }}
+          />
         </div>
       </div>
     ) : (
@@ -777,22 +902,17 @@ function StudioDebugDashboardCanvas({
   const gap = layout.mode === 'free' ? Math.max(8, Math.min(32, Number((layout as any).gap ?? 16))) : 10
 
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: studioShellBg }}>
-      <div style={{ padding: 14, borderBottom: `1px solid ${token.colorSplit}`, background: 'rgba(0,0,0,0.10)' }}>
-        <Typography.Text strong style={{ display: 'block', lineHeight: 1.2 }}>
-          {String(payload.title ?? '').trim() || '未命名仪表盘'}
-        </Typography.Text>
-      </div>
-      <div style={{ flex: 1, minHeight: 0, padding: 10 }}>
+    <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: canvasBg }}>
+      <div style={{ flex: 1, minHeight: 0, padding: 0 }}>
         <div
           style={{
             height: '100%',
             minHeight: 0,
             borderRadius: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 0 : 16,
             border: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 'none' : `1px solid ${token.colorSplit}`,
-            background: appearance.theme === 'obsidian' ? token.colorBgLayout : appearance.theme === 'cyber' || appearance.theme === 'tech' ? 'transparent' : 'rgba(8, 12, 22, 0.70)',
+            background: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? canvasBg : 'rgba(8, 12, 22, 0.70)',
             overflow: 'auto',
-            padding: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 0 : 12,
+            padding: 0,
             backdropFilter: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? undefined : 'blur(14px)',
           }}
         >
@@ -803,6 +923,8 @@ function StudioDebugDashboardCanvas({
               height: '100%',
               gridTemplateRows: gridRows,
               gap,
+              padding: gap,
+              background: canvasBg,
               alignItems: 'stretch',
               minHeight: 0,
             }}
@@ -811,24 +933,56 @@ function StudioDebugDashboardCanvas({
               const raw = slots[idx]
               const kind = raw?.kind ?? null
               const borderColor = kind ? token.colorSplit : token.colorSplit
+              const isActive = Boolean(kind) && selectedCardIdx === idx
               return (
                 <div
                   key={idx}
                   className={`studioSlot${kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}`}
+                  role={kind ? 'button' : undefined}
+                  tabIndex={kind ? 0 : undefined}
+                  onClick={() => {
+                    if (!kind) return
+                    const parsed = (() => {
+                      try {
+                        return raw?.configText ? JSON.parse(raw.configText) : null
+                      } catch {
+                        return null
+                      }
+                    })()
+                    const chartTitle = String(parsed?.title ?? KIND_NAME[kind] ?? '图表')
+                    const dashboardTitle = String(payload.title ?? '').trim() || '仪表盘'
+                    onCardSelect(idx, `${dashboardTitle}｜${chartTitle}`)
+                  }}
+                  onKeyDown={(e) => {
+                    if (!kind) return
+                    if (e.key !== 'Enter' && e.key !== ' ') return
+                    e.preventDefault()
+                    const parsed = (() => {
+                      try {
+                        return raw?.configText ? JSON.parse(raw.configText) : null
+                      } catch {
+                        return null
+                      }
+                    })()
+                    const chartTitle = String(parsed?.title ?? KIND_NAME[kind] ?? '图表')
+                    const dashboardTitle = String(payload.title ?? '').trim() || '仪表盘'
+                    onCardSelect(idx, `${dashboardTitle}｜${chartTitle}`)
+                  }}
                   style={{
                     ['--studio-accent' as any]: accent,
                     gridColumn: `${pos.colStart} / span ${pos.colSpan}`,
                     gridRow: `${pos.rowStart} / span ${pos.rowSpan}`,
                     height: '100%',
                     borderRadius: 14,
-                    border: kind ? `1px solid ${borderColor}` : `1px dashed ${borderColor}`,
+                    border: kind ? `${isActive ? 2 : 1}px solid ${isActive ? accent : borderColor}` : `1px dashed ${borderColor}`,
                     background: kind ? surfaceBg : emptyBg,
                     position: 'relative',
                     overflow: 'hidden',
-                    cursor: 'default',
+                    cursor: kind ? 'pointer' : 'default',
+                    boxShadow: isActive ? `0 0 0 1px ${accent}66, 0 14px 44px rgba(0,0,0,0.26)` : undefined,
                   }}
                 >
-                  {renderSlotBody(raw)}
+                  {renderSlotBody(idx, raw)}
                 </div>
               )
             })}
@@ -879,6 +1033,23 @@ export default function DashboardChatWorkspacePage() {
     }
   }, [debugStudio])
 
+  const previewAppearance = studioPayload?.appearance
+  const previewTheme = previewAppearance?.theme
+  const panelTheme = previewTheme === 'obsidian' || previewTheme === 'cyber' || previewTheme === 'tech' ? previewTheme : null
+  const panelPalette = previewAppearance?.chartPalette
+  const previewPalette = panelPalette ? CHART_PALETTES[panelPalette] : null
+  const panelAccent = previewPalette?.colors?.[0] ?? (panelTheme === 'obsidian' ? token.colorPrimary : panelTheme ? THEME_ACCENT[panelTheme] : token.colorPrimary)
+  const panelBg =
+    panelTheme === 'obsidian'
+      ? token.colorBgContainer
+      : panelTheme === 'tech'
+        ? 'rgba(10, 20, 38, 0.92)'
+        : panelTheme === 'cyber'
+          ? 'rgba(10, 16, 32, 0.92)'
+          : 'rgba(10, 14, 24, 0.92)'
+  const panelBorderColor = panelTheme ? 'rgba(255,255,255,0.10)' : token.colorSplit
+  const debugStudioBg = panelTheme === 'obsidian' ? token.colorBgLayout : '#03060c'
+
   const sessionRowClass = 'sessionRow'
   const sessionActionsClass = 'sessionActions'
 
@@ -909,6 +1080,8 @@ export default function DashboardChatWorkspacePage() {
   const [datasetsPreviewActive, setDatasetsPreviewActive] = useState('')
 
   const [selectedDashboardKey, setSelectedDashboardKey] = useState('')
+  const [studioSelectedCardIdx, setStudioSelectedCardIdx] = useState<number | null>(null)
+  const [studioSelectedDatum, setStudioSelectedDatum] = useState<StudioDatumSelection | null>(null)
 
   const [sessionEditId, setSessionEditId] = useState<string>('')
   const [sessionEditName, setSessionEditName] = useState<string>('')
@@ -1474,7 +1647,15 @@ export default function DashboardChatWorkspacePage() {
   return (
     <div
       ref={layoutRef}
-      style={{ display: 'flex', gap: 2, height: '100vh', minHeight: 720, padding: 10, background: token.colorBgLayout, position: 'relative' }}
+      style={{
+        display: 'flex',
+        gap: debugStudio ? 0 : 2,
+        height: '100vh',
+        minHeight: 720,
+        padding: debugStudio ? 0 : 10,
+        background: debugStudio ? debugStudioBg : token.colorBgLayout,
+        position: 'relative',
+      }}
     >
       <div
         style={{
@@ -1490,6 +1671,28 @@ export default function DashboardChatWorkspacePage() {
         {debugStudio && studioPayload ? (
           <StudioDebugDashboardCanvas
             payload={studioPayload}
+            selectedCardIdx={studioSelectedCardIdx}
+            selectedDatum={studioSelectedDatum}
+            onCardSelect={(slotIdx, context) => {
+              if (slotIdx === studioSelectedCardIdx) {
+                setStudioSelectedCardIdx(null)
+                setStudioSelectedDatum(null)
+                return
+              }
+              setStudioSelectedCardIdx(slotIdx)
+              setStudioSelectedDatum(null)
+              runPresetAnalysis(context)
+            }}
+            onDatumSelect={(next, context) => {
+              if (!next) {
+                setStudioSelectedDatum(null)
+                setStudioSelectedCardIdx(null)
+                return
+              }
+              setStudioSelectedCardIdx(next.slotIdx)
+              setStudioSelectedDatum(next)
+              runPresetAnalysis(context)
+            }}
           />
         ) : (
           <NeutralDashboardCanvas
@@ -1598,8 +1801,8 @@ export default function DashboardChatWorkspacePage() {
           width: panelWidth,
           flex: 'none',
           borderRadius: 16,
-          border: `1px solid ${token.colorSplit}`,
-          background: token.colorBgContainer,
+          border: `1px solid ${panelBorderColor}`,
+          background: panelBg,
           display: 'flex',
           flexDirection: 'column',
           minHeight: 0,
@@ -1613,11 +1816,11 @@ export default function DashboardChatWorkspacePage() {
           boxShadow: isOverlay ? '0 18px 48px rgba(0,0,0,0.22)' : undefined,
         }}
       >
-        <div style={{ padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${token.colorSplit}` }}>
+        <div style={{ padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${panelBorderColor}` }}>
           <div style={{ minWidth: 0 }}>
             <Typography.Text strong style={{ fontSize: 18, letterSpacing: 0.2, fontWeight: 800 }}>
               <span style={{ opacity: 0.9 }}>Chat</span>
-              <span style={{ color: token.colorPrimary, fontStyle: 'italic' }}>BI</span>
+              <span style={{ color: panelAccent, fontStyle: 'italic' }}>BI</span>
             </Typography.Text>
           </div>
 

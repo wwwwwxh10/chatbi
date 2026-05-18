@@ -849,7 +849,6 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
         ) : (
           <Table
             size="middle"
-            tableLayout="fixed"
             pagination={{ pageSize: 5 }}
             dataSource={customDashboards.map((d) => ({ ...d, key: d.id }))}
             columns={[
@@ -857,7 +856,6 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                 title: t('dashboard.table.name'),
                 dataIndex: 'title',
                 key: 'title',
-                width: 220,
                 ellipsis: true,
                 render: (v: string) => (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -873,12 +871,12 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                 width: 96,
                 render: (v: boolean) =>
                   v ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                       <span style={{ width: 6, height: 6, borderRadius: 99, background: token.colorPrimary }} />
                       <span style={{ color: token.colorText }}>{locale === 'zh-CN' ? '已发布' : 'Published'}</span>
                     </span>
                   ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                       <span style={{ width: 6, height: 6, borderRadius: 99, background: token.colorTextTertiary }} />
                       <span style={{ color: token.colorTextSecondary }}>{locale === 'zh-CN' ? '已下线' : 'Offline'}</span>
                     </span>
@@ -888,6 +886,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                 title: t('dashboard.table.tables'),
                 dataIndex: 'tables',
                 key: 'tables',
+                width: 240,
                 render: (v: string[]) => {
                   const arr = Array.isArray(v) ? v.map((x) => String(x)) : []
                   const tooLong = arr.some((x) => x.length > 12)
@@ -898,10 +897,10 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                       {shown.map((x) => (
                         <Tag
                           key={x}
-                          style={{ maxWidth: 112, overflow: 'hidden', marginInlineEnd: 0, cursor: 'pointer' }}
+                          style={{ maxWidth: 96, overflow: 'hidden', marginInlineEnd: 0, cursor: 'pointer', flex: '0 0 auto' }}
                           onClick={() => openTablePreview(arr, x)}
                         >
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 96 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 80 }}>
                             <DataTableIcon size={14} color={token.colorTextSecondary} />
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x}</span>
                           </span>
@@ -3251,12 +3250,12 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                 width: 96,
                 render: (v: boolean) =>
                   v ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                       <span style={{ width: 6, height: 6, borderRadius: 99, background: token.colorPrimary }} />
                       <span style={{ color: token.colorText }}>{locale === 'zh-CN' ? '已发布' : 'Published'}</span>
                     </span>
                   ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                       <span style={{ width: 6, height: 6, borderRadius: 99, background: token.colorTextTertiary }} />
                       <span style={{ color: token.colorTextSecondary }}>{locale === 'zh-CN' ? '已下线' : 'Offline'}</span>
                     </span>
@@ -3266,6 +3265,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                 title: t('dashboard.table.tables'),
                 dataIndex: 'tables',
                 key: 'tables',
+                width: 200,
                 render: (v: string[]) => {
                   const arr = Array.isArray(v) ? v.map((x) => String(x)) : []
                   const tooLong = arr.some((x) => x.length > 12)
@@ -3276,10 +3276,10 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                       {shown.map((x) => (
                         <Tag
                           key={x}
-                          style={{ maxWidth: 112, overflow: 'hidden', marginInlineEnd: 0, cursor: 'pointer' }}
+                          style={{ maxWidth: 90, overflow: 'hidden', marginInlineEnd: 0, cursor: 'pointer', flex: '0 0 auto' }}
                           onClick={() => openTablePreview(arr, x)}
                         >
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 96 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 76 }}>
                             <DataTableIcon size={14} color={token.colorTextSecondary} />
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x}</span>
                           </span>
@@ -3318,63 +3318,89 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                   )
                 },
               },
-              { title: t('dashboard.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 140 },
+              {
+                title: t('dashboard.table.updatedAt'),
+                dataIndex: 'updatedAt',
+                key: 'updatedAt',
+                width: 140,
+                ellipsis: true,
+                render: (v: string) => <span style={{ whiteSpace: 'nowrap' }}>{String(v ?? '')}</span>,
+              },
               {
                 title: t('dashboard.table.actions'),
                 key: 'actions',
-                width: 84,
+                width: 140,
                 render: (_: unknown, r: CustomDashboard) => (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <Dropdown
-                      trigger={['click']}
-                      menu={{
-                        items: [
-                          { key: 'preview', icon: <EyeOutlined />, label: locale === 'zh-CN' ? '预览' : 'Preview' },
-                          { key: 'edit', icon: <EditOutlined />, label: locale === 'zh-CN' ? '编辑' : 'Edit' },
-                          { type: 'divider' as const },
-                          { key: 'chat', icon: <CommentOutlined />, label: locale === 'zh-CN' ? '开始对话' : 'Chat' },
-                          { key: 'publish', icon: r.published ? <CloudDownloadOutlined /> : <CloudUploadOutlined />, label: r.published ? (locale === 'zh-CN' ? '下线' : 'Offline') : (locale === 'zh-CN' ? '发布' : 'Publish') },
-                          { key: 'delete', icon: <DeleteOutlined />, danger: true, label: locale === 'zh-CN' ? '删除' : 'Delete' },
-                        ],
-                        onClick: async ({ key }) => {
-                          if (key === 'preview') {
-                            navigate(`/dashboard/studio/${encodeURIComponent(String(r.id))}/preview`)
-                            return
-                          }
-                          if (key === 'edit') {
-                            navigate(`/dashboard/studio/${encodeURIComponent(String(r.id))}`)
-                            return
-                          }
-                          if (key === 'chat') {
-                            openChatWorkspace({ dashboardId: String(r.id) })
-                            return
-                          }
-                          if (key === 'publish') {
-                            updateDashboard(String(r.id), { published: !r.published, updatedAt: touchUpdatedAt() })
-                            void message.success(locale === 'zh-CN' ? (r.published ? '已下线' : '已发布') : r.published ? 'Offline' : 'Published')
-                            return
-                          }
-                          if (key === 'delete') {
-                            if (r.published) {
-                              void message.error(locale === 'zh-CN' ? '请先下线再删除' : 'Please offline first')
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', whiteSpace: 'nowrap', width: '100%' }}>
+                    <div style={{ width: 140, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Tooltip title={locale === 'zh-CN' ? '预览' : 'Preview'}>
+                        <Button
+                          type="text"
+                          className="iconOnly"
+                          size="small"
+                          icon={<EyeOutlined />}
+                          onClick={() => navigate(`/dashboard/studio/${encodeURIComponent(String(r.id))}/preview`)}
+                        />
+                      </Tooltip>
+                      <Tooltip title={locale === 'zh-CN' ? '编辑' : 'Edit'}>
+                        <Button
+                          type="text"
+                          className="iconOnly"
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() => navigate(`/dashboard/studio/${encodeURIComponent(String(r.id))}`)}
+                        />
+                      </Tooltip>
+                      <Tooltip title={t('dashboard.startChat')}>
+                        <Button
+                          type="text"
+                          className="iconOnly"
+                          size="small"
+                          icon={<CommentOutlined />}
+                          onClick={() => openChatWorkspace({ dashboardId: String(r.id) })}
+                        />
+                      </Tooltip>
+                      <Dropdown
+                        trigger={['click']}
+                        menu={{
+                          items: [
+                            {
+                              key: 'publish',
+                              icon: r.published ? <CloudDownloadOutlined /> : <CloudUploadOutlined />,
+                              label: r.published ? (locale === 'zh-CN' ? '下线' : 'Offline') : locale === 'zh-CN' ? '发布' : 'Publish',
+                            },
+                            { key: 'delete', icon: <DeleteOutlined />, danger: true, label: locale === 'zh-CN' ? '删除' : 'Delete' },
+                          ],
+                          onClick: async ({ key }) => {
+                            if (key === 'publish') {
+                              updateDashboard(String(r.id), { published: !r.published, updatedAt: touchUpdatedAt() })
+                              void message.success(locale === 'zh-CN' ? (r.published ? '已下线' : '已发布') : r.published ? 'Offline' : 'Published')
                               return
                             }
-                            confirmDelete({
-                              title: locale === 'zh-CN' ? '删除仪表盘' : 'Delete dashboard',
-                              description:
-                                locale === 'zh-CN'
-                                  ? `将删除仪表盘“${String(r.title)}”。删除后不可恢复。`
-                                  : `Delete dashboard "${String(r.title)}". This action cannot be undone.`,
-                              onOk: async () => {
-                                removeDashboard(String(r.id))
-                              },
-                            })
-                          }
-                        },
-                      }}
-                    >
-                      <Button type="text" className="iconOnly" size="small" icon={<MoreOutlined />} />
-                    </Dropdown>
+                            if (key === 'delete') {
+                              if (r.published) {
+                                void message.error(locale === 'zh-CN' ? '请先下线再删除' : 'Please offline first')
+                                return
+                              }
+                              confirmDelete({
+                                title: locale === 'zh-CN' ? '删除仪表盘' : 'Delete dashboard',
+                                description:
+                                  locale === 'zh-CN'
+                                    ? `将删除仪表盘“${String(r.title)}”。删除后不可恢复。`
+                                    : `Delete dashboard "${String(r.title)}". This action cannot be undone.`,
+                                onOk: async () => {
+                                  removeDashboard(String(r.id))
+                                },
+                              })
+                            }
+                          },
+                        }}
+                      >
+                        <Tooltip title={locale === 'zh-CN' ? '更多...' : 'More...'}>
+                          <Button type="text" className="iconOnly" size="small" icon={<MoreOutlined />} />
+                        </Tooltip>
+                      </Dropdown>
+                    </div>
                   </div>
                 ),
               },

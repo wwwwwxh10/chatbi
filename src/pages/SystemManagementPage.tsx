@@ -395,7 +395,7 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
                     overflow: 'hidden',
                   }}
                 >
-                  {logo ? <img src={logo} alt={systemName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: token.colorTextTertiary }}>—</span>}
+                  {logo ? <img src={logo} alt={systemName} style={{ width: '100%', height: '100%', aspectRatio: '1 / 1', objectFit: 'contain' }} /> : <span style={{ color: token.colorTextTertiary }}>—</span>}
                 </div>
                 <div style={{ flex: 1, minWidth: 260 }}>
                   <UploadPanel

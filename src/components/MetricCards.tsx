@@ -41,10 +41,12 @@ export function FlipCounter({
   title,
   unit,
   target,
+  showTitle = true,
 }: {
   title: string
   unit: string
   target: number
+  showTitle?: boolean
 }) {
   const [value, setValue] = useState(() => Math.max(0, Math.floor(target * 0.72)))
   const valueRef = useRef(value)
@@ -74,14 +76,13 @@ export function FlipCounter({
 
   return (
     <div className="flip">
-      <div className="kpiTitle">{title}</div>
+      {showTitle ? <div className="kpiTitle">{title}</div> : null}
       <div className="flipRow" aria-label={`${title} ${value}${unit}`}>
         {digits.map((d, idx) => (
           <Digit key={`${value}-${idx}`} d={d} />
         ))}
         <span className="kpiUnit">{unit}</span>
       </div>
-      <div className="kpiHint">更新：每 3 秒刷新 · 点击图表可选中数据</div>
     </div>
   )
 }

@@ -15,7 +15,10 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../store/appStore'
+import { useSystemStore } from '../store/systemStore'
 import { useEffect, useMemo, useState } from 'react'
+import { AppLogoMark } from './logo/AppLogoMark'
+import { AppLogoWordmark } from './logo/AppLogoWordmark'
 
 export type KnowledgeTabKey =
   | 'terms'
@@ -56,6 +59,8 @@ export function Sidebar({
   const location = useLocation()
   const navigate = useNavigate()
   const themeMode = useAppStore((s) => s.themeMode)
+  const systemName = useSystemStore((s) => s.systemName)
+  const logoDataUrl = useSystemStore((s) => s.logoDataUrl)
 
   const knowledgeTab = readKnowledgeTab(location.search)
   const selectedKey = (() => {
@@ -135,6 +140,35 @@ export function Sidebar({
         transition: 'width 180ms ease, background 180ms ease',
       }}
     >
+      <div style={{ padding: collapsed ? '12px 10px' : '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Button
+          type="text"
+          onClick={() => navigate('/dashboard')}
+          style={{
+            width: '100%',
+            height: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            gap: 10,
+            paddingInline: collapsed ? 0 : 10,
+            borderRadius: 12,
+          }}
+        >
+          {logoDataUrl ? (
+            <img src={logoDataUrl} alt={systemName} style={{ width: 32, height: 32, aspectRatio: '1 / 1', objectFit: 'contain', flex: 'none' }} />
+          ) : systemName === 'ChatBI' ? (
+            collapsed ? (
+              <AppLogoMark size={32} />
+            ) : (
+              <AppLogoWordmark size={28} fontSize={18} />
+            )
+          ) : (
+            <AppLogoMark size={32} />
+          )}
+          {collapsed || (!logoDataUrl && systemName === 'ChatBI') ? null : <span style={{ fontWeight: 800, color: token.colorText, letterSpacing: 0.2 }}>{systemName}</span>}
+        </Button>
+      </div>
       <div className="siderCollapseArea">
         <Button
           type="text"
