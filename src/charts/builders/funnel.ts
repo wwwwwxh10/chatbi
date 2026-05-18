@@ -11,7 +11,7 @@ export function buildFunnelOption(): EChartsOption {
       itemWidth: 14,
       itemHeight: 4,
       itemGap: 24,
-      textStyle: { fontSize: 13 },
+      textStyle: { fontSize: 14 },
     },
     series: [
       {

@@ -583,10 +583,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       const unit = String(parsed?.unit ?? '次')
       const titleFixed = appearance.language === 'en-US' ? 'Total Subscribers' : '在网总用户数'
       return (
-        <div style={{ padding: 16, height: '100%', display: 'grid', alignContent: 'center', justifyItems: 'center', gap: 10 }}>
+        <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div
             className="studioSlotHeader"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
             draggable={!readOnly && !previewMode}
             onMouseMove={(e) => {
               if (readOnly || previewMode) return
@@ -597,30 +597,33 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             onDragStart={(e) => onSlotDragStart(idx, e)}
             onDragEnd={onSlotDragEnd}
           >
-            <span
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 8,
-                background: 'transparent',
-                display: 'grid',
-                placeItems: 'center',
-                color: accent,
-              }}
-            >
-              <CircleDot size={14} />
-            </span>
-            <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>
-              {titleFixed}
-            </Typography.Text>
+            <Space size={4}>
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: accent,
+                }}
+              >
+                <CircleDot size={14} />
+              </span>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {titleFixed}
+              </Typography.Text>
+            </Space>
           </div>
 
-          <FlipCounter title={titleFixed} unit={unit} target={value} showTitle={false} />
-          {slot.error ? (
-            <div style={{ paddingTop: 6 }}>
-              <Tag color="error">解析失败</Tag>
-            </div>
-          ) : null}
+          <div style={{ flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10 }}>
+            <FlipCounter title={titleFixed} unit={unit} target={value} showTitle={false} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span />
+            {slot.error ? <Tag color="error">解析失败</Tag> : null}
+          </div>
         </div>
       )
     }
@@ -648,17 +651,16 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               <Space size={4}>
                 <span
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 8,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 10,
                     background: 'transparent',
                     display: 'grid',
                     placeItems: 'center',
-                    color: token.colorTextTertiary,
-                    opacity: 0.85,
+                    color: accent,
                   }}
                 >
-                  <Workflow size={14} />
+                  <Workflow size={16} />
                 </span>
                 <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>{chartTitle}</Typography.Text>
               </Space>
@@ -744,15 +746,14 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             <Space size={4} style={{ minWidth: 0 }}>
               <span
                 style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 8,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 10,
                   background: 'transparent',
                   display: 'grid',
                   placeItems: 'center',
-                  color: token.colorTextTertiary,
-                  opacity: 0.85,
-                  flex: '0 0 22px',
+                  color: accent,
+                  flex: '0 0 28px',
                 }}
               >
                 {(() => {
@@ -785,7 +786,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                             : k === 'sankey' || k === 'graph'
                                               ? Network
                                               : Activity
-                  return <Icon size={14} />
+                  return <Icon size={16} />
                 })()}
               </span>
               <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>
@@ -795,7 +796,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, paddingTop: slot.kind === 'funnel' ? 0 : 10 }}>
-          <EChart option={opt as any} />
+          <EChart option={opt as any} legendSingleLine />
         </div>
       </div>
     ) : (
@@ -881,10 +882,15 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     onChange: (v: StudioAppearance['theme']) => void
     disabled?: boolean
   }) => {
-    const themeSwatches: Record<StudioAppearance['theme'], string[]> = {
-      obsidian: [token.colorPrimary, token.colorBgLayout, token.colorBgContainer],
-      cyber: [THEME_ACCENT.cyber, '#03060c', 'rgba(10, 16, 32, 0.76)'],
-      tech: [THEME_ACCENT.tech, '#03060c', 'rgba(10, 20, 38, 0.76)'],
+    const themeBg: Record<StudioAppearance['theme'], string> = {
+      obsidian: token.colorBgContainer,
+      cyber: cyberPageBgNoGrid,
+      tech: techPageBgNoGrid,
+    }
+    const themeSurfaceBg: Record<StudioAppearance['theme'], string> = {
+      obsidian: token.colorBgContainer,
+      tech: 'linear-gradient(135deg, rgba(18, 44, 96, 0.62), rgba(10, 16, 28, 0.86))',
+      cyber: 'linear-gradient(135deg, rgba(20, 30, 50, 0.60), rgba(10, 15, 25, 0.80))',
     }
     const items = [
       {
@@ -907,7 +913,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
         {items.map((it) => {
           const selected = value === it.key
-          const cols = themeSwatches[it.key]
+          const bg = themeBg[it.key]
+          const surfaceBg = themeSurfaceBg[it.key]
           return (
             <div
               key={it.key}
@@ -918,26 +925,41 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               style={{
                 borderRadius: 14,
                 border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
-                background: 'var(--studio-panel-card-bg)',
+                background: bg,
                 cursor: disabled ? 'default' : 'pointer',
-                padding: 12,
+                padding: 10,
                 opacity: disabled ? 0.9 : 1,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
-                <div style={{ minWidth: 0 }}>
-                  <Typography.Text style={{ display: 'block', fontSize: 14, fontWeight: 800, lineHeight: 1.25 }}>
+              <div
+                style={{
+                  borderRadius: 14,
+                  border: `1px solid ${selected ? accent : 'rgba(255,255,255,0.08)'}`,
+                  background: surfaceBg,
+                  padding: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <Space size={4} style={{ minWidth: 0 }}>
+                  <span
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 10,
+                      background: 'transparent',
+                      display: 'grid',
+                      placeItems: 'center',
+                      color: accent,
+                      flex: '0 0 28px',
+                    }}
+                  >
+                    <PieChart size={16} />
+                  </span>
+                  <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>
                     {it.label}
                   </Typography.Text>
-                  <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, lineHeight: 1.3, marginTop: 4 }}>
-                    {it.desc}
-                  </Typography.Text>
-                </div>
-                <div className="studioPaletteSwatches">
-                  {cols.map((c, i) => (
-                    <span key={`${c}-${i}`} className="studioPaletteSwatch" style={{ background: c }} />
-                  ))}
-                </div>
+                </Space>
               </div>
             </div>
           )
@@ -1274,7 +1296,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             </Space>
           </div>
 
-          <div style={{ flex: 1, minHeight: 0, padding: 10, background: canvasBg }}>
+          <div style={{ flex: 1, minHeight: 0, padding: previewMode ? 0 : 10, background: canvasBg }}>
             <div
               ref={canvasRef}
               onDragOver={(e) => {

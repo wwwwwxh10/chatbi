@@ -16,7 +16,7 @@ export function buildPieOption(kind: 'pie' | 'donut' | 'rose'): EChartsOption {
     itemWidth: 14,
     itemHeight: 4,
     itemGap: 24,
-    textStyle: { fontSize: 13 },
+    textStyle: { fontSize: 14 },
   } as const
 
   if (kind === 'rose') {

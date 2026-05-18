@@ -59,10 +59,11 @@ function baseOption(themeColors: string[], { showLegend, unit, tooltipTrigger }:
       icon: 'roundRect',
       itemWidth: 14,
       itemHeight: 4,
-      textStyle: { color: UI_MUTED, fontSize: 13 },
+      textStyle: { color: UI_MUTED, fontSize: 12 },
       itemGap: 24,
       inactiveColor: 'rgba(255,255,255,0.2)',
       itemStyle: { borderWidth: 0 },
+      __autoHideOverflow: true,
     },
     grid: { left: 30, right: 30, top: 36, bottom: showLegend ? 40 : 18, containLabel: true },
     xAxis: {
@@ -521,6 +522,7 @@ export function buildPieOption(title: string, themeColors: string[]): EChartsOpt
       itemGap: 24,
       inactiveColor: 'rgba(255,255,255,0.2)',
       itemStyle: { borderWidth: 0 },
+      __autoHideOverflow: true,
       formatter: (name: string) => {
         void total
         return name
@@ -581,6 +583,7 @@ export function buildDonutOption(title: string, themeColors: string[]): EChartsO
       itemGap: 24,
       inactiveColor: 'rgba(255,255,255,0.2)',
       itemStyle: { borderWidth: 0 },
+      __autoHideOverflow: true,
       formatter: (name: string) => name,
     },
     series: [
@@ -638,6 +641,7 @@ export function buildRoseOption(title: string, themeColors: string[]): EChartsOp
       itemGap: 24,
       inactiveColor: 'rgba(255,255,255,0.2)',
       itemStyle: { borderWidth: 0 },
+      __autoHideOverflow: true,
     },
     series: [
       {
@@ -876,6 +880,9 @@ export function buildFunnelOption(title: string, themeColors: string[]): ECharts
   const common = baseOption(themeColors, { tooltipTrigger: 'item' })
   return {
     ...common,
+    grid: undefined,
+    xAxis: undefined,
+    yAxis: undefined,
     series: [
       {
         type: 'funnel',
