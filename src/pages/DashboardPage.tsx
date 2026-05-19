@@ -54,6 +54,7 @@ import { AppGridIcon } from '../components/icons/AppGridIcon'
 import { DataTableIcon } from '../components/icons/DataTableIcon'
 import { DatasetPreviewModal } from '../components/DatasetPreviewModal'
 import { DashboardIcon } from '../components/icons/DashboardIcon'
+import { openAppPath } from '../utils/appNavigation'
 
 type DashboardTemplate = {
   id: string
@@ -378,7 +379,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
     const qs = new URLSearchParams()
     if (template) qs.set('template', template)
     if (dashboardId) qs.set('dashboardId', dashboardId)
-    window.open(`/dashboard/chat-workspace?${qs.toString()}`, '_blank', 'noopener,noreferrer')
+    openAppPath(`/dashboard/chat-workspace?${qs.toString()}`)
   }
 
   const dataSources = useMemo(
@@ -483,7 +484,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
   const [cfgFreeRowHeight, setCfgFreeRowHeight] = useState<number>(100)
   const [cfgFreeGap, setCfgFreeGap] = useState<number>(16)
   const [cfgLanguage, setCfgLanguage] = useState<DashboardAppearance['language']>(locale === 'zh-CN' ? 'zh-CN' : 'en-US')
-  const [cfgTimeZone, setCfgTimeZone] = useState<string>('Asia/Shanghai')
+  const [cfgTimeZone, setCfgTimeZone] = useState<string>('UTC+08:00')
   const [cfgThemeSystem, setCfgThemeSystem] = useState<DashboardAppearance['theme']>('obsidian')
   const [cfgChartPalette, setCfgChartPalette] = useState<DashboardAppearance['chartPalette']>('tech')
   const [applying, setApplying] = useState(false)
@@ -505,7 +506,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
     setCfgFreeRowHeight(100)
     setCfgFreeGap(16)
     setCfgLanguage(locale === 'zh-CN' ? 'zh-CN' : 'en-US')
-    setCfgTimeZone('Asia/Shanghai')
+    setCfgTimeZone('UTC+08:00')
     setCfgThemeSystem('obsidian')
     setCfgChartPalette('tech')
     setApplying(false)
@@ -528,7 +529,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
     setCfgFreeRowHeight(100)
     setCfgFreeGap(16)
     setCfgLanguage(locale === 'zh-CN' ? 'zh-CN' : 'en-US')
-    setCfgTimeZone('Asia/Shanghai')
+    setCfgTimeZone('UTC+08:00')
     setCfgThemeSystem('obsidian')
     setCfgChartPalette('tech')
     setApplying(false)
@@ -557,7 +558,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
   const [editFreeRowHeight, setEditFreeRowHeight] = useState<number>(100)
   const [editFreeGap, setEditFreeGap] = useState<number>(16)
   const [editLanguage, setEditLanguage] = useState<DashboardAppearance['language']>(locale === 'zh-CN' ? 'zh-CN' : 'en-US')
-  const [editTimeZone, setEditTimeZone] = useState<string>('Asia/Shanghai')
+  const [editTimeZone, setEditTimeZone] = useState<string>('UTC+08:00')
   const [editThemeSystem, setEditThemeSystem] = useState<DashboardAppearance['theme']>('obsidian')
   const [editChartPalette, setEditChartPalette] = useState<DashboardAppearance['chartPalette']>('tech')
 
@@ -577,7 +578,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
   const [previewFreeRowHeight, setPreviewFreeRowHeight] = useState<number>(100)
   const [previewFreeGap, setPreviewFreeGap] = useState<number>(16)
   const [previewLanguage, setPreviewLanguage] = useState<DashboardAppearance['language']>(locale === 'zh-CN' ? 'zh-CN' : 'en-US')
-  const [previewTimeZone, setPreviewTimeZone] = useState<string>('Asia/Shanghai')
+  const [previewTimeZone, setPreviewTimeZone] = useState<string>('UTC+08:00')
   const [previewThemeSystem, setPreviewThemeSystem] = useState<DashboardAppearance['theme']>('obsidian')
   const [previewChartPalette, setPreviewChartPalette] = useState<DashboardAppearance['chartPalette']>('tech')
 
@@ -619,7 +620,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
       const a = obj?.appearance
       if (!a || typeof a !== 'object') return null
       const language = a.language === 'en-US' ? 'en-US' : 'zh-CN'
-      const timeZone = typeof a.timeZone === 'string' && a.timeZone ? a.timeZone : 'Asia/Shanghai'
+      const timeZone = typeof a.timeZone === 'string' && a.timeZone ? a.timeZone : 'UTC+08:00'
       const theme = a.theme === 'cyber' ? 'cyber' : 'obsidian'
       const chartPalette = a.chartPalette === 'aurora' ? 'aurora' : a.chartPalette === 'neon' ? 'neon' : 'tech'
       return { language, timeZone, theme, chartPalette }
@@ -705,7 +706,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
       setEditChartPalette(appearance.chartPalette)
     } else {
       setEditLanguage(locale === 'zh-CN' ? 'zh-CN' : 'en-US')
-      setEditTimeZone('Asia/Shanghai')
+      setEditTimeZone('UTC+08:00')
       setEditThemeSystem('obsidian')
       setEditChartPalette('tech')
     }
@@ -743,7 +744,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
       setPreviewChartPalette(appearance.chartPalette)
     } else {
       setPreviewLanguage(locale === 'zh-CN' ? 'zh-CN' : 'en-US')
-      setPreviewTimeZone('Asia/Shanghai')
+      setPreviewTimeZone('UTC+08:00')
       setPreviewThemeSystem('obsidian')
       setPreviewChartPalette('tech')
     }
@@ -849,6 +850,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
         ) : (
           <Table
             size="middle"
+            scroll={{ x: 'max-content' }}
             pagination={{ pageSize: 5 }}
             dataSource={customDashboards.map((d) => ({ ...d, key: d.id }))}
             columns={[
@@ -934,13 +936,13 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
               {
                 title: t('knowledge.table.actions'),
                 key: 'actions',
-                width: 150,
+                width: 160,
                 className: 'actionCol',
                 onHeaderCell: () => ({ className: 'actionCol' }),
-                onCell: () => ({ className: 'actionCol', style: { width: 150, minWidth: 150, maxWidth: 150 } }),
+                onCell: () => ({ className: 'actionCol', style: { width: 160, minWidth: 160, maxWidth: 160 } }),
                 align: 'center' as const,
                 render: (_: unknown, r: CustomDashboard) => (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 2, width: '100%', justifyItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                     <Tooltip title={t('dashboard.customActions.preview')}>
                       <Button
                         type="text"
@@ -1348,10 +1350,18 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                   onChange={(v) => setCfgTimeZone(String(v))}
                   style={{ width: '100%' }}
                   options={[
-                    { label: 'Asia/Shanghai (UTC+8)', value: 'Asia/Shanghai' },
-                    { label: 'UTC', value: 'UTC' },
-                    { label: 'America/Los_Angeles', value: 'America/Los_Angeles' },
-                    { label: 'Europe/London', value: 'Europe/London' },
+                    { label: 'UTC+08:00  中国 (北京)、新加坡、吉隆坡、马尼拉', value: 'UTC+08:00' },
+                    { label: 'UTC+00:00  格林威治标准时间 (GMT)', value: 'UTC+00:00' },
+                    { label: 'UTC+07:00  曼谷、雅加达、河内、胡志明市', value: 'UTC+07:00' },
+                    { label: 'UTC+03:00  利雅得、巴格达、卡塔尔、(莫斯科)', value: 'UTC+03:00' },
+                    { label: 'UTC+04:00  迪拜、阿布扎比、马斯喀特', value: 'UTC+04:00' },
+                    { label: 'UTC+02:00  开罗、安曼、耶路撒冷', value: 'UTC+02:00' },
+                    { label: 'UTC+05:00  塔什干 (乌兹别克斯坦)、伊斯兰堡', value: 'UTC+05:00' },
+                    { label: 'UTC+06:00  阿拉木图 (哈萨克斯坦)、比什凯克', value: 'UTC+06:00' },
+                    { label: 'UTC-03:00  圣保罗 (巴西)、布宜诺斯艾利斯 (阿根廷)', value: 'UTC-03:00' },
+                    { label: 'UTC-05:00  波哥大 (哥伦比亚)、利马 (秘鲁)、墨西哥城', value: 'UTC-05:00' },
+                    { label: 'UTC-04:00  圣地亚哥 (智利)、加拉加斯 (委内瑞拉)', value: 'UTC-04:00' },
+                    { label: 'UTC-06:00  墨西哥中部、哥斯达黎加', value: 'UTC-06:00' },
                   ]}
                   showSearch
                 />
@@ -2083,11 +2093,20 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                   value={editTimeZone}
                   onChange={(v) => setEditTimeZone(String(v))}
                   style={{ width: '100%' }}
+                  dropdownStyle={{ minWidth: 340 }}
                   options={[
-                    { label: 'Asia/Shanghai (UTC+8)', value: 'Asia/Shanghai' },
-                    { label: 'UTC', value: 'UTC' },
-                    { label: 'America/Los_Angeles', value: 'America/Los_Angeles' },
-                    { label: 'Europe/London', value: 'Europe/London' },
+                    { label: 'UTC+08:00  中国 (北京)、新加坡、吉隆坡、马尼拉', value: 'UTC+08:00' },
+                    { label: 'UTC+00:00  格林威治标准时间 (GMT)', value: 'UTC+00:00' },
+                    { label: 'UTC+07:00  曼谷、雅加达、河内、胡志明市', value: 'UTC+07:00' },
+                    { label: 'UTC+03:00  利雅得、巴格达、卡塔尔、(莫斯科)', value: 'UTC+03:00' },
+                    { label: 'UTC+04:00  迪拜、阿布扎比、马斯喀特', value: 'UTC+04:00' },
+                    { label: 'UTC+02:00  开罗、安曼、耶路撒冷', value: 'UTC+02:00' },
+                    { label: 'UTC+05:00  塔什干 (乌兹别克斯坦)、伊斯兰堡', value: 'UTC+05:00' },
+                    { label: 'UTC+06:00  阿拉木图 (哈萨克斯坦)、比什凯克', value: 'UTC+06:00' },
+                    { label: 'UTC-03:00  圣保罗 (巴西)、布宜诺斯艾利斯 (阿根廷)', value: 'UTC-03:00' },
+                    { label: 'UTC-05:00  波哥大 (哥伦比亚)、利马 (秘鲁)、墨西哥城', value: 'UTC-05:00' },
+                    { label: 'UTC-04:00  圣地亚哥 (智利)、加拉加斯 (委内瑞拉)', value: 'UTC-04:00' },
+                    { label: 'UTC-06:00  墨西哥中部、哥斯达黎加', value: 'UTC-06:00' },
                   ]}
                   showSearch
                 />
@@ -2412,11 +2431,20 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                   value={previewTimeZone}
                   disabled
                   style={{ width: '100%' }}
+                  dropdownStyle={{ minWidth: 340 }}
                   options={[
-                    { label: 'Asia/Shanghai (UTC+8)', value: 'Asia/Shanghai' },
-                    { label: 'UTC', value: 'UTC' },
-                    { label: 'America/Los_Angeles', value: 'America/Los_Angeles' },
-                    { label: 'Europe/London', value: 'Europe/London' },
+                    { label: 'UTC+08:00  中国 (北京)、新加坡、吉隆坡、马尼拉', value: 'UTC+08:00' },
+                    { label: 'UTC+00:00  格林威治标准时间 (GMT)', value: 'UTC+00:00' },
+                    { label: 'UTC+07:00  曼谷、雅加达、河内、胡志明市', value: 'UTC+07:00' },
+                    { label: 'UTC+03:00  利雅得、巴格达、卡塔尔、(莫斯科)', value: 'UTC+03:00' },
+                    { label: 'UTC+04:00  迪拜、阿布扎比、马斯喀特', value: 'UTC+04:00' },
+                    { label: 'UTC+02:00  开罗、安曼、耶路撒冷', value: 'UTC+02:00' },
+                    { label: 'UTC+05:00  塔什干 (乌兹别克斯坦)、伊斯兰堡', value: 'UTC+05:00' },
+                    { label: 'UTC+06:00  阿拉木图 (哈萨克斯坦)、比什凯克', value: 'UTC+06:00' },
+                    { label: 'UTC-03:00  圣保罗 (巴西)、布宜诺斯艾利斯 (阿根廷)', value: 'UTC-03:00' },
+                    { label: 'UTC-05:00  波哥大 (哥伦比亚)、利马 (秘鲁)、墨西哥城', value: 'UTC-05:00' },
+                    { label: 'UTC-04:00  圣地亚哥 (智利)、加拉加斯 (委内瑞拉)', value: 'UTC-04:00' },
+                    { label: 'UTC-06:00  墨西哥中部、哥斯达黎加', value: 'UTC-06:00' },
                   ]}
                 />
               </Col>
@@ -3126,7 +3154,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
     const qs = new URLSearchParams()
     if (template) qs.set('template', template)
     if (dashboardId) qs.set('dashboardId', dashboardId)
-    window.open(`/dashboard/chat-workspace?${qs.toString()}`, '_blank', 'noopener,noreferrer')
+    openAppPath(`/dashboard/chat-workspace?${qs.toString()}`)
   }
 
   const openTablePreview = (tables: string[], active: string) => {
@@ -3226,7 +3254,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
         ) : (
           <Table
             size="middle"
-            tableLayout="fixed"
+            scroll={{ x: 'max-content' }}
             pagination={{ pageSize: 5 }}
             dataSource={customDashboards.map((d) => ({ ...d, key: d.id }))}
             columns={[
@@ -3329,10 +3357,13 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
               {
                 title: t('dashboard.table.actions'),
                 key: 'actions',
-                width: 140,
+                width: 160,
+                className: 'actionCol',
+                onHeaderCell: () => ({ className: 'actionCol' }),
+                onCell: () => ({ className: 'actionCol', style: { width: 160, minWidth: 160, maxWidth: 160 } }),
+                align: 'center' as const,
                 render: (_: unknown, r: CustomDashboard) => (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', whiteSpace: 'nowrap', width: '100%' }}>
-                    <div style={{ width: 140, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                       <Tooltip title={locale === 'zh-CN' ? '预览' : 'Preview'}>
                         <Button
                           type="text"
@@ -3401,7 +3432,6 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                         </Tooltip>
                       </Dropdown>
                     </div>
-                  </div>
                 ),
               },
             ]}

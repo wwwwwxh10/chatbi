@@ -1,16 +1,21 @@
 import {
   Button,
   Card,
+  Col,
   Dropdown,
+  Empty,
   Form,
   Input,
   Modal,
+  Pagination,
+  Popover,
+  Row,
   Select,
   Space,
-  Table,
   Tag,
   Typography,
   message,
+  theme,
 } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -18,9 +23,17 @@ import { buildSeed, nowId, readTab, setQuery } from './knowledgeBase/kbModel'
 import type { KnowledgeItem, KnowledgeTabKey } from './knowledgeBase/kbModel'
 import { useTranslation } from 'react-i18next'
 import { PageIntro } from '../components/PageIntro'
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
+import {
+  DeleteOutlined,
+  EditOutlined,
+  MoreOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  UploadOutlined,
+} from '@ant-design/icons'
 import { UploadPanel } from '../components/UploadPanel'
 import * as XLSX from 'xlsx'
+import { Activity, BookOpen, Code2, FileText, MoveRight } from 'lucide-react'
 
 function tabLabel(t: (k: string) => string, k: KnowledgeTabKey) {
   if (k === 'terms') return t('kb.terms')
@@ -45,8 +58,819 @@ function uniqTrim(arr: unknown): string[] {
   return out
 }
 
+type CardMenuState = {
+  openId: string | null
+  setOpenId: (id: string | null) => void
+}
+
+type TermKnowledgeItem = Extract<KnowledgeItem, { category: 'terms' }>
+type MetricKnowledgeItem = Extract<KnowledgeItem, { category: 'metrics' }>
+type RegexKnowledgeItem = Extract<KnowledgeItem, { category: 'regex' }>
+type LogicTreeKnowledgeItem = Extract<KnowledgeItem, { category: 'logic-tree' }>
+type SqlKnowledgeItem = Extract<KnowledgeItem, { category: 'sql-examples' }>
+
+const KNOWLEDGE_PAGE_SIZE = 6
+const CARD_ACCENTS = {
+  terms: { color: '#5FA2FF', soft: 'rgba(95,162,255,0.14)', border: 'rgba(95,162,255,0.26)' },
+  metrics: { color: '#CFA0FF', soft: 'rgba(207,160,255,0.14)', border: 'rgba(207,160,255,0.24)' },
+  regex: { color: '#44D45F', soft: 'rgba(68,212,95,0.14)', border: 'rgba(68,212,95,0.24)' },
+  'logic-tree': { color: '#47D3EB', soft: 'rgba(71,211,235,0.14)', border: 'rgba(71,211,235,0.24)' },
+  'sql-examples': { color: '#F0B43C', soft: 'rgba(240,180,60,0.14)', border: 'rgba(240,180,60,0.24)' },
+} as const
+
+const KB_CARD_THEME = {
+  cardBg: 'rgba(28, 34, 43, 0.98)',
+  cardBorder: 'rgba(87, 97, 112, 0.46)',
+  cardShadow: '0 14px 28px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255,255,255,0.02)',
+  panelBg: 'rgba(12, 17, 24, 0.96)',
+  panelAltBg: 'rgba(17, 23, 31, 0.92)',
+  panelBorder: 'rgba(255,255,255,0.04)',
+  textPrimary: 'rgba(232, 237, 244, 0.98)',
+  bodyText: 'rgba(168, 177, 190, 0.96)',
+  mutedText: 'rgba(132, 142, 156, 0.92)',
+  badgeBg: 'rgba(52, 58, 68, 0.54)',
+  badgeBorder: 'rgba(255,255,255,0.05)',
+  neutralTagBg: 'rgba(60, 66, 76, 0.42)',
+  neutralTagBorder: 'rgba(255,255,255,0.05)',
+} as const
+
+function cardContentPreviewHeight(category: KnowledgeTabKey) {
+  if (category === 'terms') return 96
+  if (category === 'metrics') return 78
+  if (category === 'logic-tree') return 82
+  return 0
+}
+
+function formatReferenceCount(count: number) {
+  if (count >= 10000) {
+    const compact = count >= 100000 ? Math.round(count / 10000) : Math.round((count / 10000) * 10) / 10
+    return `${compact}万`
+  }
+  return `${count}`
+}
+
+function clampStyle(lines: number) {
+  return {
+    display: '-webkit-box',
+    overflow: 'hidden',
+    WebkitBoxOrient: 'vertical' as const,
+    WebkitLineClamp: lines,
+  }
+}
+
+function singleLineEllipsis() {
+  return {
+    overflow: 'hidden',
+    whiteSpace: 'nowrap' as const,
+    textOverflow: 'ellipsis',
+  }
+}
+
+function codeSurfaceStyle(borderColor?: string) {
+  return {
+    background: KB_CARD_THEME.panelBg,
+    borderRadius: 15,
+    border: `1px solid ${borderColor ?? KB_CARD_THEME.panelBorder}`,
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.025)',
+  }
+}
+
+function formatReferenceBadge(count: number) {
+  return `${formatReferenceCount(count)} 次引用`
+}
+
+function normalizeSqlCardTitle(question: string) {
+  const text = String(question ?? '').trim().replace(/[？?]\s*$/, '')
+  if (!text) return ''
+  return text.replace(/^如何/, '').replace(/\s+/g, ' ').trim()
+}
+
+const SQL_KEYWORDS = new Set([
+  'SELECT',
+  'FROM',
+  'WHERE',
+  'GROUP',
+  'BY',
+  'ORDER',
+  'LIMIT',
+  'WITH',
+  'AS',
+  'AND',
+  'OR',
+  'ON',
+  'JOIN',
+  'LEFT',
+  'RIGHT',
+  'INNER',
+  'OUTER',
+  'DESC',
+  'ASC',
+  'DISTINCT',
+  'CASE',
+  'WHEN',
+  'THEN',
+  'ELSE',
+  'END',
+  'CURRENT_DATE',
+  'INTERVAL',
+])
+
+const SQL_FUNCTIONS = new Set(['SUM', 'COUNT', 'AVG', 'MIN', 'MAX', 'DATE_TRUNC'])
+
+function renderSqlLine(line: string) {
+  const parts = String(line ?? '').split(/(\s+|[,();])/)
+  return parts.map((part, idx) => {
+    if (!part) return null
+    const trimmed = part.trim()
+    if (!trimmed) return <span key={`${idx}-${part}`}>{part}</span>
+
+    const upper = trimmed.toUpperCase()
+    let color = 'rgba(226,232,240,0.96)'
+    let fontWeight = 500
+
+    if (SQL_KEYWORDS.has(upper)) {
+      color = '#FF7A6B'
+      fontWeight = 700
+    } else if (SQL_FUNCTIONS.has(upper)) {
+      color = '#CDA4FF'
+      fontWeight = 700
+    } else if (/^'.*'$/.test(trimmed)) {
+      color = '#8BC4FF'
+    } else if (/^\d+$/.test(trimmed)) {
+      color = '#E8C46A'
+    } else if (/^[A-Z_]+$/.test(trimmed)) {
+      color = '#D2D9E4'
+      fontWeight = 600
+    }
+
+    return (
+      <span key={`${idx}-${part}`} style={{ color, fontWeight }}>
+        {part}
+      </span>
+    )
+  })
+}
+
+function renderMetricFormula(formula: string, accentColor: string) {
+  const parts = String(formula ?? '').split(/(\s+|[()*/+\-=,])/)
+  return parts.map((part, idx) => {
+    if (!part) return null
+    const trimmed = part.trim()
+    if (!trimmed) return <span key={`${idx}-${part}`}>{part}</span>
+
+    const upper = trimmed.toUpperCase()
+    let color = 'rgba(241,245,249,0.94)'
+    let fontWeight = 600
+
+    if (SQL_FUNCTIONS.has(upper)) {
+      color = accentColor
+      fontWeight = 700
+    } else if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      color = '#9AC8FF'
+    } else if (/^[=/*+\-%]+$/.test(trimmed)) {
+      color = 'rgba(170,181,195,0.82)'
+      fontWeight = 500
+    }
+
+    return (
+      <span key={`${idx}-${part}`} style={{ color, fontWeight }}>
+        {part}
+      </span>
+    )
+  })
+}
+
+const SqlCodeWindow = ({ sql }: { sql: string }) => {
+  const previewLineCount = 6
+  const lines = useMemo(() => String(sql ?? '').replace(/\r\n/g, '\n').split('\n'), [sql])
+  const visibleLines = lines.slice(0, previewLineCount)
+  const hiddenCount = Math.max(0, lines.length - previewLineCount)
+  const fillerCount = Math.max(0, previewLineCount - visibleLines.length)
+
+  return (
+    <div
+      style={{
+        background: KB_CARD_THEME.panelBg,
+        borderRadius: 16,
+        overflow: 'hidden',
+        border: `1px solid ${KB_CARD_THEME.panelBorder}`,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
+        minHeight: 270,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          padding: '18px 0 18px',
+          display: 'flex',
+          flexDirection: 'column',
+          fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+          fontSize: 14,
+          lineHeight: 1.62,
+          background: 'linear-gradient(90deg, rgba(22,28,38,0.88) 0, rgba(22,28,38,0.88) 46px, transparent 46px)',
+        }}
+      >
+        <div style={{ flex: 1, display: 'grid', gridAutoRows: '1.62em', overflow: 'hidden' }}>
+          {visibleLines.map((line, idx) => (
+            <div
+              key={`${idx}-${line}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '30px minmax(0, 1fr)',
+                gap: 12,
+                paddingInline: 18,
+                whiteSpace: 'pre',
+              }}
+            >
+              <span style={{ color: 'rgba(95,108,126,0.82)', textAlign: 'right', userSelect: 'none' }}>{idx + 1}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{line ? renderSqlLine(line) : ' '}</span>
+            </div>
+          ))}
+          {hiddenCount > 0 ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '30px minmax(0, 1fr)',
+                gap: 12,
+                paddingInline: 18,
+                whiteSpace: 'pre',
+                color: 'rgba(148,163,184,0.56)',
+              }}
+            >
+              <span style={{ textAlign: 'right' }}>…</span>
+              <span>…</span>
+            </div>
+          ) : (
+            Array.from({ length: fillerCount }).map((_, idx) => (
+              <div
+                key={`filler-${idx}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '30px minmax(0, 1fr)',
+                  gap: 12,
+                  paddingInline: 18,
+                  whiteSpace: 'pre',
+                }}
+              >
+                <span style={{ color: 'rgba(100,116,139,0.4)', textAlign: 'right' }}>{visibleLines.length + idx + 1}</span>
+                <span>{' '}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const BaseCard = ({
+  id,
+  children,
+  minHeight,
+  onEdit,
+  onDelete,
+  onView,
+  menu,
+}: {
+  id: string
+  children: React.ReactNode
+  minHeight?: number
+  onEdit: () => void
+  onDelete: () => void
+  onView: () => void
+  menu: CardMenuState
+}) => {
+  return (
+    <div className="kbCardShell" style={{ position: 'relative', width: '100%' }}>
+      <Dropdown
+        open={menu.openId === id}
+        placement="bottomRight"
+        trigger={['hover', 'click']}
+        mouseEnterDelay={0.08}
+        getPopupContainer={() => document.body}
+        overlayStyle={{ zIndex: 2100 }}
+        onOpenChange={(open) => menu.setOpenId(open ? id : null)}
+        menu={{
+          items: [
+            { key: 'edit', icon: <EditOutlined />, label: '编辑' },
+            { key: 'delete', icon: <DeleteOutlined />, danger: true, label: '删除' },
+          ],
+          onClick: ({ key, domEvent }) => {
+            domEvent.stopPropagation()
+            menu.setOpenId(null)
+            if (key === 'edit') onEdit()
+            if (key === 'delete') onDelete()
+          },
+        }}
+      >
+        <Button
+          type="text"
+          size="small"
+          className={menu.openId === id ? 'iconOnly kbCardMenuButton kbCardMenuButtonOpen' : 'iconOnly kbCardMenuButton'}
+          aria-label="更多操作"
+          icon={<MoreOutlined />}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            zIndex: 3,
+            color: KB_CARD_THEME.mutedText,
+          }}
+        />
+      </Dropdown>
+
+      <Card
+        hoverable
+        onClick={onView}
+        className={menu.openId === id ? 'dsCard dsCardActive' : 'dsCard'}
+        styles={{ body: { padding: '22px 22px 20px', display: 'flex', flexDirection: 'column', gap: 16, height: '100%' } }}
+        style={{
+          width: '100%',
+          height: '100%',
+          minHeight,
+          borderRadius: 18,
+          background: KB_CARD_THEME.cardBg,
+          border: `1px solid ${KB_CARD_THEME.cardBorder}`,
+          boxShadow: KB_CARD_THEME.cardShadow,
+        }}
+      >
+        {children}
+      </Card>
+    </div>
+  )
+}
+
+const ReferenceBadge = ({ count }: { count: number }) => (
+  <div
+    style={{
+      flex: 'none',
+      minHeight: 32,
+      padding: '6px 16px',
+      borderRadius: 999,
+      background: KB_CARD_THEME.badgeBg,
+      border: `1px solid ${KB_CARD_THEME.badgeBorder}`,
+      color: KB_CARD_THEME.mutedText,
+      fontSize: 12.5,
+      lineHeight: '18px',
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+      display: 'inline-flex',
+      alignItems: 'center',
+    }}
+  >
+    {formatReferenceBadge(count)}
+  </div>
+)
+
+const AccentHeader = ({
+  icon,
+  title,
+  accentColor,
+  referenceCount,
+}: {
+  icon: React.ReactNode
+  title: string
+  accentColor: string
+  referenceCount: number
+}) => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, paddingRight: 42 }}>
+    <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <span
+        style={{
+          color: accentColor,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: 'none',
+          lineHeight: 0,
+        }}
+      >
+        {icon}
+      </span>
+      <Typography.Text
+        strong
+        style={{
+          minWidth: 0,
+          display: 'block',
+          fontSize: 17,
+          lineHeight: '24px',
+          color: accentColor,
+          fontWeight: 700,
+          letterSpacing: '-0.01em',
+          ...singleLineEllipsis(),
+        }}
+      >
+        {title}
+      </Typography.Text>
+    </div>
+    <ReferenceBadge count={referenceCount} />
+  </div>
+)
+
+const TermCard = ({
+  item,
+  onEdit,
+  onDelete,
+  onView,
+  menu,
+}: {
+  item: TermKnowledgeItem
+  onEdit: () => void
+  onDelete: () => void
+  onView: () => void
+  menu: CardMenuState
+}) => {
+  const tone = CARD_ACCENTS.terms
+  const visibleSynonyms = item.synonyms.slice(0, 2)
+  const hiddenSynonyms = item.synonyms.slice(2)
+
+  return (
+    <BaseCard
+      id={item.id}
+      minHeight={262}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onView={onView}
+      menu={menu}
+    >
+      <AccentHeader
+        icon={<BookOpen size={19} strokeWidth={2} />}
+        title={item.term}
+        accentColor={tone.color}
+        referenceCount={item.referenceCount}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, overflow: 'hidden', flexWrap: 'nowrap' }}>
+        {visibleSynonyms.map((synonym) => (
+          <Tag
+            key={synonym}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              height: 30,
+              maxWidth: 136,
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              margin: 0,
+              background: tone.soft,
+              border: `1px solid ${tone.border}`,
+              color: tone.color,
+              padding: '0 14px',
+            }}
+          >
+            <span style={singleLineEllipsis()}>{synonym}</span>
+          </Tag>
+        ))}
+        {hiddenSynonyms.length > 0 ? (
+          <Popover
+            trigger={['hover', 'click']}
+            content={
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxWidth: 260 }}>
+                {hiddenSynonyms.map((synonym) => (
+                  <Tag key={synonym} style={{ margin: 0, borderRadius: 999 }}>
+                    {synonym}
+                  </Tag>
+                ))}
+              </div>
+            }
+          >
+            <Tag
+              style={{
+                flex: 'none',
+                height: 30,
+                borderRadius: 8,
+                fontSize: 13,
+                margin: 0,
+                color: KB_CARD_THEME.mutedText,
+                background: KB_CARD_THEME.neutralTagBg,
+                border: `1px solid ${KB_CARD_THEME.neutralTagBorder}`,
+                padding: '0 14px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              +{hiddenSynonyms.length}
+            </Tag>
+          </Popover>
+        ) : null}
+      </div>
+      <div style={{ minHeight: cardContentPreviewHeight('terms'), display: 'flex', flexDirection: 'column' }}>
+        {item.desc ? (
+          <Typography.Paragraph
+            style={{ fontSize: 13.5, margin: '6px 0 0', lineHeight: 1.72, color: KB_CARD_THEME.bodyText, ...clampStyle(3) }}
+          >
+            {item.desc}
+          </Typography.Paragraph>
+        ) : null}
+      </div>
+    </BaseCard>
+  )
+}
+
+const MetricCard = ({
+  item,
+  onEdit,
+  onDelete,
+  onView,
+  menu,
+}: {
+  item: MetricKnowledgeItem
+  onEdit: () => void
+  onDelete: () => void
+  onView: () => void
+  menu: CardMenuState
+}) => {
+  const tone = CARD_ACCENTS.metrics
+  return (
+    <BaseCard
+      id={item.id}
+      minHeight={320}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onView={onView}
+      menu={menu}
+    >
+      <AccentHeader
+        icon={<Activity size={20} strokeWidth={2} />}
+        title={item.name}
+        accentColor={tone.color}
+        referenceCount={item.referenceCount}
+      />
+      <div
+        style={{
+          ...codeSurfaceStyle(tone.border),
+          minHeight: 112,
+          padding: '20px 22px',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+            fontSize: 15.5,
+            lineHeight: 1.58,
+            wordBreak: 'break-word',
+            color: KB_CARD_THEME.textPrimary,
+            ...clampStyle(3),
+          }}
+        >
+          {renderMetricFormula(item.formula, tone.color)}
+        </div>
+      </div>
+      <div style={{ minHeight: cardContentPreviewHeight('metrics'), display: 'flex', flexDirection: 'column' }}>
+        {item.definition ? (
+          <Typography.Paragraph
+            style={{ fontSize: 13.5, margin: '2px 0 0', lineHeight: 1.72, color: KB_CARD_THEME.bodyText, ...clampStyle(3) }}
+          >
+            {item.definition}
+          </Typography.Paragraph>
+        ) : null}
+      </div>
+    </BaseCard>
+  )
+}
+
+const RegexCard = ({
+  item,
+  onEdit,
+  onDelete,
+  onView,
+  menu,
+}: {
+  item: RegexKnowledgeItem
+  onEdit: () => void
+  onDelete: () => void
+  onView: () => void
+  menu: CardMenuState
+}) => (
+  (() => {
+    const tone = CARD_ACCENTS.regex
+    return (
+      <BaseCard
+        id={item.id}
+        minHeight={320}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onView={onView}
+        menu={menu}
+      >
+        <AccentHeader
+          icon={<FileText size={20} strokeWidth={2} />}
+          title={item.name}
+          accentColor={tone.color}
+          referenceCount={item.referenceCount}
+        />
+        <div
+          style={{
+            ...codeSurfaceStyle(tone.border),
+            minHeight: 190,
+            padding: '18px 18px 16px',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+              fontSize: 16,
+              lineHeight: 1.5,
+              color: tone.color,
+              marginBottom: item.exampleIn || item.exampleOut || item.replacement ? 18 : 0,
+              textAlign: 'center',
+              ...singleLineEllipsis(),
+            }}
+          >
+            {`/${item.pattern}/`}
+          </div>
+          {(item.exampleIn || item.exampleOut || item.replacement) ? (
+            <div
+              style={{
+                borderTop: `1px dashed rgba(255,255,255,0.12)`,
+                paddingTop: 20,
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 16,
+              }}
+            >
+              <div
+                style={{
+                  minWidth: 0,
+                  borderRadius: 12,
+                  background: KB_CARD_THEME.panelAltBg,
+                  padding: '16px 14px 14px',
+                }}
+              >
+                <div style={{ fontSize: 12.5, color: KB_CARD_THEME.mutedText, marginBottom: 10 }}>输入样例</div>
+                <div style={{ fontSize: 16, lineHeight: 1.45, color: KB_CARD_THEME.bodyText, fontWeight: 600, ...singleLineEllipsis() }}>
+                  {item.exampleIn || '原始值'}
+                </div>
+              </div>
+              <div
+                style={{
+                  minWidth: 0,
+                  borderRadius: 12,
+                  background: KB_CARD_THEME.panelAltBg,
+                  padding: '16px 14px 14px',
+                  boxShadow: `inset 3px 0 0 ${tone.color}`,
+                }}
+              >
+                <div style={{ fontSize: 12.5, color: KB_CARD_THEME.mutedText, marginBottom: 10 }}>标准输出</div>
+                <div style={{ fontSize: 16, lineHeight: 1.45, color: tone.color, fontWeight: 700, ...singleLineEllipsis() }}>
+                  {item.exampleOut || item.replacement || '规范值'}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </BaseCard>
+    )
+  })()
+)
+
+const LogicTreeIllustration = () => (
+  <div
+    style={{
+      ...codeSurfaceStyle('rgba(71,211,235,0.16)'),
+      height: 102,
+      overflow: 'hidden',
+      padding: '18px 22px',
+    }}
+  >
+    <svg viewBox="0 0 240 104" width="100%" height="100%" preserveAspectRatio="none">
+      <rect x="106" y="10" width="30" height="12" rx="2.5" fill="rgba(71,211,235,0.32)" stroke="rgba(71,211,235,0.2)" />
+      <path d="M121 22V46M121 46H76M121 46H166M76 46V68M121 46V68M166 46V68" stroke="rgba(215,220,228,0.22)" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="76" cy="72" r="4.5" fill="rgba(71,211,235,0.88)" />
+      <circle cx="121" cy="72" r="4.5" fill="rgba(71,211,235,0.88)" />
+      <circle cx="166" cy="72" r="4.5" fill="rgba(71,211,235,0.88)" />
+    </svg>
+  </div>
+)
+
+const LogicTreeCard = ({
+  item,
+  onEdit,
+  onDelete,
+  onView,
+  menu,
+}: {
+  item: LogicTreeKnowledgeItem
+  onEdit: () => void
+  onDelete: () => void
+  onView: () => void
+  menu: CardMenuState
+}) => (
+  (() => {
+    const tone = CARD_ACCENTS['logic-tree']
+    return (
+      <BaseCard
+        id={item.id}
+        minHeight={308}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onView={onView}
+        menu={menu}
+      >
+        <AccentHeader
+          icon={<MoveRight size={20} strokeWidth={2} />}
+          title={item.name}
+          accentColor={tone.color}
+          referenceCount={item.referenceCount}
+        />
+        <LogicTreeIllustration />
+        <div style={{ minHeight: cardContentPreviewHeight('logic-tree'), display: 'flex', flexDirection: 'column' }}>
+          {item.scenario ? (
+            <Typography.Paragraph style={{ margin: '2px 0 0', fontSize: 13.5, lineHeight: 1.72, color: KB_CARD_THEME.bodyText, ...clampStyle(3) }}>
+              {item.scenario}
+            </Typography.Paragraph>
+          ) : null}
+        </div>
+      </BaseCard>
+    )
+  })()
+)
+
+const SqlExampleCard = ({
+  item,
+  onEdit,
+  onDelete,
+  onView,
+  menu,
+}: {
+  item: SqlKnowledgeItem
+  onEdit: () => void
+  onDelete: () => void
+  onView: () => void
+  menu: CardMenuState
+}) => (
+  (() => {
+    const tone = CARD_ACCENTS['sql-examples']
+    return (
+      <BaseCard
+        id={item.id}
+        minHeight={398}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onView={onView}
+        menu={menu}
+      >
+        <AccentHeader
+          icon={<Code2 size={20} strokeWidth={2} />}
+          title={normalizeSqlCardTitle(item.question)}
+          accentColor={tone.color}
+          referenceCount={item.referenceCount}
+        />
+        <SqlCodeWindow sql={item.sql} />
+      </BaseCard>
+    )
+  })()
+)
+
+const renderCardGrid = (
+  items: KnowledgeItem[],
+  tab: KnowledgeTabKey,
+  onView: (r: KnowledgeItem) => void,
+  onEdit: (r: KnowledgeItem) => void,
+  onDelete: (r: KnowledgeItem) => void,
+  menu: CardMenuState
+) => {
+  if (items.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />
+      </div>
+    )
+  }
+
+  return (
+    <Row gutter={[20, 20]} align="top">
+      {items.map((item) => {
+        const view = () => onView(item)
+        const edit = () => onEdit(item)
+        const del = () => onDelete(item)
+
+        let content = null
+        if (tab === 'terms') content = <TermCard item={item as TermKnowledgeItem} onEdit={edit} onDelete={del} onView={view} menu={menu} />
+        else if (tab === 'metrics') content = <MetricCard item={item as MetricKnowledgeItem} onEdit={edit} onDelete={del} onView={view} menu={menu} />
+        else if (tab === 'regex') content = <RegexCard item={item as RegexKnowledgeItem} onEdit={edit} onDelete={del} onView={view} menu={menu} />
+        else if (tab === 'logic-tree') content = <LogicTreeCard item={item as LogicTreeKnowledgeItem} onEdit={edit} onDelete={del} onView={view} menu={menu} />
+        else content = <SqlExampleCard item={item as SqlKnowledgeItem} onEdit={edit} onDelete={del} onView={view} menu={menu} />
+
+        return (
+          <Col key={item.id} xs={24} md={12} xl={8}>
+            {content}
+          </Col>
+        )
+      })}
+    </Row>
+  )
+}
+
 export default function KnowledgeBasePage() {
   const { t } = useTranslation()
+  const { token } = theme.useToken()
   const location = useLocation()
   const navigate = useNavigate()
   const [items, setItems] = useState<KnowledgeItem[]>(() => buildSeed())
@@ -60,6 +884,9 @@ export default function KnowledgeBasePage() {
   const [form] = Form.useForm<Record<string, unknown>>()
 
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeItem | null>(null)
+
+  const [cardMenuOpenId, setCardMenuOpenId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
 
   const tab = readTab(location.search)
   const createOpen = new URLSearchParams(location.search).get('action') === 'new'
@@ -175,177 +1002,19 @@ export default function KnowledgeBasePage() {
       })
   }, [items, keyword, tab])
 
-  const renderActions = (_: unknown, r: KnowledgeItem) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 2, width: '100%', justifyItems: 'center' }}>
-      <Button
-        type="text"
-        className="iconOnly"
-        size="small"
-        icon={<EyeOutlined />}
-        onClick={() => {
-          setEditing(r)
-          setEditorMode('view')
-        }}
-      />
-      <Button
-        type="text"
-        className="iconOnly"
-        size="small"
-        icon={<EditOutlined />}
-        onClick={() => {
-          openEdit(r)
-        }}
-      />
-      <Dropdown
-        trigger={['click']}
-        placement="bottomRight"
-        menu={{
-          items: [{ key: 'delete', label: t('actions.delete'), icon: <DeleteOutlined />, danger: true }],
-          onClick: () => setDeleteTarget(r),
-        }}
-      >
-        <Button type="text" className="iconOnly" size="small" icon={<MoreOutlined />} />
-      </Dropdown>
-    </div>
-  )
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * KNOWLEDGE_PAGE_SIZE
+    return visibleItems.slice(start, start + KNOWLEDGE_PAGE_SIZE)
+  }, [page, visibleItems])
 
-  const ACTION_COL_WIDTH_DEFAULT = 180
-  const ACTION_COL_WIDTH_NARROW = 140
+  useEffect(() => {
+    setPage(1)
+  }, [tab, keyword])
 
-  const columns = useMemo(() => {
-    const actionColWidth = tab === 'terms' ? ACTION_COL_WIDTH_NARROW : ACTION_COL_WIDTH_DEFAULT
-    const actionColClassName = tab === 'terms' ? 'actionCol actionColNarrow' : 'actionCol'
-    if (tab === 'terms') {
-      return [
-        {
-          title: '标准术语',
-          dataIndex: 'term',
-          key: 'term',
-          width: 240,
-          ellipsis: true,
-          render: (v: unknown) => <Typography.Text ellipsis>{String(v ?? '')}</Typography.Text>,
-        },
-        {
-          title: '同义词',
-          dataIndex: 'synonyms',
-          key: 'synonyms',
-          width: 260,
-          render: (v: unknown) => {
-            const arr = uniqTrim(v)
-            const shown = arr.slice(0, 3)
-            const rest = arr.length - shown.length
-            return (
-              <Space size={6} wrap>
-                {shown.map((x) => (
-                  <Tag key={x}>{x}</Tag>
-                ))}
-                {rest > 0 ? <Tag>+{rest}</Tag> : null}
-              </Space>
-            )
-          },
-        },
-        { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 180 },
-        {
-          title: t('knowledge.table.actions'),
-          key: 'actions',
-          width: actionColWidth,
-          className: actionColClassName,
-          onHeaderCell: () => ({ className: actionColClassName }),
-          onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
-          align: 'center' as const,
-          render: renderActions,
-        },
-      ]
-    }
-
-    if (tab === 'metrics') {
-      return [
-        {
-          title: '指标名',
-          dataIndex: 'name',
-          key: 'name',
-          width: 180,
-          ellipsis: true,
-          render: (v: unknown) => <Typography.Text ellipsis>{String(v ?? '')}</Typography.Text>,
-        },
-        { title: '计算公式', dataIndex: 'formula', key: 'formula', ellipsis: true },
-        { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 180 },
-        {
-          title: t('knowledge.table.actions'),
-          key: 'actions',
-          width: actionColWidth,
-          className: actionColClassName,
-          onHeaderCell: () => ({ className: actionColClassName }),
-          onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
-          align: 'center' as const,
-          render: renderActions,
-        },
-      ]
-    }
-
-    if (tab === 'regex') {
-      return [
-        { title: '字段', dataIndex: 'name', key: 'name', width: 180, ellipsis: true },
-        { title: '正则规则', dataIndex: 'pattern', key: 'pattern', ellipsis: true },
-        { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 180 },
-        {
-          title: t('knowledge.table.actions'),
-          key: 'actions',
-          width: actionColWidth,
-          className: actionColClassName,
-          onHeaderCell: () => ({ className: actionColClassName }),
-          onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
-          align: 'center' as const,
-          render: renderActions,
-        },
-      ]
-    }
-
-    if (tab === 'logic-tree') {
-      return [
-        { title: '分析主题', dataIndex: 'name', key: 'name', width: 220, ellipsis: true },
-        { title: '分析思路', dataIndex: 'steps', key: 'steps', ellipsis: true },
-        { title: '适应场景', dataIndex: 'scenario', key: 'scenario', width: 220, ellipsis: true },
-        { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 180 },
-        {
-          title: t('knowledge.table.actions'),
-          key: 'actions',
-          width: actionColWidth,
-          className: actionColClassName,
-          onHeaderCell: () => ({ className: actionColClassName }),
-          onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
-          align: 'center' as const,
-          render: renderActions,
-        },
-      ]
-    }
-
-    return [
-      { title: '问题描述', dataIndex: 'question', key: 'question', width: 260, ellipsis: true },
-      {
-        title: '示例 SQL',
-        dataIndex: 'sql',
-        key: 'sql',
-        ellipsis: true,
-        render: (v: unknown) => (
-          <Typography.Text ellipsis={{ tooltip: String(v ?? '') }} style={{ display: 'inline-block', maxWidth: '100%', verticalAlign: 'middle' }}>
-            {String(v ?? '')}
-          </Typography.Text>
-        ),
-      },
-      { title: t('knowledge.table.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt', width: 160 },
-      {
-        title: t('knowledge.table.actions'),
-        key: 'actions',
-        width: actionColWidth,
-        className: actionColClassName,
-        onHeaderCell: () => ({ className: actionColClassName }),
-        onCell: () => ({ className: actionColClassName, style: { width: actionColWidth, minWidth: actionColWidth, maxWidth: actionColWidth } }),
-        align: 'center' as const,
-        render: renderActions,
-      },
-    ]
-  }, [items, keyword, tab, t])
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(visibleItems.length / KNOWLEDGE_PAGE_SIZE))
+    if (page > maxPage) setPage(maxPage)
+  }, [page, visibleItems.length])
 
   const onImportFile = async (f: File) => {
     try {
@@ -356,15 +1025,17 @@ export default function KnowledgeBasePage() {
           const term = String(x?.term ?? '').trim()
           const synonyms = uniqTrim(x?.synonyms ?? [])
           const desc = String(x?.desc ?? '').trim()
+          const referenceCount = Number(x?.referenceCount ?? x?.references ?? 0) || 0
           if (!term) return null
-          return { id: nowId(), category: 'terms', term, synonyms, desc, updatedAt }
+          return { id: nowId(), category: 'terms', term, synonyms, desc, updatedAt, referenceCount }
         }
         if (tab === 'metrics') {
           const name = String(x?.name ?? '').trim()
           const definition = String(x?.definition ?? '').trim()
           const formula = String(x?.formula ?? '').trim()
+          const referenceCount = Number(x?.referenceCount ?? x?.references ?? 0) || 0
           if (!name || !formula) return null
-          return { id: nowId(), category: 'metrics', name, definition, layer: 'standard', formula, updatedAt }
+          return { id: nowId(), category: 'metrics', name, definition, layer: 'standard', formula, updatedAt, referenceCount }
         }
         if (tab === 'regex') {
           const name = String(x?.name ?? '').trim()
@@ -372,20 +1043,23 @@ export default function KnowledgeBasePage() {
           const replacement = String(x?.replacement ?? '').trim()
           const exampleIn = String(x?.exampleIn ?? '').trim()
           const exampleOut = String(x?.exampleOut ?? '').trim()
+          const referenceCount = Number(x?.referenceCount ?? x?.references ?? 0) || 0
           if (!name || !pattern) return null
-          return { id: nowId(), category: 'regex', name, pattern, replacement, exampleIn, exampleOut, updatedAt }
+          return { id: nowId(), category: 'regex', name, pattern, replacement, exampleIn, exampleOut, updatedAt, referenceCount }
         }
         if (tab === 'logic-tree') {
           const name = String(x?.name ?? '').trim()
           const scenario = String(x?.scenario ?? '').trim()
           const steps = String(x?.steps ?? '').trim()
+          const referenceCount = Number(x?.referenceCount ?? x?.references ?? 0) || 0
           if (!name || !scenario || !steps) return null
-          return { id: nowId(), category: 'logic-tree', name, scenario, steps, updatedAt }
+          return { id: nowId(), category: 'logic-tree', name, scenario, steps, updatedAt, referenceCount }
         }
         const question = String(x?.question ?? '').trim()
         const sql = String(x?.sql ?? '').trim()
+        const referenceCount = Number(x?.referenceCount ?? x?.references ?? 0) || 0
         if (!question || !sql) return null
-        return { id: nowId(), category: 'sql-examples', question, sql, updatedAt }
+        return { id: nowId(), category: 'sql-examples', question, sql, updatedAt, referenceCount }
       }
 
       const ext = f.name.toLowerCase().split('.').pop() ?? ''
@@ -468,6 +1142,7 @@ export default function KnowledgeBasePage() {
   const onSave = async () => {
     const v = await form.validateFields()
     const updatedAt = new Date().toISOString().slice(0, 16).replace('T', ' ')
+    const preservedReferenceCount = editing?.referenceCount ?? 0
 
     const upsert = (next: KnowledgeItem) => {
       if (!editing) {
@@ -488,6 +1163,7 @@ export default function KnowledgeBasePage() {
         synonyms,
         desc: '',
         updatedAt,
+        referenceCount: preservedReferenceCount,
       }
       upsert(next)
       closeEditor()
@@ -514,6 +1190,7 @@ export default function KnowledgeBasePage() {
         layer: 'standard',
         formula,
         updatedAt,
+        referenceCount: preservedReferenceCount,
       }
       upsert(next)
       closeEditor()
@@ -533,6 +1210,7 @@ export default function KnowledgeBasePage() {
         exampleIn: '',
         exampleOut: '',
         updatedAt,
+        referenceCount: preservedReferenceCount,
       }
       upsert(next)
       closeEditor()
@@ -551,6 +1229,7 @@ export default function KnowledgeBasePage() {
         scenario,
         steps,
         updatedAt,
+        referenceCount: preservedReferenceCount,
       }
       upsert(next)
       closeEditor()
@@ -566,6 +1245,7 @@ export default function KnowledgeBasePage() {
       question,
       sql,
       updatedAt,
+      referenceCount: preservedReferenceCount,
     }
     upsert(next)
     closeEditor()
@@ -575,28 +1255,28 @@ export default function KnowledgeBasePage() {
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <PageIntro title={intro.title} description={intro.desc} />
 
-      <Card size="small" styles={{ body: { padding: 0 } }}>
+      <div style={{ width: '100%' }}>
         <div
           style={{
-            height: 56,
-            paddingInline: 16,
+            minHeight: 56,
+            paddingBottom: 14,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 12,
-            borderBottom: '1px solid var(--ant-color-split)',
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
           }}
         >
           <Input
             value={keyword}
             placeholder={t('knowledge.filters.keywordPlaceholder')}
-            style={{ width: 280 }}
+            style={{ flex: 1, minWidth: 0, maxWidth: 420 }}
             allowClear
             prefix={<SearchOutlined />}
             onChange={(e) => setKeyword(e.target.value)}
           />
 
-          <Space>
+          <Space size={10} style={{ flex: 'none' }}>
             <Button
               icon={<UploadOutlined />}
               onClick={() => {
@@ -612,16 +1292,33 @@ export default function KnowledgeBasePage() {
           </Space>
         </div>
 
-        <div style={{ padding: 16, paddingTop: 16 }}>
-          <Table
-            size="middle"
-            columns={columns as any}
-            dataSource={visibleItems.map((it) => ({ ...it, key: it.id }))}
-            pagination={{ pageSize: 5 }}
-            tableLayout="fixed"
-          />
+        <div style={{ paddingTop: 16 }}>
+          {renderCardGrid(
+            pagedItems,
+            tab,
+            (r) => {
+              setEditing(r)
+              setEditorMode('view')
+            },
+            (r) => openEdit(r),
+            (r) => setDeleteTarget(r),
+            { openId: cardMenuOpenId, setOpenId: setCardMenuOpenId },
+            token
+          )}
         </div>
-      </Card>
+        {visibleItems.length > 0 ? (
+          <div style={{ paddingTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+            <Pagination
+              size="small"
+              current={page}
+              pageSize={KNOWLEDGE_PAGE_SIZE}
+              total={visibleItems.length}
+              showSizeChanger={false}
+              onChange={(next) => setPage(next)}
+            />
+          </div>
+        ) : null}
+      </div>
 
       <Modal
         open={importOpen}

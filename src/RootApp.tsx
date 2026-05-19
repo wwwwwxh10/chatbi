@@ -6,6 +6,7 @@ import { useEffect, useMemo } from 'react'
 import App from './App'
 import { useAppStore } from './store/appStore'
 import i18n from './i18n'
+import { getRouterBasename } from './utils/appNavigation'
 
 export default function RootApp() {
   const themeMode = useAppStore((s) => s.themeMode)
@@ -76,7 +77,7 @@ export default function RootApp() {
         return emptyNode
       }}
     >
-      <BrowserRouter>
+      <BrowserRouter basename={getRouterBasename()}>
         <App />
       </BrowserRouter>
     </ConfigProvider>

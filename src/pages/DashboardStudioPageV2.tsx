@@ -3,9 +3,9 @@ import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  ArrowLeftRight,
   CopyPlus,
   Save,
-  Sigma,
   AreaChart,
   LineChart,
   BarChart3,
@@ -55,6 +55,8 @@ import {
   validateWidget,
 } from './studioModel'
 import type { StudioAppearance, StudioLayout, WidgetKind, WidgetSlot } from './studioModel'
+import { enhanceDashboardChartOption } from './dashboardChartInteractions'
+import { openAppPath } from '../utils/appNavigation'
 import {
   buildAreaOption,
   buildBarOption,
@@ -81,6 +83,21 @@ import {
 } from './studioCharts'
 type StudioMode = 'new' | 'edit' | 'preview'
 type Ds = { id: string; name: string; type: string; tables: string[] }
+
+const TIME_ZONE_OPTIONS = [
+  { value: 'UTC+00:00', region: '格林威治标准时间 (GMT)' },
+  { value: 'UTC+08:00', region: '中国 (北京)、新加坡、吉隆坡、马尼拉' },
+  { value: 'UTC+07:00', region: '曼谷、雅加达、河内、胡志明市' },
+  { value: 'UTC+03:00', region: '利雅得、巴格达、卡塔尔、莫斯科' },
+  { value: 'UTC+04:00', region: '迪拜、阿布扎比、马斯喀特' },
+  { value: 'UTC+02:00', region: '开罗、安曼、耶路撒冷' },
+  { value: 'UTC+05:00', region: '塔什干、伊斯兰堡' },
+  { value: 'UTC+06:00', region: '阿拉木图、比什凯克' },
+  { value: 'UTC-03:00', region: '圣保罗、布宜诺斯艾利斯' },
+  { value: 'UTC-05:00', region: '波哥大、利马、墨西哥城' },
+  { value: 'UTC-04:00', region: '圣地亚哥、加拉加斯' },
+  { value: 'UTC-06:00', region: '墨西哥中部、哥斯达黎加' },
+] as const
 
 function buildTables(): Ds[] {
   return [
@@ -110,7 +127,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const [appearance, setAppearance] = useState<StudioAppearance>({
     language: locale,
-    timeZone: 'Asia/Shanghai',
+    timeZone: 'UTC+08:00',
     theme: 'obsidian',
     chartPalette: 'cyber',
   })
@@ -121,10 +138,45 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const [freeStartPoint, setFreeStartPoint] = useState<{ r: number; c: number } | null>(null)
   const [freeHoverPoint, setFreeHoverPoint] = useState<{ r: number; c: number } | null>(null)
   const [freeCursor, setFreeCursor] = useState<{ x: number; y: number } | null>(null)
-  const [moveTip, setMoveTip] = useState<{ x: number; y: number; text: string } | null>(null)
   const freeOverlayRef = useRef<HTMLDivElement | null>(null)
   const freeRafRef = useRef<number | null>(null)
   const previewMode = mode === 'preview'
+  const [moveTip, setMoveTip] = useState<{ text: string } | null>(null)
+  const moveTipRef = useRef<HTMLDivElement | null>(null)
+  const moveTipRafRef = useRef<number | null>(null)
+  const moveTipTextRef = useRef<string | null>(null)
+
+  const updateMoveTipPosition = (x: number, y: number) => {
+    if (moveTipRafRef.current != null) cancelAnimationFrame(moveTipRafRef.current)
+    moveTipRafRef.current = requestAnimationFrame(() => {
+      moveTipRafRef.current = null
+      const el = moveTipRef.current
+      if (!el) return
+      el.style.left = `${x}px`
+      el.style.top = `${Math.max(16, y - 10)}px`
+    })
+  }
+
+  const showMoveTip = (x: number, y: number, text: string) => {
+    updateMoveTipPosition(x, y)
+    if (moveTipTextRef.current === text) return
+    moveTipTextRef.current = text
+    setMoveTip({ text })
+  }
+
+  const clearMoveTip = () => {
+    if (moveTipRafRef.current != null) {
+      cancelAnimationFrame(moveTipRafRef.current)
+      moveTipRafRef.current = null
+    }
+    moveTipTextRef.current = null
+    const el = moveTipRef.current
+    if (el) {
+      el.style.left = '-9999px'
+      el.style.top = '-9999px'
+    }
+    setMoveTip(null)
+  }
 
   const openDebug = () => {
     const payload = {
@@ -139,7 +191,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       })),
     }
     localStorage.setItem('studio:debug-dashboard-v1', JSON.stringify(payload))
-    window.open('/dashboard/chat-workspace?debug=studio', '_blank', 'noopener,noreferrer')
+    openAppPath('/dashboard/chat-workspace?debug=studio')
   }
 
   useEffect(() => {
@@ -152,7 +204,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       setTitle('未命名仪表盘')
       setDescription('')
       setTables([])
-      setAppearance({ language: locale, timeZone: 'Asia/Shanghai', theme: 'obsidian', chartPalette: 'cyber' })
+      setAppearance({ language: locale, timeZone: 'UTC+08:00', theme: 'obsidian', chartPalette: 'cyber' })
       setLayout(initialLayout)
       setSlots(normalizeSlots(layoutSpecs(initialLayout), []))
       return
@@ -176,12 +228,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
     const nextAppearance: StudioAppearance = (() => {
       const a = obj?.appearance
-      if (!a || typeof a !== 'object') return { language: locale, timeZone: 'Asia/Shanghai', theme: 'obsidian', chartPalette: 'cyber' }
+      if (!a || typeof a !== 'object') return { language: locale, timeZone: 'UTC+08:00', theme: 'obsidian', chartPalette: 'cyber' }
       const themeVal = (a as any).theme === 'tech' ? 'tech' : (a as any).theme === 'cyber' ? 'cyber' : 'obsidian'
       const pal = safeChartPalette((a as any).chartPalette ?? mapThemeIdToChartPalette((a as any).chartThemeId))
       return {
         language: (a as any).language === 'en-US' ? 'en-US' : 'zh-CN',
-        timeZone: typeof (a as any).timeZone === 'string' ? (a as any).timeZone : 'Asia/Shanghai',
+        timeZone: typeof (a as any).timeZone === 'string' ? (a as any).timeZone : 'UTC+08:00',
         theme: themeVal,
         chartPalette: themeVal === 'tech' && pal === 'cyber' ? 'deepsea' : pal,
       }
@@ -362,7 +414,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     })
     setSelectedSlotId(null)
     setDragOverIdx(null)
-    requestAnimationFrame(() => setDragOverIdx(null))
   }
 
   const onSlotDragStart = (idx: number, e: DragEvent<HTMLDivElement>) => {
@@ -371,6 +422,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setEditingSlotId(null)
     setDragFromIdx(idx)
     setDragOverIdx(null)
+    showMoveTip(e.clientX, e.clientY, '拖拽可移动换位')
     e.dataTransfer.setData('application/x-dashboard-slot-index', String(idx))
     e.dataTransfer.effectAllowed = 'move'
     try {
@@ -387,13 +439,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setDragOverIdx(null)
     setSelectedSlotId(null)
     setDraggingKind(null)
-    setMoveTip(null)
+    clearMoveTip()
   }
 
   useEffect(() => {
     if (dragFromIdx == null && draggingKind == null && dragOverIdx != null) {
       setDragOverIdx(null)
-      requestAnimationFrame(() => setDragOverIdx(null))
     }
   }, [dragFromIdx, dragOverIdx, draggingKind])
 
@@ -402,6 +453,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       setDragFromIdx(null)
       setDragOverIdx(null)
       setDraggingKind(null)
+      clearMoveTip()
     }
     window.addEventListener('dragend', clear)
     window.addEventListener('drop', clear)
@@ -412,27 +464,20 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   }, [])
 
   useEffect(() => {
-    if (readOnly || previewMode) return
-    if (dragFromIdx == null) return
-    const onDragOver = (e: globalThis.DragEvent) => {
-      e.preventDefault()
-      setMoveTip({ x: e.clientX, y: e.clientY, text: '' })
-    }
-    window.addEventListener('dragover', onDragOver)
     return () => {
-      window.removeEventListener('dragover', onDragOver)
+      if (moveTipRafRef.current != null) cancelAnimationFrame(moveTipRafRef.current)
     }
-  }, [dragFromIdx, previewMode, readOnly])
+  }, [])
 
   useEffect(() => {
     if (readOnly || previewMode) return
-    if (dragFromIdx == null) return
+    if (dragFromIdx == null && draggingKind == null) return
     const prev = document.body.style.cursor
     document.body.style.cursor = 'none'
     return () => {
       document.body.style.cursor = prev
     }
-  }, [dragFromIdx, previewMode, readOnly])
+  }, [dragFromIdx, draggingKind, previewMode, readOnly])
 
   const canSave = useMemo(() => {
     if (readOnly) return false
@@ -499,7 +544,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     const unit = typeof parsed.unit === 'string' ? String(parsed.unit) : ''
     const colors = CHART_PALETTES[appearance.chartPalette].colors.slice(0, 10)
     const name = String(parsed.title ?? KIND_NAME[slot.kind])
-    const base =
+    const base: any =
       slot.kind === 'bar'
         ? buildBarOption(name, colors, unit)
         : slot.kind === 'bar-h'
@@ -545,7 +590,13 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                         : slot.kind === 'wave'
                                           ? buildWaterOption(name, colors)
                                     : null
-    return base
+
+    return base && typeof base === 'object'
+      ? enhanceDashboardChartOption(slot.kind, base, {
+          accent,
+          mode: previewMode ? 'preview' : 'edit',
+        })
+      : base
   }
 
   const renderSlotBody = (slot: WidgetSlot, idx: number) => {
@@ -591,33 +642,35 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             onMouseMove={(e) => {
               if (readOnly || previewMode) return
               if (dragFromIdx != null || draggingKind != null) return
-              setMoveTip({ x: e.clientX, y: e.clientY, text: '拖拽可移动换位' })
+              showMoveTip(e.clientX, e.clientY, '拖拽可移动换位')
             }}
-            onMouseLeave={() => setMoveTip(null)}
+            onMouseLeave={clearMoveTip}
             onDragStart={(e) => onSlotDragStart(idx, e)}
             onDragEnd={onSlotDragEnd}
           >
-            <Space size={4}>
-              <span
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 8,
-                  background: 'transparent',
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: accent,
-                }}
-              >
-                <CircleDot size={14} />
-              </span>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {titleFixed}
-              </Typography.Text>
-            </Space>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <Space size={4}>
+                <span
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 8,
+                    background: 'transparent',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: accent,
+                  }}
+                >
+                  <CircleDot size={14} />
+                </span>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {titleFixed}
+                </Typography.Text>
+              </Space>
+            </div>
           </div>
 
-          <div style={{ flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10 }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10, paddingTop: 12 }}>
             <FlipCounter title={titleFixed} unit={unit} target={value} showTitle={false} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -641,9 +694,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             onMouseMove={(e) => {
               if (readOnly || previewMode) return
               if (dragFromIdx != null || draggingKind != null) return
-              setMoveTip({ x: e.clientX, y: e.clientY, text: '拖拽可移动换位' })
+              showMoveTip(e.clientX, e.clientY, '拖拽可移动换位')
             }}
-            onMouseLeave={() => setMoveTip(null)}
+            onMouseLeave={clearMoveTip}
             onDragStart={(e) => onSlotDragStart(idx, e)}
             onDragEnd={onSlotDragEnd}
           >
@@ -707,7 +760,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   color: accent,
                 }}
               >
-                <Sigma size={14} />
+                <Zap size={14} />
               </span>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {name}
@@ -736,9 +789,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           onMouseMove={(e) => {
             if (readOnly || previewMode) return
             if (dragFromIdx != null || draggingKind != null) return
-            setMoveTip({ x: e.clientX, y: e.clientY, text: '拖拽可移动换位' })
+            showMoveTip(e.clientX, e.clientY, '拖拽可移动换位')
           }}
-          onMouseLeave={() => setMoveTip(null)}
+          onMouseLeave={clearMoveTip}
           onDragStart={(e) => onSlotDragStart(idx, e)}
           onDragEnd={onSlotDragEnd}
         >
@@ -764,28 +817,34 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       : k === 'line-area'
                         ? AreaChart
                         : k === 'line-curve'
-                          ? LineChart
-                          : k === 'bar' || k === 'bar-h' || k === 'bar-grouped' || k === 'bar-stacked' || k === 'bar-gradient' || k === 'waterfall'
+                          ? Activity
+                          : k === 'bar'
                             ? BarChart3
-                            : k === 'pie'
-                              ? PieChart
-                              : k === 'donut'
-                                ? Donut
-                                : k === 'rose'
-                                  ? Flower2
-                                  : k === 'scatter'
-                                    ? ChartScatter
-                                    : k === 'bubble'
-                                      ? Droplets
-                                      : k === 'funnel'
-                                        ? Filter
-                                        : k === 'radar'
-                                          ? Radar
-                                          : k === 'heatmap' || k === 'treemap'
-                                            ? Layers
-                                            : k === 'sankey' || k === 'graph'
-                                              ? Network
-                                              : Activity
+                            : k === 'bar-h'
+                              ? ArrowDownUp
+                              : k === 'bar-grouped'
+                                ? Boxes
+                                : k === 'bar-stacked'
+                                  ? Layers
+                                  : k === 'pie'
+                                    ? PieChart
+                                    : k === 'donut'
+                                      ? Donut
+                                      : k === 'rose'
+                                        ? Flower2
+                                        : k === 'scatter'
+                                          ? ChartScatter
+                                          : k === 'bubble'
+                                            ? Droplets
+                                            : k === 'funnel'
+                                              ? Filter
+                                              : k === 'radar'
+                                                ? Radar
+                                                : k === 'heatmap' || k === 'treemap'
+                                                  ? Layers
+                                                  : k === 'sankey' || k === 'graph'
+                                                    ? Network
+                                                    : Activity
                   return <Icon size={16} />
                 })()}
               </span>
@@ -882,11 +941,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     onChange: (v: StudioAppearance['theme']) => void
     disabled?: boolean
   }) => {
-    const themeBg: Record<StudioAppearance['theme'], string> = {
-      obsidian: token.colorBgContainer,
-      cyber: cyberPageBgNoGrid,
-      tech: techPageBgNoGrid,
-    }
     const themeSurfaceBg: Record<StudioAppearance['theme'], string> = {
       obsidian: token.colorBgContainer,
       tech: 'linear-gradient(135deg, rgba(18, 44, 96, 0.62), rgba(10, 16, 28, 0.86))',
@@ -913,7 +967,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
         {items.map((it) => {
           const selected = value === it.key
-          const bg = themeBg[it.key]
           const surfaceBg = themeSurfaceBg[it.key]
           return (
             <div
@@ -925,41 +978,22 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               style={{
                 borderRadius: 14,
                 border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
-                background: bg,
+                background: surfaceBg,
                 cursor: disabled ? 'default' : 'pointer',
-                padding: 10,
+                padding: 12,
                 opacity: disabled ? 0.9 : 1,
+                transition: 'border-color 200ms ease, transform 200ms ease',
+                position: 'relative',
+                color: token.colorTextSecondary,
               }}
             >
-              <div
-                style={{
-                  borderRadius: 14,
-                  border: `1px solid ${selected ? accent : 'rgba(255,255,255,0.08)'}`,
-                  background: surfaceBg,
-                  padding: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <Space size={4} style={{ minWidth: 0 }}>
-                  <span
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 10,
-                      background: 'transparent',
-                      display: 'grid',
-                      placeItems: 'center',
-                      color: accent,
-                      flex: '0 0 28px',
-                    }}
-                  >
-                    <PieChart size={16} />
-                  </span>
-                  <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>
-                    {it.label}
-                  </Typography.Text>
-                </Space>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, position: 'relative', zIndex: 1 }}>
+                <Typography.Text strong style={{ display: 'block', lineHeight: 1.25, color: selected ? accent : undefined }}>
+                  {it.label}
+                </Typography.Text>
+                <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, lineHeight: 1.25, marginTop: 2, opacity: 0.8 }}>
+                  {it.desc}
+                </Typography.Text>
               </div>
             </div>
           )
@@ -1193,7 +1227,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
         style={{ height: '100%', display: 'grid', gridTemplateColumns: previewMode ? '1fr' : '300px 1fr 300px', minHeight: 0, position: 'relative' }}
       >
         {previewMode ? null : (
-          <div style={{ borderRight: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ borderRight: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <div className="studioColHeader" style={{ background: sidePanelBg }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10 }}>
                 <Button type="text" onClick={() => navigate('/dashboard')} className="iconOnly" aria-label="返回" icon={<ArrowLeft size={18} />} />
@@ -1216,6 +1250,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           draggable={!readOnly}
                           onDragStart={(e) => {
                             setDraggingKind(it.kind)
+                            setDragOverIdx(null)
                             e.dataTransfer.setData('text/plain', it.kind)
                             e.dataTransfer.setData('application/x-dashboard-widget', it.kind)
                             e.dataTransfer.effectAllowed = 'copy'
@@ -1231,6 +1266,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           onDragEnd={() => {
                             setDraggingKind(null)
                             setDragOverIdx(null)
+                            clearMoveTip()
                           }}
                           style={{ border: `1px solid var(--studio-field-border)`, background: 'var(--studio-panel-card-bg)', borderRadius: 14, padding: 12, cursor: readOnly ? 'default' : 'grab' }}
                         >
@@ -1303,7 +1339,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 if (readOnly || previewMode) return
                 if (dragFromIdx != null) {
                   e.preventDefault()
-                  setMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+                  updateMoveTipPosition(e.clientX, e.clientY)
                 }
                 const t = e.target as HTMLElement
                 if (!t?.closest?.('.studioSlot')) {
@@ -1450,7 +1486,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           gridRow: `${Math.min(freeStartPoint.r, freeHoverPoint.r)} / span ${Math.abs(freeStartPoint.r - freeHoverPoint.r) + 1}`,
                           background: 'rgba(59, 130, 246, 0.10)',
                           border: `1px solid ${accent}44`,
-                          borderRadius: 0,
+                          borderRadius: 10,
                         }}
                       />
                     ) : null}
@@ -1461,7 +1497,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         <div
                           key={i}
                           style={{
-                            borderRadius: 10,
+                            borderRadius: 14,
                             border: '1px solid rgba(255,255,255,0.08)',
                             background: 'rgba(255,255,255,0.02)',
                             pointerEvents: 'none',
@@ -1512,7 +1548,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         border:
                           slot.kind
                             ? `1px solid ${borderColor}`
-                            : `2px dashed ${borderColor}`,
+                            : `1px dashed ${borderColor}`,
                         background:
                           slot.kind
                             ? surfaceBg
@@ -1540,11 +1576,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         if (dragFromIdx != null && dragFromIdx === idx) return
                         setDragOverIdx((prev) => (prev === idx ? prev : idx))
                       }}
-                      onDragEnterCapture={() => {
-                        if (readOnly || previewMode) return
-                        if (dragFromIdx != null && dragFromIdx === idx) return
-                        setDragOverIdx((prev) => (prev === idx ? prev : idx))
-                      }}
                       onDragOver={(e) => {
                         if (readOnly || previewMode) return
                         e.preventDefault()
@@ -1553,20 +1584,14 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         e.dataTransfer.dropEffect = isMove ? 'move' : 'copy'
                         if (dragFromIdx != null && dragFromIdx === idx) return
                         if (isMove || isAdd) setDragOverIdx((prev) => (prev === idx ? prev : idx))
-                        if (isMove) setMoveTip({ x: e.clientX, y: e.clientY, text: '' })
-                      }}
-                      onDragOverCapture={(e) => {
-                        if (readOnly || previewMode) return
-                        e.preventDefault()
-                        if (dragFromIdx != null && dragFromIdx === idx) return
-                        setDragOverIdx((prev) => (prev === idx ? prev : idx))
-                        const isMove = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-slot-index'))
-                        if (isMove) setMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+                        if (isMove) {
+                          updateMoveTipPosition(e.clientX, e.clientY)
+                        }
                       }}
                       onDrop={(e) => {
                         if (readOnly || previewMode) return
                         e.preventDefault()
-                        setMoveTip(null)
+                        clearMoveTip()
                         const movingIdxRaw = e.dataTransfer.getData('application/x-dashboard-slot-index')
                         if (movingIdxRaw) {
                           const from = Number(movingIdxRaw)
@@ -1576,7 +1601,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           setDragFromIdx(null)
                           setDragOverIdx(null)
                           setDraggingKind(null)
-                          requestAnimationFrame(() => setDragOverIdx(null))
                           return
                         }
                         const k = (e.dataTransfer.getData('application/x-dashboard-widget') || e.dataTransfer.getData('text/plain')) as WidgetKind
@@ -1585,7 +1609,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         assignWidget(idx, k)
                         setDragOverIdx(null)
                         setDraggingKind(null)
-                        requestAnimationFrame(() => setDragOverIdx(null))
                       }}
                     >
                       {slot.kind ? (
@@ -1718,7 +1741,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
         </Modal>
 
         {previewMode ? null : (
-          <div style={{ borderLeft: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ borderLeft: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <div className="studioColHeader" style={{ background: sidePanelBg }}>
               <Typography.Text strong>页面配置</Typography.Text>
             </div>
@@ -1741,7 +1764,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <RequiredLabel label="语言" />
                     <div style={{ height: 6 }} />
                     <Select
@@ -1755,19 +1778,33 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       options={[{ value: 'zh-CN', label: '简体中文' }, { value: 'en-US', label: 'English' }]}
                     />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <RequiredLabel label="时区" />
                     <div style={{ height: 6 }} />
                     <Select
+                      style={{ width: '100%' }}
                       value={appearance.timeZone}
                       disabled={readOnly}
                       onChange={(v) => setAppearance((p) => ({ ...p, timeZone: String(v) }))}
-                      options={[
-                        { value: 'Asia/Shanghai', label: 'Asia/Shanghai (UTC+8)' },
-                        { value: 'UTC', label: 'UTC' },
-                        { value: 'America/Los_Angeles', label: 'America/Los_Angeles' },
-                        { value: 'Europe/London', label: 'Europe/London' },
-                      ]}
+                      popupMatchSelectWidth={false}
+                      placement="bottomRight"
+                      dropdownStyle={{ minWidth: 360, maxWidth: 'calc(100vw - 24px)' }}
+                      labelRender={({ value }) => <span>{value}</span>}
+                      filterOption={(input, option) => String((option as { searchText?: string } | undefined)?.searchText ?? '').toLowerCase().includes(input.toLowerCase())}
+                      options={TIME_ZONE_OPTIONS.map((it) => ({
+                        value: it.value,
+                        searchText: `${it.value} ${it.region}`,
+                        label: (
+                          <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+                            <Typography.Text strong style={{ lineHeight: 1.25 }}>
+                              {it.value}
+                            </Typography.Text>
+                            <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, lineHeight: 1.35 }}>
+                              {it.region}
+                            </Typography.Text>
+                          </div>
+                        ),
+                      }))}
                       showSearch
                     />
                   </div>
@@ -1941,23 +1978,22 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
         {moveTip && !readOnly && !previewMode ? (
           <div
+            ref={moveTipRef}
             style={{
               position: 'fixed',
-              left: moveTip.x,
-              top: moveTip.y,
-              transform: 'translate(-5px, -7px)',
+              left: -9999,
+              top: -9999,
+              transform: 'translate(-50%, -100%)',
               zIndex: 9999,
               pointerEvents: 'none',
-              display: dragFromIdx != null || (draggingKind == null && moveTip.text) ? 'block' : 'none',
+              display: dragFromIdx != null || Boolean(moveTip.text) ? 'block' : 'none',
             }}
           >
-            <div style={{ padding: '8px 10px', borderRadius: 12, background: 'rgba(9, 12, 18, 0.62)', display: 'grid', justifyItems: 'center', gap: 4 }}>
-              <div style={{ width: 10, height: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', placeItems: 'center' }}>
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <span key={i} style={{ width: 3, height: 3, borderRadius: 1, background: '#C9CBD3', opacity: 0.92 }} />
-                ))}
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: accent, whiteSpace: 'nowrap' }}>
+            <div style={{ padding: '8px 10px', borderRadius: 12, background: 'rgba(9, 12, 18, 0.72)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 14px 28px rgba(0,0,0,0.22)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 18, height: 18, display: 'grid', placeItems: 'center', color: accent, flex: '0 0 18px' }}>
+                <ArrowLeftRight size={16} strokeWidth={1.8} />
+              </span>
+              <div style={{ fontSize: 12, fontWeight: 600, color: accent, whiteSpace: 'nowrap', textAlign: 'center', lineHeight: 1.2 }}>
                 {dragFromIdx != null ? (dragOverIdx != null && slots[dragOverIdx]?.kind ? '移入此位置' : '拖拽可移动换位') : moveTip.text}
               </div>
             </div>

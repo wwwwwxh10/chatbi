@@ -7,27 +7,30 @@ export type KnowledgeTabKey =
 
 export type MetricComputeLayer = 'precomputed' | 'standard' | 'runtime'
 
-export type TermItem = {
+type KnowledgeItemMeta = {
+  updatedAt: string
+  referenceCount: number
+}
+
+export type TermItem = KnowledgeItemMeta & {
   id: string
   category: 'terms'
   term: string
   synonyms: string[]
   desc: string
-  updatedAt: string
 }
 
-export type MetricItem = {
+export type MetricItem = KnowledgeItemMeta & {
   id: string
   category: 'metrics'
   name: string
   definition: string
   layer: MetricComputeLayer
   formula: string
-  updatedAt: string
 }
 
 
-export type RegexItem = {
+export type RegexItem = KnowledgeItemMeta & {
   id: string
   category: 'regex'
   name: string
@@ -35,24 +38,21 @@ export type RegexItem = {
   replacement: string
   exampleIn: string
   exampleOut: string
-  updatedAt: string
 }
 
-export type LogicTreeItem = {
+export type LogicTreeItem = KnowledgeItemMeta & {
   id: string
   category: 'logic-tree'
   name: string
   scenario: string
   steps: string
-  updatedAt: string
 }
 
-export type SqlExampleItem = {
+export type SqlExampleItem = KnowledgeItemMeta & {
   id: string
   category: 'sql-examples'
   question: string
   sql: string
-  updatedAt: string
 }
 
 export type KnowledgeItem =
@@ -100,6 +100,8 @@ export function setQuery(search: string, next: Record<string, string | null>) {
 }
 
 export function buildSeed(): KnowledgeItem[] {
+  const ref = (referenceCount: number) => ({ referenceCount })
+
   return [
     {
       id: nowId(),
@@ -108,6 +110,7 @@ export function buildSeed(): KnowledgeItem[] {
       synonyms: ['用户产值', '平均收入', '每用户收入'],
       desc: '将多样化业务表达统一映射为标准术语，用于对话理解与口径一致。',
       updatedAt: '2026-04-27 10:20',
+      ...ref(328),
     },
     {
       id: nowId(),
@@ -116,6 +119,7 @@ export function buildSeed(): KnowledgeItem[] {
       synonyms: ['销售额', '成交总额'],
       desc: 'GMV 表示一定时间范围内成交订单金额总和，通常包含已支付订单。',
       updatedAt: '2026-04-26 18:05',
+      ...ref(512),
     },
     {
       id: nowId(),
@@ -124,6 +128,7 @@ export function buildSeed(): KnowledgeItem[] {
       synonyms: ['手机号', '号码', '手机号码'],
       desc: '运营商体系中用于标识用户号码的字段，通常为 11 位手机号。',
       updatedAt: '2026-04-26 12:10',
+      ...ref(146),
     },
     {
       id: nowId(),
@@ -132,14 +137,16 @@ export function buildSeed(): KnowledgeItem[] {
       synonyms: ['日活', '日活跃用户'],
       desc: 'DAU 表示日活跃用户数，通常按去重口径统计。',
       updatedAt: '2026-04-25 16:18',
+      ...ref(274),
     },
     {
       id: nowId(),
       category: 'terms',
       term: 'MRR',
-      synonyms: ['月经常性收入', '月度经常性收入'],
+      synonyms: ['月经常性收入', '月度经常性收入', '月常规收入', '月 recurring revenue', '订阅月收入', '月度复购收入'],
       desc: 'MRR 表示按月计的经常性收入，可用于订阅/套餐经营分析。',
       updatedAt: '2026-04-25 10:02',
+      ...ref(88),
     },
     {
       id: nowId(),
@@ -148,6 +155,7 @@ export function buildSeed(): KnowledgeItem[] {
       synonyms: ['Drop Rate', '掉话率', '断连率'],
       desc: '网络质量指标之一，通常按（掉线次数/总会话次数）统计。',
       updatedAt: '2026-04-24 09:12',
+      ...ref(203),
     },
     {
       id: nowId(),
@@ -157,6 +165,7 @@ export function buildSeed(): KnowledgeItem[] {
       layer: 'standard',
       formula: '离网率 = 离网用户数 / 在网用户数',
       updatedAt: '2026-04-25 09:40',
+      ...ref(427),
     },
     {
       id: nowId(),
@@ -166,6 +175,7 @@ export function buildSeed(): KnowledgeItem[] {
       layer: 'standard',
       formula: '新增用户数 = COUNT(DISTINCT user_id) WHERE signup_date in range',
       updatedAt: '2026-04-24 16:32',
+      ...ref(381),
     },
     {
       id: nowId(),
@@ -175,6 +185,7 @@ export function buildSeed(): KnowledgeItem[] {
       layer: 'standard',
       formula: 'ARPU = SUM(revenue) / COUNT(DISTINCT active_user)',
       updatedAt: '2026-04-24 10:08',
+      ...ref(469),
     },
     {
       id: nowId(),
@@ -184,6 +195,7 @@ export function buildSeed(): KnowledgeItem[] {
       layer: 'precomputed',
       formula: '流量使用(MB) = SUM(data_mb)',
       updatedAt: '2026-04-23 19:20',
+      ...ref(154),
     },
     {
       id: nowId(),
@@ -193,6 +205,7 @@ export function buildSeed(): KnowledgeItem[] {
       layer: 'runtime',
       formula: '掉线率(%) = 100 * SUM(drop_cnt) / SUM(session_cnt)',
       updatedAt: '2026-04-23 11:55',
+      ...ref(216),
     },
     {
       id: nowId(),
@@ -203,6 +216,7 @@ export function buildSeed(): KnowledgeItem[] {
       exampleIn: 'a12345',
       exampleOut: 'A12345',
       updatedAt: '2026-04-24 15:12',
+      ...ref(92),
     },
     {
       id: nowId(),
@@ -213,6 +227,7 @@ export function buildSeed(): KnowledgeItem[] {
       exampleIn: '+86 138-0013-8000',
       exampleOut: '8613800138000',
       updatedAt: '2026-04-23 14:20',
+      ...ref(178),
     },
     {
       id: nowId(),
@@ -223,6 +238,7 @@ export function buildSeed(): KnowledgeItem[] {
       exampleIn: '2026/04/27',
       exampleOut: '2026-04-27',
       updatedAt: '2026-04-22 17:40',
+      ...ref(64),
     },
     {
       id: nowId(),
@@ -231,6 +247,7 @@ export function buildSeed(): KnowledgeItem[] {
       scenario: '适用于活动前后效果评估、渠道拆解与异常归因。',
       steps: '1. 明确目标：活动带来的增量与结构变化\n2. 关键指标：GMV/订单数/转化率/客单价\n3. 拆解维度：渠道/城市/人群/品类\n4. 验证路径：对比活动前后 + 排除季节性\n5. 结论输出：异常点、建议动作与复盘要点',
       updatedAt: '2026-04-23 11:03',
+      ...ref(137),
     },
     {
       id: nowId(),
@@ -239,6 +256,7 @@ export function buildSeed(): KnowledgeItem[] {
       scenario: '适用于 ARPU 突增/突降的归因定位与对比验证。',
       steps: '1. 明确时间范围与口径：是否含补贴/退款/一次性费用\n2. 结构拆分：套餐/渠道/城市/新老客/设备\n3. 交叉对比：同比/环比/节假日/活动前后\n4. 关联指标：DAU、付费用户、流量/语音使用、欠费\n5. 输出结论：主要贡献与异常点，给出建议动作',
       updatedAt: '2026-04-22 10:15',
+      ...ref(118),
     },
     {
       id: nowId(),
@@ -247,6 +265,7 @@ export function buildSeed(): KnowledgeItem[] {
       scenario: '适用于掉线率升高、投诉增加、网络体验下降场景。',
       steps: '1. 确认指标定义：掉线率/掉话率口径、采样范围\n2. 区域定位：省/市/小区/基站分布与 Top 异常\n3. 网络制式：4G/5G/WiFi 及终端型号差异\n4. 业务影响：关键应用、峰值时段、拥塞与时延\n5. 处置闭环：告警阈值、工单跟踪、复测回归',
       updatedAt: '2026-04-21 18:26',
+      ...ref(96),
     },
     {
       id: nowId(),
@@ -254,6 +273,7 @@ export function buildSeed(): KnowledgeItem[] {
       question: '如何按渠道统计 GMV？',
       sql: 'SELECT channel, SUM(amount) AS gmv\nFROM orders\nWHERE created_at >= CURRENT_DATE - INTERVAL \'7 day\'\nGROUP BY channel;',
       updatedAt: '2026-04-22 20:28',
+      ...ref(263),
     },
     {
       id: nowId(),
@@ -261,6 +281,7 @@ export function buildSeed(): KnowledgeItem[] {
       question: '如何按省份统计 DAU 并取 Top10？',
       sql: 'SELECT province, SUM(dau) AS dau\nFROM network_kpi_daily\nWHERE dt >= CURRENT_DATE - INTERVAL \'7 day\'\nGROUP BY province\nORDER BY dau DESC\nLIMIT 10;',
       updatedAt: '2026-04-22 09:05',
+      ...ref(194),
     },
     {
       id: nowId(),
@@ -268,6 +289,7 @@ export function buildSeed(): KnowledgeItem[] {
       question: '如何统计 5G 用户的流量使用与费用？',
       sql: 'SELECT dt, SUM(data_mb) AS data_mb, SUM(data_fee) AS data_fee\nFROM cdr_data\nWHERE net_type = \'5G\'\n  AND dt >= CURRENT_DATE - INTERVAL \'7 day\'\nGROUP BY dt\nORDER BY dt;',
       updatedAt: '2026-04-21 13:18',
+      ...ref(149),
     },
     {
       id: nowId(),
@@ -275,6 +297,7 @@ export function buildSeed(): KnowledgeItem[] {
       question: '如何计算各套餐的 ARPU 并对比环比？',
       sql: 'WITH m AS (\n  SELECT month, plan, AVG(arpu) AS arpu\n  FROM billing_monthly\n  WHERE month >= DATE_TRUNC(\'month\', CURRENT_DATE) - INTERVAL \'2 month\'\n  GROUP BY 1,2\n)\nSELECT *\nFROM m\nORDER BY month, arpu DESC;',
       updatedAt: '2026-04-20 21:44',
+      ...ref(221),
     },
   ]
 }

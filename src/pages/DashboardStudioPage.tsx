@@ -275,7 +275,7 @@ export default function DashboardStudioPage({ mode }: { mode: StudioMode }) {
 
   const [appearance, setAppearance] = useState<StudioAppearance>({
     language: locale,
-    timeZone: 'Asia/Shanghai',
+    timeZone: 'UTC+08:00',
     theme: 'obsidian',
     chartThemeId: 'business',
   })
@@ -296,7 +296,7 @@ export default function DashboardStudioPage({ mode }: { mode: StudioMode }) {
       setDescription('')
       setDataSourceId('')
       setTables([])
-      setAppearance({ language: locale, timeZone: 'Asia/Shanghai', theme: 'obsidian', chartThemeId: 'business' })
+      setAppearance({ language: locale, timeZone: 'UTC+08:00', theme: 'obsidian', chartThemeId: 'business' })
       setLayout({ mode: 'template', template: 'three-col' })
       setPreviewMode(false)
       return
@@ -325,7 +325,7 @@ export default function DashboardStudioPage({ mode }: { mode: StudioMode }) {
       const themeId = String((a as any).chartThemeId ?? 'business')
       setAppearance({
         language: (a as any).language === 'en-US' ? 'en-US' : 'zh-CN',
-        timeZone: typeof (a as any).timeZone === 'string' ? (a as any).timeZone : 'Asia/Shanghai',
+        timeZone: typeof (a as any).timeZone === 'string' ? (a as any).timeZone : 'UTC+08:00',
         theme: (a as any).theme === 'cyber' ? 'cyber' : 'obsidian',
         chartThemeId: Object.prototype.hasOwnProperty.call(THEMES, themeId) ? (themeId as ThemeId) : 'business',
       })
@@ -849,10 +849,18 @@ export default function DashboardStudioPage({ mode }: { mode: StudioMode }) {
                 disabled={isReadOnly}
                 onChange={(v) => setAppearance((p) => ({ ...p, timeZone: String(v) }))}
                 options={[
-                  { value: 'Asia/Shanghai', label: 'Asia/Shanghai (UTC+8)' },
-                  { value: 'UTC', label: 'UTC' },
-                  { value: 'America/Los_Angeles', label: 'America/Los_Angeles' },
-                  { value: 'Europe/London', label: 'Europe/London' },
+                  { value: 'UTC+08:00', label: 'UTC+08:00  中国 (北京)、新加坡、吉隆坡、马尼拉' },
+                  { value: 'UTC+00:00', label: 'UTC+00:00  格林威治标准时间 (GMT)' },
+                  { value: 'UTC+07:00', label: 'UTC+07:00  曼谷、雅加达、河内、胡志明市' },
+                  { value: 'UTC+03:00', label: 'UTC+03:00  利雅得、巴格达、卡塔尔、(莫斯科)' },
+                  { value: 'UTC+04:00', label: 'UTC+04:00  迪拜、阿布扎比、马斯喀特' },
+                  { value: 'UTC+02:00', label: 'UTC+02:00  开罗、安曼、耶路撒冷' },
+                  { value: 'UTC+05:00', label: 'UTC+05:00  塔什干 (乌兹别克斯坦)、伊斯兰堡' },
+                  { value: 'UTC+06:00', label: 'UTC+06:00  阿拉木图 (哈萨克斯坦)、比什凯克' },
+                  { value: 'UTC-03:00', label: 'UTC-03:00  圣保罗 (巴西)、布宜诺斯艾利斯 (阿根廷)' },
+                  { value: 'UTC-05:00', label: 'UTC-05:00  波哥大 (哥伦比亚)、利马 (秘鲁)、墨西哥城' },
+                  { value: 'UTC-04:00', label: 'UTC-04:00  圣地亚哥 (智利)、加拉加斯 (委内瑞拉)' },
+                  { value: 'UTC-06:00', label: 'UTC-06:00  墨西哥中部、哥斯达黎加' },
                 ]}
                 showSearch
               />

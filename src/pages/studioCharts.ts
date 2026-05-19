@@ -441,6 +441,10 @@ export function buildScatterOption(title: string, themeColors: string[]): EChart
 export function buildBubbleOption(title: string, themeColors: string[]): EChartsOption {
   void title
   const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'item' })
+  const sizeToBubble = (value: unknown) => {
+    const raw = typeof value === 'number' && Number.isFinite(value) ? value : 0
+    return Math.max(16, Math.min(52, Math.round(raw * 0.62)))
+  }
   return {
     ...common,
     tooltip: {
@@ -458,23 +462,27 @@ export function buildBubbleOption(title: string, themeColors: string[]): ECharts
       {
         name: title || (isEn() ? 'Core' : '核心业务'),
         type: 'scatter',
-        symbolSize: (d: any) => d?.[2],
+        symbolSize: (d: any) => sizeToBubble(d?.[2]),
         itemStyle: {
-          opacity: 0.8,
+          opacity: 0.92,
           color: new echarts.graphic.RadialGradient(0.4, 0.3, 1, [
-            { offset: 0, color: withAlpha(themeColors[0], 0.9) },
-            { offset: 1, color: withAlpha(themeColors[0], 0.4) },
+            { offset: 0, color: withAlpha(themeColors[0], 0.95) },
+            { offset: 0.55, color: withAlpha(themeColors[0], 0.7) },
+            { offset: 1, color: withAlpha(themeColors[0], 0.28) },
           ]),
           borderColor: themeColors[0],
-          borderWidth: 1,
+          borderWidth: 1.5,
+          shadowBlur: 20,
+          shadowColor: withAlpha(themeColors[0], 0.32),
         },
         emphasis: { focus: 'series' },
         data: [
-          [10, 20, 30],
-          [15, 35, 50],
-          [25, 45, 40],
-          [30, 28, 25],
-          [40, 60, 65],
+          [10, 20, 24],
+          [15, 35, 42],
+          [25, 45, 34],
+          [30, 28, 18],
+          [40, 60, 58],
+          [52, 46, 72],
         ],
       },
     ],

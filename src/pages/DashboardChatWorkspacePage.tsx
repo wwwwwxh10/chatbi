@@ -41,6 +41,7 @@ import { buildMockResult } from './chat/chatUtils'
 import type { MessageResult } from './chat/chatUtils'
 import { CHART_PALETTES, KIND_NAME, THEME_ACCENT } from './studioModel'
 import type { StudioAppearance, StudioLayout, WidgetKind } from './studioModel'
+import { enhanceDashboardChartOption, isGroupBarKind } from './dashboardChartInteractions'
 import {
   buildAreaOption,
   buildBarOption,
@@ -443,6 +444,7 @@ type StudioDatumSelection = {
   value?: unknown
   dataType?: string
   color?: string
+  isGroup?: boolean
 }
 
 function StudioDebugDashboardCanvas({
@@ -460,7 +462,7 @@ function StudioDebugDashboardCanvas({
 }) {
   const { token } = theme.useToken()
 
-  const appearance = payload.appearance ?? { language: 'zh-CN', timeZone: 'Asia/Shanghai', theme: 'obsidian', chartPalette: 'cyber' }
+  const appearance = payload.appearance ?? { language: 'zh-CN', timeZone: 'UTC+08:00', theme: 'obsidian', chartPalette: 'cyber' }
   const layout = payload.layout ?? { mode: 'template', template: 'main-sub' }
   const palette = CHART_PALETTES[appearance.chartPalette] ?? CHART_PALETTES.cyber
   const themeColors = palette.colors ?? []
@@ -571,146 +573,6 @@ function StudioDebugDashboardCanvas({
     if (kind === 'gauge') return buildGaugeOption(name, themeColors)
     if (kind === 'wave') return buildWaterOption(name, themeColors)
     return null
-  }
-
-  const enhanceSelectableOption = (kind: WidgetKind, opt: EChartsOption) => {
-    const next: any = { ...(opt as any) }
-    const list = next.series
-    if (!Array.isArray(list)) return next as EChartsOption
-    const lineKinds = new Set<WidgetKind>(['line', 'line-area', 'line-curve'])
-    const pointKinds = new Set<WidgetKind>(['line', 'line-area', 'line-curve', 'bubble', 'scatter'])
-    const blockKinds = new Set<WidgetKind>([
-      'bar',
-      'bar-h',
-      'bar-grouped',
-      'bar-stacked',
-      'bar-gradient',
-      'pie',
-      'donut',
-      'rose',
-      'funnel',
-      'sankey',
-    ])
-
-    const selectScaleSize = pointKinds.has(kind) ? 18 : blockKinds.has(kind) ? 10 : 14
-    const emphasisScaleSize = pointKinds.has(kind) ? 26 : blockKinds.has(kind) ? 14 : 18
-    const shadowColor = typeof accent === 'string' && accent.startsWith('#') ? `${accent}F0` : String(accent)
-
-    if (!next.tooltip || typeof next.tooltip !== 'object') next.tooltip = {}
-    const axisKinds = new Set<WidgetKind>(['line', 'line-area', 'line-curve', 'bar', 'bar-h', 'bar-grouped', 'bar-stacked', 'bar-gradient'])
-    const isAxis = axisKinds.has(kind)
-    next.tooltip = {
-      ...(next.tooltip as any),
-      show: true,
-      trigger: isAxis ? 'axis' : 'item',
-      triggerOn: 'mousemove|click',
-      enterable: true,
-      confine: true,
-      backgroundColor: 'rgba(10,14,24,0.92)',
-      borderWidth: 0,
-      padding: [10, 12],
-      extraCssText: 'border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.38);backdrop-filter:blur(10px);',
-      textStyle: { color: 'rgba(233,236,242,0.94)', fontWeight: 600 },
-      axisPointer: isAxis
-        ? { type: kind === 'bar' || kind === 'bar-h' || kind === 'bar-grouped' || kind === 'bar-stacked' || kind === 'bar-gradient' ? 'shadow' : 'line' }
-        : undefined,
-    }
-
-    next.series = list.map((s: any, i: number) => {
-      const ss: any = { ...s }
-      if (ss.id == null) ss.id = `__studio_series_${i}`
-
-      if (lineKinds.has(kind)) {
-        const rawSize = ss.symbolSize
-        const baseSize = typeof rawSize === 'number' && Number.isFinite(rawSize) ? rawSize : 6
-        ss.showSymbol = false
-        ss.symbol = 'circle'
-        if (rawSize == null || (typeof rawSize === 'number' && Number.isFinite(rawSize))) ss.symbolSize = baseSize
-      }
-
-      if (pointKinds.has(kind) && !lineKinds.has(kind)) {
-        const rawSize = ss.symbolSize
-        const baseSize = typeof rawSize === 'number' && Number.isFinite(rawSize) ? rawSize : 8
-        if (!ss.symbol || ss.symbol === 'none') ss.symbol = 'circle'
-        if (rawSize == null || (typeof rawSize === 'number' && Number.isFinite(rawSize))) ss.symbolSize = baseSize
-        if (!ss.itemStyle || typeof ss.itemStyle !== 'object') ss.itemStyle = {}
-        if (ss.itemStyle.shadowOffsetX == null) ss.itemStyle.shadowOffsetX = 0
-        if (ss.itemStyle.shadowOffsetY == null) ss.itemStyle.shadowOffsetY = 0
-      }
-
-      const em = { ...(ss.emphasis ?? {}) }
-      const itemStyle = { ...((em.itemStyle ?? {}) as any) }
-      itemStyle.shadowBlur = Math.max(72, Number(itemStyle.shadowBlur ?? 0) || 0)
-      itemStyle.shadowColor = itemStyle.shadowColor ?? shadowColor
-      if (itemStyle.shadowOffsetX == null) itemStyle.shadowOffsetX = 0
-      if (itemStyle.shadowOffsetY == null) itemStyle.shadowOffsetY = 0
-      itemStyle.opacity = itemStyle.opacity ?? 1
-      em.itemStyle = itemStyle
-      ;(em as any).scale = true
-      ;(em as any).scaleSize = emphasisScaleSize
-      ;(em as any).focus = ss.type === 'sankey' ? 'adjacency' : 'self'
-      ;(em as any).blurScope = 'global'
-      if (typeof ss.symbolSize === 'number' && Number.isFinite(ss.symbolSize)) {
-        ;(em as any).symbolSize = Math.max(ss.symbolSize, ss.symbolSize + 18)
-      }
-      ss.emphasis = em
-
-      const blur: any = { ...(ss.blur ?? {}) }
-      const blurItem: any = { ...((blur.itemStyle ?? {}) as any) }
-      blurItem.opacity = Math.min(0.22, Number(blurItem.opacity ?? 0.22))
-      blur.itemStyle = blurItem
-      if (ss.type === 'line') {
-        const blurLine: any = { ...((blur.lineStyle ?? {}) as any) }
-        blurLine.opacity = Math.min(0.18, Number(blurLine.opacity ?? 0.18))
-        blur.lineStyle = blurLine
-      }
-      if (ss.type === 'line' && ss.areaStyle) {
-        const blurArea: any = { ...((blur.areaStyle ?? {}) as any) }
-        blurArea.opacity = Math.min(0.06, Number(blurArea.opacity ?? 0.06))
-        blur.areaStyle = blurArea
-      }
-      ss.blur = blur
-
-      const sel = { ...(ss.select ?? {}) }
-      const selItem = { ...((sel.itemStyle ?? {}) as any), ...itemStyle }
-      selItem.shadowBlur = Math.max(56, Number(selItem.shadowBlur ?? 0) || 0)
-      selItem.shadowColor = selItem.shadowColor ?? shadowColor
-      if (selItem.shadowOffsetX == null) selItem.shadowOffsetX = 0
-      if (selItem.shadowOffsetY == null) selItem.shadowOffsetY = 0
-      sel.itemStyle = selItem
-      ;(sel as any).scale = true
-      ;(sel as any).scaleSize = selectScaleSize
-      if (typeof ss.symbolSize === 'number' && Number.isFinite(ss.symbolSize)) {
-        ;(sel as any).symbolSize = Math.max(ss.symbolSize, ss.symbolSize + 20)
-      }
-      ss.select = sel
-      ss.selectedMode = ss.selectedMode ?? 'single'
-      if (blockKinds.has(kind) && ss.type === 'funnel') {
-        const em2 = { ...(ss.emphasis ?? {}) }
-        if (!em2.itemStyle || typeof em2.itemStyle !== 'object') em2.itemStyle = {}
-        em2.itemStyle.shadowBlur = Math.max(96, Number(em2.itemStyle.shadowBlur ?? 0) || 0)
-        em2.itemStyle.shadowColor = em2.itemStyle.shadowColor ?? shadowColor
-        em2.itemStyle.opacity = 1
-        ;(em2 as any).scale = true
-        ;(em2 as any).scaleSize = Math.max(emphasisScaleSize, 16)
-        ;(em2 as any).focus = 'self'
-        ;(em2 as any).blurScope = 'global'
-        ss.emphasis = em2
-
-        const sel2 = { ...(ss.select ?? {}) }
-        if (!sel2.itemStyle || typeof sel2.itemStyle !== 'object') sel2.itemStyle = {}
-        sel2.itemStyle.shadowBlur = Math.max(72, Number(sel2.itemStyle.shadowBlur ?? 0) || 0)
-        sel2.itemStyle.shadowColor = sel2.itemStyle.shadowColor ?? shadowColor
-        sel2.itemStyle.opacity = 1
-        ;(sel2 as any).scale = true
-        ;(sel2 as any).scaleSize = Math.max(selectScaleSize, 12)
-        ss.select = sel2
-        ss.selectedMode = ss.selectedMode ?? 'single'
-      }
-      return ss
-    })
-
-    return next as EChartsOption
   }
 
   const renderSlotBody = (idx: number, raw: { kind: WidgetKind | null; configText: string } | undefined) => {
@@ -858,56 +720,14 @@ function StudioDebugDashboardCanvas({
 
     const unit = typeof parsed?.unit === 'string' ? String(parsed.unit) : ''
     const opt = optionForSlot(kind, chartTitle, unit)
-    const finalOpt = opt ? enhanceSelectableOption(kind, opt) : null
-    const renderOpt = (() => {
-      if (!finalOpt) return finalOpt
-      if (!(kind === 'line' || kind === 'line-area' || kind === 'line-curve')) return finalOpt
-      if (!selectedDatum || selectedDatum.slotIdx !== idx) return finalOpt
-      const nameText = String(selectedDatum.name ?? '').trim()
-      const v = selectedDatum.value
-      const y = typeof v === 'number' || typeof v === 'string' ? v : Array.isArray(v) ? v[1] : null
-      if (!nameText || y == null) return finalOpt
-      const c = String(selectedDatum.color || accent)
-      const next: any = { ...(finalOpt as any) }
-      const baseSeries = Array.isArray(next.series) ? next.series.slice() : []
-      for (let si = 0; si < baseSeries.length; si += 1) {
-        const s = baseSeries[si]
-        if (!s || typeof s !== 'object') continue
-        if (String(s.type) !== 'line') continue
-        if (si === selectedDatum.seriesIndex) {
-          s.showSymbol = true
-          s.symbol = 'circle'
-          const is0: any = { ...((s.itemStyle ?? {}) as any) }
-          is0.opacity = Math.min(0.22, Number(is0.opacity ?? 0.22))
-          s.itemStyle = is0
-          const ls0: any = { ...((s.lineStyle ?? {}) as any) }
-          ls0.opacity = Math.min(0.28, Number(ls0.opacity ?? 0.28))
-          s.lineStyle = ls0
-          if (s.areaStyle) {
-            const as0: any = { ...((s.areaStyle ?? {}) as any) }
-            as0.opacity = Math.min(0.06, Number(as0.opacity ?? 0.06))
-            s.areaStyle = as0
-          }
-        } else {
-          s.showSymbol = false
-        }
-      }
-
-      baseSeries.push({
-        id: '__selected_point_overlay__',
-        type: 'effectScatter',
-        z: 999,
-        coordinateSystem: 'cartesian2d',
-        data: [{ name: nameText, value: [nameText, y] }],
-        symbol: 'circle',
-        symbolSize: 26,
-        itemStyle: { color: c, shadowBlur: 46, shadowColor: `${c}FF`, opacity: 0.98 },
-        rippleEffect: { scale: 3.8, brushType: 'stroke' },
-        tooltip: { show: false },
-      })
-      next.series = baseSeries
-      return next as EChartsOption
-    })()
+    const finalOpt =
+      opt && kind
+        ? enhanceDashboardChartOption(kind, opt, {
+            accent,
+            mode: 'preview',
+          })
+        : null
+    const renderOpt = finalOpt
     return opt ? (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div className="studioSlotHeader" style={{ padding: '12px 12px 8px 12px' }}>
@@ -961,18 +781,31 @@ function StudioDebugDashboardCanvas({
             </Space>
           </div>
         </div>
-        <div style={{ flex: 1, minHeight: 0, paddingTop: kind === 'funnel' ? 0 : 10 }}>
+        <div
+          style={{ flex: 1, minHeight: 0, paddingTop: kind === 'funnel' ? 0 : 10 }}
+          onClick={(e) => {
+            if (kind === 'sankey') return
+            e.stopPropagation()
+          }}
+          onMouseDown={(e) => {
+            if (kind === 'sankey') return
+            e.stopPropagation()
+          }}
+        >
           <EChart
             option={renderOpt as any}
+            selectionEnabled={kind !== 'sankey'}
             selectedItems={
               selectedDatum &&
               selectedDatum.slotIdx === idx &&
               (kind === 'bar-grouped' || kind === 'bar-stacked') &&
               renderOpt &&
               Array.isArray((renderOpt as any).series)
-                ? ((renderOpt as any).series as any[])
-                    .map((s: any, seriesIndex: number) => (String(s?.type) === 'bar' ? { seriesIndex, dataIndex: selectedDatum.dataIndex } : null))
-                    .filter(Boolean)
+                ? selectedDatum.isGroup
+                  ? ((renderOpt as any).series as any[])
+                      .map((s: any, seriesIndex: number) => (String(s?.type) === 'bar' ? { seriesIndex, dataIndex: selectedDatum.dataIndex } : null))
+                      .filter((x): x is { seriesIndex: number; dataIndex: number } => x !== null)
+                  : [{ seriesIndex: selectedDatum.seriesIndex, dataIndex: selectedDatum.dataIndex }]
                 : null
             }
             selected={
@@ -982,29 +815,28 @@ function StudioDebugDashboardCanvas({
                 ? { seriesIndex: selectedDatum.seriesIndex, dataIndex: selectedDatum.dataIndex }
                 : null
             }
-            pulseEnabled={!(kind === 'line' || kind === 'line-area' || kind === 'line-curve')}
+            pulseEnabled={true}
             legendSingleLine
+            onBlankAreaClick={() => {
+              onDatumSelect(null, '')
+            }}
             onSelectedChange={(next, click) => {
               if (!kind) return
+              if (kind === 'sankey') return
               const pointKinds = new Set<WidgetKind>(['line', 'line-area', 'line-curve', 'bubble', 'scatter'])
-              const blockKinds = new Set<WidgetKind>([
-                'bar',
-                'bar-h',
-                'bar-grouped',
-                'bar-stacked',
-                'bar-gradient',
-                'pie',
-                'donut',
-                'rose',
-                'funnel',
-                'sankey',
-              ])
+              const blockKinds = new Set<WidgetKind>(['bar', 'bar-h', 'bar-grouped', 'bar-stacked', 'bar-gradient', 'pie', 'donut', 'rose', 'funnel', 'sankey'])
               const labelKind = pointKinds.has(kind) ? '数据点' : blockKinds.has(kind) ? '数据块' : '数据点'
-              const nameText = String(click.name ?? click.seriesName ?? '').trim()
+              
+              // Task 6: Handle group selection name
+              const isGroup = isGroupBarKind(kind) && (next as any)?.isGroup === true
+              const nameText = isGroup ? (click.name || '当前组') : String(click.name ?? click.seriesName ?? '').trim()
               const v = click.value
-              const valueText = Array.isArray(v) ? v.map((x) => String(x)).join(', ') : String(v ?? '').trim()
-              const detail =
-                nameText && valueText ? `${labelKind}：${nameText}=${valueText}` : nameText ? `${labelKind}：${nameText}` : valueText ? `${labelKind}：${valueText}` : labelKind
+              const valueText = isGroup ? '' : Array.isArray(v) ? v.map((x) => String(x)).join(', ') : String(v ?? '').trim()
+              
+              const detail = isGroup 
+                ? `${labelKind}组：${nameText}`
+                : nameText && valueText ? `${labelKind}：${nameText}=${valueText}` : nameText ? `${labelKind}：${nameText}` : valueText ? `${labelKind}：${valueText}` : labelKind
+              
               const ctx = `${cardContext}｜${detail}`
               if (!next) {
                 onDatumSelect(null, ctx)
@@ -1025,6 +857,7 @@ function StudioDebugDashboardCanvas({
                   value: click.value,
                   dataType: click.dataType,
                   color: click.color,
+                  isGroup: isGroup, // Task 6: Pass group info
                 },
                 ctx,
               )
@@ -1096,6 +929,10 @@ function StudioDebugDashboardCanvas({
                   tabIndex={kind ? 0 : undefined}
                   onClick={() => {
                     if (!kind) return
+                    if (selectedDatum?.slotIdx === idx) {
+                      onDatumSelect(null, '')
+                      return
+                    }
                     const parsed = (() => {
                       try {
                         return raw?.configText ? JSON.parse(raw.configText) : null
@@ -1111,6 +948,10 @@ function StudioDebugDashboardCanvas({
                     if (!kind) return
                     if (e.key !== 'Enter' && e.key !== ' ') return
                     e.preventDefault()
+                    if (selectedDatum?.slotIdx === idx) {
+                      onDatumSelect(null, '')
+                      return
+                    }
                     const parsed = (() => {
                       try {
                         return raw?.configText ? JSON.parse(raw.configText) : null

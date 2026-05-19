@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeftOutlined, CommentOutlined } from '@ant-design/icons'
 import { DataTableIcon } from '../components/icons/DataTableIcon'
+import { openAppPath } from '../utils/appNavigation'
 
 function readQuery(search: string) {
   const p = new URLSearchParams(search)
@@ -53,7 +54,7 @@ export default function DashboardDetailPage() {
             if (title) qs.set('title', title)
             if (tables.length) qs.set('tables', tables.join(','))
             const s = qs.toString()
-            window.open(`/dashboard/chat-workspace${s ? `?${s}` : ''}`, '_blank', 'noopener,noreferrer')
+            openAppPath(`/dashboard/chat-workspace${s ? `?${s}` : ''}`)
           }}
         >
           开始对话

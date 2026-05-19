@@ -142,19 +142,19 @@ export function Sidebar({
       }}
     >
       {showBrand ? (
-        <div style={{ padding: collapsed ? '12px 10px' : '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ padding: collapsed ? '12px 10px' : '0 16px', display: 'flex', alignItems: 'center' }}>
           <Button
             type="text"
             onClick={() => navigate('/dashboard')}
             style={{
               width: '100%',
-              height: collapsed ? 44 : 56,
+              height: 56,
               display: 'flex',
               alignItems: 'center',
               justifyContent: collapsed ? 'center' : 'flex-start',
               gap: 10,
-              paddingInline: collapsed ? 0 : 10,
-              borderRadius: 12,
+              paddingInline: 0,
+              borderRadius: 0,
             }}
           >
             {logoDataUrl ? (
@@ -172,7 +172,9 @@ export function Sidebar({
             ) : (
               <AppLogoMark size={32} />
             )}
-            {collapsed || (!logoDataUrl && systemName === 'ChatBI') ? null : <span style={{ fontWeight: 800, color: token.colorText, letterSpacing: 0.2 }}>{systemName}</span>}
+            {collapsed || (!logoDataUrl && systemName === 'ChatBI') ? null : (
+              <span style={{ fontSize: 18, fontWeight: 700, color: token.colorText, letterSpacing: 0.2 }}>{systemName}</span>
+            )}
           </Button>
         </div>
       ) : null}
