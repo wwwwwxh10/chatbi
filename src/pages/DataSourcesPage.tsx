@@ -11,6 +11,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Pagination,
   Popover,
   Radio,
   Row,
@@ -93,6 +94,7 @@ export default function DataSourcesPage() {
   const removeItem = useDataSourcesStore((s) => s.removeItem)
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<DataSourceType | 'all'>('all')
+  const [page, setPage] = useState(1)
 
   const [accessHelpOpen, setAccessHelpOpen] = useState(false)
 
@@ -183,6 +185,14 @@ export default function DataSourcesPage() {
       return matchType && matchQ
     })
   }, [items, query, typeFilter])
+
+  const PAGE_SIZE = 12
+
+  useEffect(() => {
+    setPage(1)
+  }, [query, typeFilter])
+
+  const paged = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page])
 
   const openWizard = (entry?: 'database' | 'file') => {
     if (entry === 'file') {
@@ -339,136 +349,144 @@ export default function DataSourcesPage() {
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('dataSources.empty')} />
         </Card>
       ) : (
-        <Row gutter={[16, 16]}>
-          {filtered.map((ds) => (
-            <Col key={ds.id} xs={24} md={12} xl={8} xxl={6}>
-              <div
-                style={{ position: 'relative' }}
-                onMouseEnter={() => {
-                  if (closeCardMenuTimerRef.current) window.clearTimeout(closeCardMenuTimerRef.current)
-                  closeCardMenuTimerRef.current = null
-                  setCardMenuOpenId(ds.id)
-                }}
-                onMouseLeave={() => {
-                  if (closeCardMenuTimerRef.current) window.clearTimeout(closeCardMenuTimerRef.current)
-                  closeCardMenuTimerRef.current = window.setTimeout(() => setCardMenuOpenId(null), 120)
-                }}
-              >
-                <Popover
-                  open={cardMenuOpenId === ds.id}
-                  placement="bottomRight"
-                  trigger={[]}
-                  getPopupContainer={() => document.body}
-                  autoAdjustOverflow={false}
-                  arrow={{ pointAtCenter: true }}
-                  overlayInnerStyle={{ padding: 8 }}
-                  align={{ offset: [0, 10] }}
-                  overlayStyle={{ zIndex: 2100 }}
-                  content={
-                    <div
-                      onMouseEnter={() => {
-                        if (closeCardMenuTimerRef.current) window.clearTimeout(closeCardMenuTimerRef.current)
-                        closeCardMenuTimerRef.current = null
-                        setCardMenuOpenId(ds.id)
-                      }}
-                      onMouseLeave={() => {
-                        if (closeCardMenuTimerRef.current) window.clearTimeout(closeCardMenuTimerRef.current)
-                        closeCardMenuTimerRef.current = window.setTimeout(() => setCardMenuOpenId(null), 120)
-                      }}
-                    >
-                      <Space direction="vertical" size={6} style={{ padding: 4 }}>
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setCardMenuOpenId(null)
-                            openEditWizard(ds)
-                          }}
-                        >
-                          编辑
-                        </Button>
-                        <Button
-                          type="text"
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setCardMenuOpenId(null)
-                            setDeleteTarget(ds)
-                          }}
-                        >
-                          删除
-                        </Button>
-                      </Space>
-                    </div>
-                  }
+        <>
+          <Row gutter={[16, 16]}>
+            {paged.map((ds) => (
+              <Col key={ds.id} xs={24} md={12} xl={8} xxl={6}>
+                <div
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => {
+                    if (closeCardMenuTimerRef.current) window.clearTimeout(closeCardMenuTimerRef.current)
+                    closeCardMenuTimerRef.current = null
+                    setCardMenuOpenId(ds.id)
+                  }}
+                  onMouseLeave={() => {
+                    if (closeCardMenuTimerRef.current) window.clearTimeout(closeCardMenuTimerRef.current)
+                    closeCardMenuTimerRef.current = window.setTimeout(() => setCardMenuOpenId(null), 120)
+                  }}
                 >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      right: 14,
-                      bottom: 14,
-                      width: 0,
-                      height: 0,
-                      pointerEvents: 'none',
-                    }}
-                  />
-                </Popover>
-                <Card
-                  className={cardMenuOpenId === ds.id ? 'dsCard dsCardActive' : 'dsCard'}
-                  hoverable
-                  onClick={() => navigate(`/data-sources/${ds.id}`)}
-                  styles={{ body: { padding: 16, height: '100%', display: 'flex', flexDirection: 'column' } }}
-                  style={{ height: 132 }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                    <Space size={10} align="start">
+                  <Popover
+                    open={cardMenuOpenId === ds.id}
+                    placement="bottomRight"
+                    trigger={[]}
+                    getPopupContainer={() => document.body}
+                    autoAdjustOverflow={false}
+                    arrow={{ pointAtCenter: true }}
+                    overlayInnerStyle={{ padding: 8 }}
+                    align={{ offset: [0, 10] }}
+                    overlayStyle={{ zIndex: 2100 }}
+                    content={
                       <div
-                        style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: 10,
-                          background: token.colorFillTertiary,
-                          display: 'grid',
-                          placeItems: 'center',
+                        onMouseEnter={() => {
+                          if (closeCardMenuTimerRef.current) window.clearTimeout(closeCardMenuTimerRef.current)
+                          closeCardMenuTimerRef.current = null
+                          setCardMenuOpenId(ds.id)
+                        }}
+                        onMouseLeave={() => {
+                          if (closeCardMenuTimerRef.current) window.clearTimeout(closeCardMenuTimerRef.current)
+                          closeCardMenuTimerRef.current = window.setTimeout(() => setCardMenuOpenId(null), 120)
                         }}
                       >
-                        <DataSourceTypeIcon type={ds.type} />
+                        <Space direction="vertical" size={6} style={{ padding: 4 }}>
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setCardMenuOpenId(null)
+                              openEditWizard(ds)
+                            }}
+                          >
+                            编辑
+                          </Button>
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setCardMenuOpenId(null)
+                              setDeleteTarget(ds)
+                            }}
+                          >
+                            删除
+                          </Button>
+                        </Space>
                       </div>
-                      <div style={{ minWidth: 0 }}>
-                        <Typography.Text strong style={{ display: 'block' }}>
-                          {ds.name}
-                        </Typography.Text>
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          {typeLabel(ds.type)}
-                        </Typography.Text>
-                      </div>
-                    </Space>
+                    }
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: 14,
+                        bottom: 14,
+                        width: 0,
+                        height: 0,
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </Popover>
+                  <Card
+                    className={cardMenuOpenId === ds.id ? 'dsCard dsCardActive' : 'dsCard'}
+                    hoverable
+                    onClick={() => navigate(`/data-sources/${ds.id}`)}
+                    styles={{ body: { padding: 16, height: '100%', display: 'flex', flexDirection: 'column' } }}
+                    style={{ height: 132 }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <Space size={10} align="start">
+                        <div
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 10,
+                            background: token.colorFillTertiary,
+                            display: 'grid',
+                            placeItems: 'center',
+                          }}
+                        >
+                          <DataSourceTypeIcon type={ds.type} />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <Typography.Text strong style={{ display: 'block' }}>
+                            {ds.name}
+                          </Typography.Text>
+                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                            {typeLabel(ds.type)}
+                          </Typography.Text>
+                        </div>
+                      </Space>
 
-                    <div style={{ flex: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', gap: 10, paddingTop: 2 }}>
-                      {statusTag(ds.status, t)}
+                      <div style={{ flex: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', gap: 10, paddingTop: 2 }}>
+                        {statusTag(ds.status, t)}
+                      </div>
                     </div>
-                  </div>
 
-                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 }}>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <DataTableIcon size={14} color={token.colorTextSecondary} />
-                        {ds.datasetSelected ?? 0}
-                      </span>
-                    </Typography.Text>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {ds.updatedAt}
-                    </Typography.Text>
-                  </div>
-                </Card>
-              </div>
-            </Col>
-          ))}
-        </Row>
+                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 }}>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <DataTableIcon size={14} color={token.colorTextSecondary} />
+                          {ds.datasetSelected ?? 0}
+                        </span>
+                      </Typography.Text>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        {ds.updatedAt}
+                      </Typography.Text>
+                    </div>
+                  </Card>
+                </div>
+              </Col>
+            ))}
+          </Row>
+
+          {filtered.length > PAGE_SIZE ? (
+            <div style={{ paddingTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+              <Pagination size="small" current={page} pageSize={PAGE_SIZE} total={filtered.length} showSizeChanger={false} onChange={(p) => setPage(p)} />
+            </div>
+          ) : null}
+        </>
       )}
 
       <Modal
@@ -663,7 +681,7 @@ export default function DataSourcesPage() {
               <Input
                 value={dbTypeSearch}
                 onChange={(e) => setDbTypeSearch(e.target.value)}
-                placeholder={t('dataSources.searchType')}
+                placeholder={t('actions.search')}
                 prefix={<SearchOutlined />}
                 allowClear
               />

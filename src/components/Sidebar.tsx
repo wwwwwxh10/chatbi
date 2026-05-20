@@ -3,15 +3,15 @@ import type { MenuProps } from 'antd'
 import {
   BookOpen,
   BookOpenText,
+  Code2,
   ChartNoAxesCombined,
   ChevronsLeft,
   ChevronsRight,
   Database,
   GitBranch,
+  Regex,
   Sigma,
 } from 'lucide-react'
-import { KbRegexIcon } from './icons/KbRegexIcon'
-import { KbSqlIcon } from './icons/KbSqlIcon'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../store/appStore'
@@ -103,9 +103,9 @@ export function Sidebar({
       children: [
         { key: 'kb:terms', icon: <BookOpen size={16} />, label: t('kb.terms') },
         { key: 'kb:metrics', icon: <Sigma size={16} />, label: t('kb.metrics') },
-        { key: 'kb:regex', icon: <KbRegexIcon size={16} />, label: t('kb.regex') },
+        { key: 'kb:regex', icon: <Regex size={16} />, label: t('kb.regex') },
         { key: 'kb:logic-tree', icon: <GitBranch size={16} />, label: t('kb.logicTree') },
-        { key: 'kb:sql-examples', icon: <KbSqlIcon size={16} />, label: t('kb.sqlExamples') },
+        { key: 'kb:sql-examples', icon: <Code2 size={16} />, label: t('kb.sqlExamples') },
       ],
     },
     {

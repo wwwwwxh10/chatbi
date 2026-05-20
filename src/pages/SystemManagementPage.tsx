@@ -122,7 +122,7 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
           >
             <Input
               value={keyword}
-              placeholder="搜索账号/角色"
+              placeholder={t('actions.search')}
               style={{ width: 280 }}
               allowClear
               prefix={<SearchOutlined />}

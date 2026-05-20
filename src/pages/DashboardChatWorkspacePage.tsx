@@ -752,9 +752,9 @@ function StudioDebugDashboardCanvas({
         silent: true,
         data: [{ name: nameText, value: coord }],
         symbol: 'circle',
-        symbolSize: 12,
-        itemStyle: { color: c, borderWidth: 2, borderColor: '#fff', shadowBlur: 22, shadowColor: c, opacity: 0.92 },
-        rippleEffect: { scale: 2.2, brushType: 'stroke', period: 4, number: 2 },
+        symbolSize: 18,
+        itemStyle: { color: c, borderWidth: 2, borderColor: '#fff', shadowBlur: 30, shadowColor: c, opacity: 0.92 },
+        rippleEffect: { scale: 3.2, brushType: 'stroke', period: 3.8, number: 2 },
         tooltip: { show: false },
       })
       next.series = baseSeries

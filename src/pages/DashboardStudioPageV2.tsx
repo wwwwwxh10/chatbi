@@ -1230,6 +1230,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       : appearance.theme === 'tech'
         ? 'rgba(10, 20, 38, 0.76)'
         : 'rgba(10, 16, 32, 0.76)'
+  const popupBg = appearance.theme === 'obsidian' ? token.colorBgElevated : 'rgba(6, 10, 18, 0.98)'
 
   const slotBodies = useMemo(
     () => slots.map((s, idx) => renderSlotBody(s, idx)),
@@ -1247,6 +1248,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
         ['--studio-field-bg' as any]: fieldBg,
         ['--studio-field-border' as any]: fieldBorder,
         ['--studio-panel-card-bg' as any]: panelCardBg,
+        ['--studio-popup-bg' as any]: popupBg,
       }}
     >
       <div
@@ -1340,7 +1342,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   {title.trim() || '未命名仪表盘'}
                 </Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {THEME_NAME[appearance.theme]} · {CHART_PALETTES[appearance.chartPalette].name}
+                  {appearance.language === 'en-US'
+                    ? `Theme ${THEME_NAME[appearance.theme]} · Palette ${CHART_PALETTES[appearance.chartPalette].name}`
+                    : `主题风格 ${THEME_NAME[appearance.theme]} · 图表色系 ${CHART_PALETTES[appearance.chartPalette].name}`}
                 </Typography.Text>
               </div>
             </Space>
@@ -1563,7 +1567,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         ? accent
                         : token.colorSplit
                     : token.colorSplit
-                  const borderWidth = slot.kind && (isEditing || isSelected) ? 2 : 1
                   const surfaceBg =
                     appearance.theme === 'obsidian'
                       ? token.colorBgContainer
@@ -1585,7 +1588,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         borderRadius: 14,
                         border:
                           slot.kind
-                            ? `${borderWidth}px solid ${borderColor}`
+                            ? `1px solid ${borderColor}`
                             : `1px dashed ${borderColor}`,
                         background:
                           slot.kind
@@ -1601,7 +1604,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         zIndex: layout.mode === 'free' ? 2 : 1,
                         overflow: 'hidden',
                         cursor: slot.kind ? 'default' : !readOnly && !previewMode ? 'pointer' : 'default',
-                        boxShadow: slot.kind && (isEditing || isSelected) ? `0 0 0 1px ${accent}26, 0 0 22px ${accent}14` : undefined,
+                        boxShadow: undefined,
                         outline: undefined,
                       }}
                       onClick={() => {
@@ -1699,6 +1702,57 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                               aria-label="移除组件"
                             />
                           </Tooltip>
+                        </div>
+                      ) : null}
+
+                      {layout.mode === 'free' && isSelected && slot.kind ? (
+                        <div style={{ position: 'absolute', inset: -2, pointerEvents: 'none', zIndex: 22 }}>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: 12,
+                              top: -22,
+                              padding: '3px 8px',
+                              borderRadius: 8,
+                              background: 'rgba(6, 10, 18, 0.92)',
+                              border: `1px solid ${accent}55`,
+                              color: accent,
+                              fontSize: 12,
+                              fontWeight: 800,
+                              lineHeight: 1,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {rowSpan}行*{colSpan}列
+                          </div>
+                          {(
+                            [
+                              { top: 0, left: 0, borders: ['borderTop', 'borderLeft'] as const },
+                              { top: 0, right: 0, borders: ['borderTop', 'borderRight'] as const },
+                              { bottom: 0, left: 0, borders: ['borderBottom', 'borderLeft'] as const },
+                              { bottom: 0, right: 0, borders: ['borderBottom', 'borderRight'] as const },
+                            ] as Array<{
+                              top?: number
+                              right?: number
+                              bottom?: number
+                              left?: number
+                              borders: ReadonlyArray<'borderTop' | 'borderRight' | 'borderBottom' | 'borderLeft'>
+                            }>
+                          ).map((p, i) => {
+                            const style: any = {
+                              position: 'absolute',
+                              width: 16,
+                              height: 16,
+                              borderColor: accent,
+                              borderStyle: 'solid',
+                            }
+                            if (p.top != null) style.top = p.top
+                            if (p.bottom != null) style.bottom = p.bottom
+                            if (p.left != null) style.left = p.left
+                            if (p.right != null) style.right = p.right
+                            for (const k of p.borders) style[k] = '2px'
+                            return <div key={i} style={style} />
+                          })}
                         </div>
                       ) : null}
 
@@ -2068,13 +2122,13 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             opacity: readOnly ? 0.9 : 1,
                           }}
                         >
-                          <div style={{ paddingInline: 2 }}>{it.icon}</div>
+                          <div style={{ paddingInline: 0 }}>{it.icon}</div>
                           <div style={{ height: 4 }} />
-                          <div style={{ paddingInline: 2 }}>
-                            <Typography.Text strong style={{ display: 'block', lineHeight: 1.25 }}>
+                          <div style={{ paddingInline: 0 }}>
+                            <Typography.Text strong style={{ display: 'block', lineHeight: 1.25, textAlign: 'left' }}>
                               {it.title}
                             </Typography.Text>
-                            <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, lineHeight: 1.25, marginTop: 2 }}>
+                            <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, lineHeight: 1.25, marginTop: 2, textAlign: 'left' }}>
                               {it.desc}
                             </Typography.Text>
                           </div>

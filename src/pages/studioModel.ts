@@ -137,8 +137,8 @@ export const KIND_NAME: Record<WidgetKind, string> = {
 
 export const THEME_NAME: Record<ThemeStyle, string> = {
   obsidian: '曜石蓝黑',
-  cyber: '赛博蓝紫',
-  tech: '科技蓝',
+  cyber: '暗影墨蓝',
+  tech: '深海湛蓝',
 }
 
 export const THEME_ACCENT: Record<ThemeStyle, string> = {

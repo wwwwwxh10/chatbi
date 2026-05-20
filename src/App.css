@@ -1052,7 +1052,7 @@ html[data-mode='dark'] .studioThemeRoot .ant-select-focused .ant-select-selector
 }
 
 .studioThemeRoot .ant-select-dropdown {
-  background: var(--studio-panel-card-bg) !important;
+  background: var(--studio-popup-bg) !important;
   border: 1px solid var(--studio-field-border) !important;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55) !important;
   padding: 6px !important;

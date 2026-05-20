@@ -270,7 +270,7 @@ export function DatasetPreviewModal({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜索数据表"
+              placeholder="搜索"
               prefix={<SearchOutlined />}
               allowClear
             />

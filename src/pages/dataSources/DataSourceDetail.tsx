@@ -31,7 +31,7 @@ const TEXT = {
     max100: '最多预览前100条',
     semanticHint: '通过“字段名/字段描述”增强语义口径，系统将用于对话解释与口径提示。',
     datasetList: '数据表列表',
-    datasetSearch: '搜索数据表',
+    datasetSearch: '搜索',
     colDisplay: '字段名',
     colPhysical: '物理字段名',
     colType: '字段类型',

@@ -255,6 +255,7 @@ const BaseCard = ({
   token: any
 }) => {
   const pillBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)'
+  const sparkleColor = isDark ? 'rgba(226,232,240,0.9)' : token.colorTextSecondary
 
   return (
     <div
@@ -329,7 +330,7 @@ const BaseCard = ({
         bordered={false}
         onClick={onView}
         className={menu.openId === id ? 'dsCard dsCardActive' : 'dsCard'}
-        styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column' } }}
+        styles={{ body: { padding: '14px 16px 12px', display: 'flex', flexDirection: 'column' } }}
         style={{
           borderRadius: 14,
           background: token.colorBgContainer,
@@ -337,9 +338,9 @@ const BaseCard = ({
           height: cardHeight ?? CARD_MIN_HEIGHT,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0 }}>
-            <span style={{ lineHeight: 0, display: 'inline-flex', alignItems: 'center', marginTop: 2, flex: 'none' }}>{icon}</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span style={{ lineHeight: 0, display: 'inline-flex', alignItems: 'center', flex: 'none' }}>{icon}</span>
             <Typography.Paragraph
               ellipsis={{ rows: 2 }}
               style={{
@@ -347,7 +348,7 @@ const BaseCard = ({
                 fontSize: 14,
                 lineHeight: 1.35,
                 fontWeight: 700,
-                color: token.colorPrimary,
+                color: token.colorText,
                 minWidth: 0,
               }}
             >
@@ -368,13 +369,27 @@ const BaseCard = ({
             }}
           >
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <LinkOutlined style={{ fontSize: 12, opacity: 0.9 }} />
+              <span className="biSparkleIcon" style={{ width: 14, height: 14, color: sparkleColor, filter: 'none' }}>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M12 2.8l1.4 6a1.7 1.7 0 0 0 1.25 1.25l6 1.4-6 1.4a1.7 1.7 0 0 0-1.25 1.25l-1.4 6-1.4-6a1.7 1.7 0 0 0-1.25-1.25l-6-1.4 6-1.4A1.7 1.7 0 0 0 10.6 8.8l1.4-6Z"
+                    fill="currentColor"
+                    opacity="0.9"
+                  />
+                  <path
+                    className="sparkleSmall"
+                    d="M21.2 1.8l.42 1.85c.05.19.2.33.39.38l1.85.43-1.85.42a.5.5 0 0 0-.39.39l-.42 1.85-.43-1.85a.5.5 0 0 0-.39-.39l-1.85-.42 1.85-.43c.19-.05.34-.2.38-.39l.43-1.84Z"
+                    fill="currentColor"
+                    opacity="0.52"
+                  />
+                </svg>
+              </span>
               {formatRefCount(referenceCount)}
             </span>
           </span>
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, paddingTop: contentPaddingTop ?? 10 }}>{children}</div>
+        <div style={{ flex: 1, minHeight: 0, paddingTop: contentPaddingTop ?? 8 }}>{children}</div>
       </Card>
     </div>
   )
@@ -534,7 +549,7 @@ const RegexCard = ({
     <BaseCard
       id={item.id}
       title={item.name}
-      icon={<KbRegexIcon size={18} color={token.colorPrimary} />}
+      icon={<Regex size={18} color={token.colorPrimary} />}
       referenceCount={item.referenceCount}
       onEdit={onEdit}
       onDelete={onDelete}
@@ -603,7 +618,7 @@ const LogicTreeCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={192}
+      cardHeight={208}
       isDark={isDark}
       token={token}
     >
@@ -639,13 +654,13 @@ const SqlExampleCard = ({
   <BaseCard
     id={item.id}
     title={item.question}
-    icon={<KbSqlIcon size={18} color={token.colorPrimary} />}
+    icon={<Code2 size={18} color={token.colorPrimary} />}
     referenceCount={item.referenceCount}
     onEdit={onEdit}
     onDelete={onDelete}
     onView={onView}
     menu={menu}
-    cardHeight={228}
+    cardHeight={212}
     isDark={isDark}
     token={token}
   >
@@ -1060,7 +1075,6 @@ export default function KnowledgeBasePage() {
         <div
           style={{
             height: 56,
-            paddingInline: 16,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -1069,7 +1083,7 @@ export default function KnowledgeBasePage() {
         >
           <Input
             value={keyword}
-            placeholder={t('knowledge.filters.keywordPlaceholder')}
+            placeholder={t('actions.search')}
             style={{ width: 280 }}
             allowClear
             prefix={<SearchOutlined />}
@@ -1092,7 +1106,7 @@ export default function KnowledgeBasePage() {
           </Space>
         </div>
 
-        <div style={{ padding: 16, paddingTop: 8 }}>
+        <div style={{ paddingTop: 8 }}>
           {pagedItems.length === 0 ? (
             <div style={{ padding: '80px 0' }}>
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />

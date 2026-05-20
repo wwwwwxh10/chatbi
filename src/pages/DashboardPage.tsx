@@ -859,7 +859,11 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                 ellipsis: true,
                 render: (v: string) => (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                    <DashboardIcon size={16} primaryColor={token.colorPrimary} secondaryColor={token.colorTextSecondary} />
+                    <DashboardIcon
+                      size={18}
+                      primaryColor={token.colorPrimary}
+                      secondaryColor={themeMode === 'dark' ? 'rgba(255,255,255,0.78)' : 'rgba(15,23,42,0.68)'}
+                    />
                     <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(v ?? '')}</span>
                   </span>
                 ),
@@ -935,12 +939,12 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                 title: t('knowledge.table.actions'),
                 key: 'actions',
                 width: 150,
-                className: 'actionCol',
-                onHeaderCell: () => ({ className: 'actionCol' }),
-                onCell: () => ({ className: 'actionCol', style: { width: 150, minWidth: 150, maxWidth: 150 } }),
-                align: 'center' as const,
+                className: 'actionCol actionColRight',
+                onHeaderCell: () => ({ className: 'actionCol actionColRight' }),
+                onCell: () => ({ className: 'actionCol actionColRight', style: { width: 150, minWidth: 150, maxWidth: 150 } }),
+                align: 'right' as const,
                 render: (_: unknown, r: CustomDashboard) => (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 2, width: '100%', justifyItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2, width: '100%' }}>
                     <Tooltip title={t('dashboard.customActions.preview')}>
                       <Button
                         type="text"
