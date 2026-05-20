@@ -1,4 +1,4 @@
-import { Button, Empty, Input, InputNumber, Modal, Select, Space, Tag, Tooltip, Typography, message, theme } from 'antd'
+import { Badge, Button, Empty, Input, InputNumber, Modal, Popover, Select, Space, Tag, Tooltip, Typography, message, theme } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -125,6 +125,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const specs = useMemo(() => layoutSpecs(layout), [layout])
   const [slots, setSlots] = useState<WidgetSlot[]>(() => normalizeSlots(specs, []))
+  const [unplacedSlots, setUnplacedSlots] = useState<WidgetSlot[]>([])
   const [freeStartPoint, setFreeStartPoint] = useState<{ r: number; c: number } | null>(null)
   const [freeHoverPoint, setFreeHoverPoint] = useState<{ r: number; c: number } | null>(null)
   const [freeCursor, setFreeCursor] = useState<{ x: number; y: number } | null>(null)
@@ -134,6 +135,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const moveTipRafRef = useRef<number | null>(null)
   const moveTipPendingRef = useRef<{ x: number; y: number; text: string } | null>(null)
   const previewMode = mode === 'preview'
+  const unplacedRef = useRef<WidgetSlot[]>([])
+  const debugLiveRef = useRef(false)
 
   const scheduleMoveTip = (next: { x: number; y: number; text: string } | null) => {
     if (next == null) {
@@ -154,6 +157,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   }
 
   const openDebug = () => {
+    debugLiveRef.current = true
     const payload = {
       title: title.trim() || '未命名仪表盘',
       description: description.trim(),
@@ -166,12 +170,48 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       })),
     }
     localStorage.setItem('studio:debug-dashboard-v1', JSON.stringify(payload))
+    try {
+      const ch = new BroadcastChannel('studio:debug-dashboard-v1')
+      ch.postMessage(payload)
+      ch.close()
+    } catch {
+    }
     window.open('/dashboard/chat-workspace?debug=studio', '_blank', 'noopener,noreferrer')
   }
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!debugLiveRef.current) return
+    const payload = {
+      title: title.trim() || '未命名仪表盘',
+      description: description.trim(),
+      tables,
+      layout,
+      appearance,
+      slots: slots.map((s) => ({
+        kind: s.kind,
+        configText: s.configText,
+      })),
+    }
+    const t = window.setTimeout(() => {
+      localStorage.setItem('studio:debug-dashboard-v1', JSON.stringify(payload))
+      try {
+        const ch = new BroadcastChannel('studio:debug-dashboard-v1')
+        ch.postMessage(payload)
+        ch.close()
+      } catch {
+      }
+    }, 120)
+    return () => window.clearTimeout(t)
+  }, [title, description, tables, layout, appearance, slots])
+
+  useEffect(() => {
     setSlots((prev) => normalizeSlots(specs, prev))
   }, [specs])
+
+  useEffect(() => {
+    unplacedRef.current = unplacedSlots
+  }, [unplacedSlots])
 
   useEffect(() => {
     if (mode === 'new') {
@@ -183,6 +223,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       setAppearance({ language: locale, timeZone: 'UTC+08:00', theme: 'obsidian', chartPalette: 'cyber' })
       setLayout(initialLayout)
       setSlots(normalizeSlots(layoutSpecs(initialLayout), []))
+      setUnplacedSlots([])
       return
     }
 
@@ -202,7 +243,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       }
     })()
 
-    const looksLikeStudioConfig = Boolean(obj && typeof obj === 'object' && ('appearance' in obj || 'layout' in obj || 'widgets' in obj))
+    const looksLikeStudioConfig = Boolean(obj && typeof obj === 'object' && ('appearance' in obj || 'layout' in obj || 'widgets' in obj || 'unplacedWidgets' in obj))
     const isSampleDashboard = String(hit.id ?? '').startsWith('custom-')
     const isSamplePreset = obj && typeof obj === 'object' && String((obj as any).__preset ?? '') === 'studio-sample-v1'
     const shouldForceSample =
@@ -287,9 +328,17 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setLayout(nextLayout)
 
     const widgets = Array.isArray(obj?.widgets) ? (obj.widgets as any[]) : []
-    const nextSlots = normalizeSlots(layoutSpecs(nextLayout), [])
-    for (let i = 0; i < nextSlots.length; i++) {
-      const w = widgets[i]
+    const unplacedWidgets = Array.isArray((obj as any)?.unplacedWidgets) ? ((obj as any).unplacedWidgets as any[]) : []
+    const allWidgets = [...widgets, ...unplacedWidgets]
+    const nextSpecs = layoutSpecs(nextLayout)
+    const baseSlots =
+      nextLayout.mode === 'free'
+        ? nextLayout.cards.map((_, idx) => ({ id: `free-${idx + 1}`, kind: null as any, configText: '', error: null }))
+        : normalizeSlots(nextSpecs, [])
+    const resolvedSlots: WidgetSlot[] = baseSlots.map((s) => ({ ...s }))
+    const carry: WidgetSlot[] = []
+    for (let i = 0; i < allWidgets.length; i++) {
+      const w = allWidgets[i]
       const kind = w?.kind as WidgetKind | undefined
       const cfg = w?.config
       if (!kind || !KIND_NAME[kind]) continue
@@ -297,19 +346,17 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       const v = validateWidget(kind, text)
       let err: WidgetSlot['error'] = null
       if ('error' in v) err = v.error
-      nextSlots[i] = { ...nextSlots[i], kind, configText: text, error: err }
+      const slot: WidgetSlot = { id: `carry-${i}-${Date.now()}`, kind, configText: text, error: err }
+      carry.push(slot)
     }
-    if (nextLayout.mode === 'free') {
-      setSlots(
-        nextLayout.cards.map((_, idx) => {
-          const id = `free-${idx + 1}`
-          const s = nextSlots[idx]
-          return s ? { ...s, id } : { id, kind: null, configText: '', error: null }
-        }),
-      )
-      return
+    const cap = resolvedSlots.length
+    for (let i = 0; i < cap; i++) {
+      const c = carry[i]
+      if (!c) break
+      resolvedSlots[i] = { ...resolvedSlots[i], kind: c.kind, configText: c.configText, error: c.error }
     }
-    setSlots(nextSlots)
+    setSlots(resolvedSlots)
+    setUnplacedSlots(carry.slice(cap))
   }, [dashboards, dataSources, id, mode])
 
   const accent = appearance.theme === 'obsidian' ? token.colorPrimary : THEME_ACCENT[appearance.theme]
@@ -340,6 +387,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const [dragFromIdx, setDragFromIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
   const [draggingKind, setDraggingKind] = useState<WidgetKind | null>(null)
+  const [dragFromUnplacedIdx, setDragFromUnplacedIdx] = useState<number | null>(null)
+  const [unplacedOpen, setUnplacedOpen] = useState(false)
+  const [hoveredUnplacedId, setHoveredUnplacedId] = useState<string | null>(null)
 
   const [editorDraft, setEditorDraft] = useState<string>('')
   const [editorError, setEditorError] = useState<WidgetSlot['error']>(null)
@@ -360,13 +410,19 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setEditorFullscreen(false)
   }, [editingSlotId])
 
-  const applyLayout = (nextLayout: StudioLayout) => {
+  const applyLayout = (nextLayout: StudioLayout, opts?: { fillFromUnplaced?: boolean }) => {
+    const fillFromUnplaced = opts?.fillFromUnplaced !== false
     setEditingSlotId(null)
     setSelectedSlotId(null)
     setDragFromIdx(null)
     setDragOverIdx(null)
+    setDragFromUnplacedIdx(null)
     setLayout(nextLayout)
-    if (nextLayout.mode === 'free') {
+    if (nextLayout.mode === 'free' && layout.mode === 'free') {
+      const nextLen = nextLayout.cards.length
+      const removed = slots.slice(nextLen).filter((s) => s.kind)
+      const remainingUnplaced = unplacedRef.current.filter((s) => s.kind)
+      setUnplacedSlots([...remainingUnplaced, ...removed.map((s) => ({ ...s }))])
       setSlots((prev) => {
         const byId = new Map(prev.map((s) => [s.id, s]))
         const next = nextLayout.cards.map((_, idx) => {
@@ -374,12 +430,46 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           const hit = byId.get(id)
           return hit ? { ...hit, id } : { id, kind: null, configText: '', error: null }
         })
+        if (fillFromUnplaced && next.length > prev.length && remainingUnplaced.length) {
+          const appendCount = next.length - prev.length
+          const take = remainingUnplaced.slice(0, appendCount)
+          for (let i = 0; i < take.length; i++) {
+            const targetIdx = prev.length + i
+            if (!next[targetIdx]) continue
+            const c = take[i]
+            next[targetIdx] = { ...next[targetIdx], kind: c.kind, configText: c.configText, error: c.error }
+          }
+          setUnplacedSlots((p) => p.filter((_, idx) => idx >= take.length))
+        }
         return next
       })
       return
     }
-    setSlots((prev) => normalizeSlots(layoutSpecs(nextLayout), prev))
+    const nextSpecs = layoutSpecs(nextLayout)
+    const cap = nextSpecs.length
+    const placed = slots.filter((s) => s.kind).map((s) => ({ ...s }))
+    const unplaced = unplacedRef.current.filter((s) => s.kind).map((s) => ({ ...s }))
+    const all = [...placed, ...unplaced]
+    const keep = all.slice(0, cap)
+    const rest = all.slice(cap)
+    const base =
+      nextLayout.mode === 'free'
+        ? nextLayout.cards.map((_, idx) => ({ id: `free-${idx + 1}`, kind: null as any, configText: '', error: null }))
+        : normalizeSlots(nextSpecs, [])
+    const nextSlots = base.map((s, idx) => {
+      const c = keep[idx]
+      if (!c) return { ...s }
+      return { ...s, kind: c.kind, configText: c.configText, error: c.error }
+    })
+    setSlots(nextSlots)
+    setUnplacedSlots(rest)
   }
+
+  const unplacedCount = useMemo(() => unplacedSlots.filter((s) => s.kind).length, [unplacedSlots])
+
+  useEffect(() => {
+    if (!unplacedCount && unplacedOpen) setUnplacedOpen(false)
+  }, [unplacedCount, unplacedOpen])
 
   useEffect(() => {
     if (layout.mode !== 'free') {
@@ -462,6 +552,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       setDragFromIdx(null)
       setDragOverIdx(null)
       setDraggingKind(null)
+      setDragFromUnplacedIdx(null)
     }
     window.addEventListener('dragend', clear)
     window.addEventListener('drop', clear)
@@ -498,8 +589,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     if (readOnly) return false
     if (!title.trim()) return false
     if (slots.some((s) => s.kind && s.error)) return false
+    if (unplacedSlots.some((s) => s.kind && s.error)) return false
     return true
-  }, [readOnly, slots, title])
+  }, [readOnly, slots, title, unplacedSlots])
 
   const translateSlots = (to: 'zh-CN' | 'en-US') => {
     const zhToEn: Record<string, string> = {
@@ -523,6 +615,28 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     const map = to === 'en-US' ? zhToEn : enToZh
 
     setSlots((prev) =>
+      prev.map((s) => {
+        if (!s.kind) return s
+        let obj: any = null
+        try {
+          obj = s.configText ? JSON.parse(s.configText) : null
+        } catch {
+          obj = null
+        }
+        if (!obj || typeof obj !== 'object') return s
+        const next = { ...obj }
+        if (typeof next.title === 'string' && map[next.title]) next.title = map[next.title]
+        if (typeof next.unit === 'string') {
+          if (to === 'en-US' && next.unit === '万') next.unit = 'k'
+          if (to === 'zh-CN' && next.unit === 'k') next.unit = '万'
+        }
+        const text = JSON.stringify({ ...next, type: s.kind }, null, 2)
+        const v = validateWidget(s.kind, text)
+        const err: WidgetSlot['error'] = 'error' in v ? v.error : null
+        return { ...s, configText: text, error: err }
+      }),
+    )
+    setUnplacedSlots((prev) =>
       prev.map((s) => {
         if (!s.kind) return s
         let obj: any = null
@@ -889,7 +1003,19 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     const widgets = slots
       .filter((s) => s.kind)
       .map((s) => ({ kind: s.kind, config: (() => { try { return JSON.parse(s.configText) } catch { return {} } })() }))
-    const payload = { ...(presetId ? { __preset: presetId } : {}), name: title.trim(), description: description.trim(), tables, layout, appearance, widgets }
+    const unplacedWidgets = unplacedSlots
+      .filter((s) => s.kind)
+      .map((s) => ({ kind: s.kind, config: (() => { try { return JSON.parse(s.configText) } catch { return {} } })() }))
+    const payload = {
+      ...(presetId ? { __preset: presetId } : {}),
+      name: title.trim(),
+      description: description.trim(),
+      tables,
+      layout,
+      appearance,
+      widgets,
+      ...(unplacedWidgets.length ? { unplacedWidgets } : {}),
+    }
     const configText = JSON.stringify(payload, null, 2)
     if (mode === 'new') {
       addItem({ id: createDashboardId(), title: title.trim(), description: description.trim(), tables, updatedAt: touchUpdatedAt(), published: false, configText })
@@ -953,6 +1079,16 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     [],
   )
 
+  const libraryMetaByKind = useMemo(() => {
+    const m = new Map<WidgetKind, { icon: any; title: string }>()
+    for (const g of libraryGroups) {
+      for (const it of g.items) {
+        m.set(it.kind, { icon: it.icon, title: it.title })
+      }
+    }
+    return m
+  }, [libraryGroups])
+
   const ThemeStyleCardPicker = ({
     value,
     onChange,
@@ -985,7 +1121,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       },
     ]
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
         {items.map((it) => {
           const selected = value === it.key
           const surfaceBg = themeSurfaceBg[it.key]
@@ -1137,7 +1273,20 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const CustomGridPreview = () => {
     return (
-      <div style={{ height: 90, borderRadius: 10, border: `1px dashed ${token.colorSplit}`, display: 'grid', placeItems: 'center', color: token.colorTextTertiary }}>
+      <div
+        style={{
+          height: '100%',
+          width: '100%',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          boxSizing: 'border-box',
+          borderRadius: 10,
+          border: `1px dashed ${token.colorSplit}`,
+          display: 'grid',
+          placeItems: 'center',
+          color: token.colorTextTertiary,
+        }}
+      >
         <svg width="30" height="30" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 7h16M4 12h16M4 17h16M7 4v16M12 4v16M17 4v16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.9" />
         </svg>
@@ -1264,7 +1413,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             flexDirection: 'column',
             position: 'relative',
             zIndex: 3,
-            boxShadow: 'inset -10px 0 18px rgba(0,0,0,0.18)',
+            boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.06), inset -2px 0 0 rgba(0,0,0,0.35)',
           }}
         >
           <div className="studioColHeader" style={{ background: sidePanelBg }}>
@@ -1422,6 +1571,161 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   padding: layout.mode === 'free' ? gap : 0,
                 }}
               >
+                {!readOnly && !previewMode && unplacedCount ? (
+                  <div style={{ position: 'absolute', left: 12, bottom: 12, zIndex: 80, pointerEvents: 'auto' }}>
+                    <Popover
+                      placement="topLeft"
+                      open={unplacedOpen}
+                      onOpenChange={(next) => {
+                        setUnplacedOpen(next)
+                        if (!next) setHoveredUnplacedId(null)
+                      }}
+                      getPopupContainer={getStudioPopupContainer}
+                      overlayInnerStyle={{
+                        padding: 0,
+                        borderRadius: 12,
+                        background: 'rgba(6, 10, 18, 0.62)',
+                        border: `1px solid ${accent}1f`,
+                        overflow: 'hidden',
+                        backdropFilter: 'blur(14px)',
+                      }}
+                      content={
+                        <div style={{ width: 240, maxWidth: 'calc(100vw - 40px)' }}>
+                          <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${accent}22` }}>
+                            <Typography.Text strong style={{ color: token.colorText }}>
+                              未放置组件
+                            </Typography.Text>
+                            <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+                              {unplacedCount}
+                            </Tag>
+                          </div>
+                          <div style={{ padding: 8, maxHeight: 240, overflow: 'auto' }}>
+                            {unplacedSlots
+                              .map((s, i) => ({ s, i }))
+                              .filter(({ s }) => Boolean(s.kind))
+                              .map(({ s, i }) => {
+                                const kind = s.kind as WidgetKind
+                                const meta = libraryMetaByKind.get(kind)
+                                const Icon = (meta?.icon ?? Layers) as any
+                                const titleText = (() => {
+                                  try {
+                                    const obj: any = s.configText ? JSON.parse(s.configText) : null
+                                    const t = typeof obj?.title === 'string' ? obj.title : ''
+                                    return t.trim() || meta?.title || KIND_NAME[kind] || '组件'
+                                  } catch {
+                                    return meta?.title || KIND_NAME[kind] || '组件'
+                                  }
+                                })()
+                                return (
+                                  <div
+                                    key={s.id}
+                                    draggable={!readOnly && !previewMode}
+                                    onDragStart={(e) => {
+                                      setDragFromUnplacedIdx(i)
+                                      e.dataTransfer.setData('application/x-dashboard-unplaced-index', String(i))
+                                      e.dataTransfer.effectAllowed = 'move'
+                                      try {
+                                        const img = new Image()
+                                        img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'
+                                        e.dataTransfer.setDragImage(img, 0, 0)
+                                      } catch {
+                                        // ignore
+                                      }
+                                    }}
+                                    onDragEnd={() => {
+                                      setDragFromUnplacedIdx(null)
+                                    }}
+                                    onMouseEnter={() => setHoveredUnplacedId(s.id)}
+                                    onMouseLeave={() => setHoveredUnplacedId((prev) => (prev === s.id ? null : prev))}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 8,
+                                      padding: '6px 8px',
+                                      borderRadius: 10,
+                                      cursor: readOnly || previewMode ? 'default' : 'grab',
+                                      border: `1px solid ${dragFromUnplacedIdx === i ? accent : 'transparent'}`,
+                                      background: dragFromUnplacedIdx === i ? `${accent}12` : 'rgba(255,255,255,0.03)',
+                                      color: token.colorText,
+                                      marginBottom: 8,
+                                    }}
+                                    title={titleText}
+                                  >
+                                    <span style={{ width: 22, height: 22, borderRadius: 8, display: 'grid', placeItems: 'center', flex: 'none', background: 'rgba(255,255,255,0.05)', color: token.colorTextSecondary }}>
+                                      <Icon size={14} />
+                                    </span>
+                                    <Typography.Text
+                                      style={{
+                                        minWidth: 0,
+                                        flex: 1,
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        color: token.colorText,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                      }}
+                                    >
+                                      {titleText}
+                                    </Typography.Text>
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      className="iconOnly"
+                                      icon={<CloseOutlined style={{ fontSize: 12 }} />}
+                                      draggable={false}
+                                      onMouseDown={(ev) => {
+                                        ev.stopPropagation()
+                                        ev.preventDefault()
+                                      }}
+                                      onClick={(ev) => {
+                                        ev.stopPropagation()
+                                        setUnplacedSlots((prev) => prev.filter((x) => x.id !== s.id))
+                                      }}
+                                      style={{
+                                        width: 28,
+                                        height: 24,
+                                        padding: 0,
+                                        opacity: hoveredUnplacedId === s.id ? 0.9 : 0,
+                                        pointerEvents: hoveredUnplacedId === s.id ? 'auto' : 'none',
+                                      }}
+                                    />
+                                  </div>
+                                )
+                              })}
+                            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', padding: '2px 4px 8px 4px' }}>
+                              拖到空槽位，或拖到已有卡片上进行替换
+                            </Typography.Text>
+                          </div>
+                        </div>
+                      }
+                      trigger="click"
+                    >
+                      <Badge count={unplacedCount} size="small" color={accent} offset={[-2, 2]}>
+                        <Button
+                          shape="circle"
+                          size="small"
+                          style={{
+                            width: 32,
+                            minWidth: 32,
+                            height: 32,
+                            padding: 0,
+                            background: 'rgba(6, 10, 18, 0.28)',
+                            border: `1px solid ${accent}22`,
+                            color: token.colorText,
+                            boxShadow: `0 10px 24px rgba(0,0,0,0.30)`,
+                            backdropFilter: 'blur(10px)',
+                            opacity: unplacedOpen ? 1 : 0.78,
+                          }}
+                          aria-label="暂存区"
+                        >
+                          <Layers size={16} />
+                        </Button>
+                      </Badge>
+                    </Popover>
+                  </div>
+                ) : null}
+
                 {layout.mode === 'free' && !readOnly && !previewMode ? (
                   <div
                     ref={freeOverlayRef}
@@ -1510,7 +1814,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         message.error(appearance.language === 'en-US' ? 'Overlaps with an existing card' : '与已有卡片重叠')
                         return
                       }
-                      applyLayout({ ...layout, cards: [...layout.cards, nextCard] })
+                      applyLayout({ ...layout, cards: [...layout.cards, nextCard] }, { fillFromUnplaced: false })
                       setFreeStartPoint(null)
                       setFreeHoverPoint(null)
                     }}
@@ -1595,7 +1899,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                 if (p.bottom != null) style.bottom = -2
                                 if (p.left != null) style.left = -2
                                 if (p.right != null) style.right = -2
-                                for (const k of p.borders) style[k] = '18px'
+                                for (const k of p.borders) style[k] = '40px'
                                 return <div key={i} style={style} />
                               })}
                             </div>
@@ -1604,20 +1908,18 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       })()
                     ) : null}
 
-                    {Array.from({ length: freeRows * 12 }).map((_, i) => {
-                      void i
-                      return (
-                        <div
-                          key={i}
-                          style={{
-                            borderRadius: 14,
-                            border: `1px dashed ${fieldBorder}`,
-                            background: 'rgba(255,255,255,0.014)',
-                            pointerEvents: 'none',
-                          }}
-                        />
-                      )
-                    })}
+                    {Array.from({ length: freeRows * 12 }).map((_, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          borderRadius: 12,
+                          border: `1px solid ${fieldBorder}`,
+                          opacity: appearance.theme === 'obsidian' ? 0.28 : 0.26,
+                          background: 'transparent',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                    ))}
                   </div>
                 ) : null}
 
@@ -1650,7 +1952,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   return (
                     <div
                       key={slot.id}
-                      className={`studioSlot${slot.kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}${!slot.kind && !readOnly && !previewMode ? ' studioSlotCanDrop' : ''}${isDragFrom ? ' studioSlotDragging' : ''}${isDragOver ? ' studioSlotDragOver' : ''}${isMoveOver ? ' studioSlotMoveOver' : ''}`}
+                      className={`studioSlot${slot.kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}${!slot.kind && !readOnly && !previewMode && layout.mode !== 'free' ? ' studioSlotCanDrop' : ''}${isDragFrom ? ' studioSlotDragging' : ''}${isDragOver ? ' studioSlotDragOver' : ''}${isMoveOver ? ' studioSlotMoveOver' : ''}`}
                       style={{
                         ['--studio-accent' as any]: accent,
                         gridColumn: pos ? `${pos.colStart} / span ${colSpan}` : `span ${colSpan}`,
@@ -1661,17 +1963,21 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         border:
                           slot.kind
                             ? `1px solid ${borderColor}`
-                            : `1px dashed ${borderColor}`,
+                            : layout.mode === 'free'
+                              ? `1px dashed ${borderColor}`
+                              : `1px dashed ${borderColor}`,
                         background:
                           slot.kind
                             ? surfaceBg
-                            : appearance.theme === 'obsidian'
-                              ? token.colorBgContainer
-                              : appearance.theme === 'tech'
-                                ? 'linear-gradient(135deg, rgba(18, 44, 96, 0.45), rgba(10, 16, 28, 0.84))'
-                                : appearance.theme === 'cyber'
-                                  ? 'linear-gradient(135deg, rgba(20, 30, 50, 0.60), rgba(10, 15, 25, 0.80))'
-                                  : panelBg,
+                            : layout.mode === 'free'
+                              ? panelCardBg
+                              : appearance.theme === 'obsidian'
+                                ? token.colorBgContainer
+                                : appearance.theme === 'tech'
+                                  ? 'linear-gradient(135deg, rgba(18, 44, 96, 0.45), rgba(10, 16, 28, 0.84))'
+                                  : appearance.theme === 'cyber'
+                                    ? 'linear-gradient(135deg, rgba(20, 30, 50, 0.60), rgba(10, 15, 25, 0.80))'
+                                    : panelBg,
                         position: 'relative',
                         zIndex: layout.mode === 'free' ? 2 : 1,
                         overflow: layout.mode === 'free' ? 'visible' : 'hidden',
@@ -1699,9 +2005,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         e.preventDefault()
                         const isMove = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-slot-index'))
                         const isAdd = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-widget'))
-                        e.dataTransfer.dropEffect = isMove ? 'move' : 'copy'
+                        const isUnplaced = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-unplaced-index'))
+                        e.dataTransfer.dropEffect = isMove || isUnplaced ? 'move' : 'copy'
                         if (dragFromIdx != null && dragFromIdx === idx) return
-                        if (isMove || isAdd) setDragOverIdx((prev) => (prev === idx ? prev : idx))
+                        if (isMove || isAdd || isUnplaced) setDragOverIdx((prev) => (prev === idx ? prev : idx))
                         if (isMove) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
                       }}
                       onDragOverCapture={(e) => {
@@ -1723,6 +2030,27 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             swapSlots(from, idx)
                           }
                           setDragFromIdx(null)
+                          setDragOverIdx(null)
+                          setDraggingKind(null)
+                          requestAnimationFrame(() => setDragOverIdx(null))
+                          return
+                        }
+                        const unplacedIdxRaw = e.dataTransfer.getData('application/x-dashboard-unplaced-index')
+                        if (unplacedIdxRaw) {
+                          const from = Number(unplacedIdxRaw)
+                          if (!Number.isFinite(from) || from < 0 || from >= unplacedSlots.length) return
+                          const moving = unplacedSlots[from]
+                          if (!moving?.kind) return
+                          const nextSlots = slots.slice(0)
+                          const target = nextSlots[idx]
+                          if (!target) return
+                          const replaced = target.kind ? { ...target } : null
+                          nextSlots[idx] = { ...target, kind: moving.kind, configText: moving.configText, error: moving.error }
+                          const nextUnplaced = unplacedSlots.filter((_, i) => i !== from)
+                          if (replaced?.kind) nextUnplaced.push(replaced)
+                          setSlots(nextSlots)
+                          setUnplacedSlots(nextUnplaced)
+                          setDragFromUnplacedIdx(null)
                           setDragOverIdx(null)
                           setDraggingKind(null)
                           requestAnimationFrame(() => setDragOverIdx(null))
@@ -1823,7 +2151,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             if (p.bottom != null) style.bottom = -2
                             if (p.left != null) style.left = -2
                             if (p.right != null) style.right = -2
-                            for (const k of p.borders) style[k] = '18px'
+                            for (const k of p.borders) style[k] = '40px'
                             return <div key={i} style={style} />
                           })}
                         </div>
@@ -1931,7 +2259,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             flexDirection: 'column',
             position: 'relative',
             zIndex: 3,
-            boxShadow: 'inset 10px 0 18px rgba(0,0,0,0.18)',
+            boxShadow: 'inset 1px 0 0 rgba(255,255,255,0.06), inset 2px 0 0 rgba(0,0,0,0.35)',
           }}
         >
           <div className="studioColHeader" style={{ background: sidePanelBg }}>
@@ -1939,28 +2267,28 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           </div>
           <div
             className="studioColBody"
-            style={{ padding: 14, overflowX: 'hidden', overflowY: layout.mode === 'template' ? 'hidden' : 'auto' }}
+            style={{ padding: 6, overflowX: 'hidden', overflowY: 'hidden', display: 'flex', flexDirection: 'column', gap: 6 }}
           >
             {(() => {
               const RequiredLabel = ({ label }: { label: string }) => (
-                <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
                   <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
                   {label}
                 </Typography.Text>
               )
 
               return (
-                <div style={{ width: '100%', minHeight: '100%', display: 'grid', gridAutoRows: 'min-content', rowGap: 14, alignContent: 'space-between' }}>
+                <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div>
                     <RequiredLabel label="名称" />
-                    <div style={{ height: 6 }} />
+                    <div style={{ height: 4 }} />
                     <Input value={title} disabled={readOnly} onChange={(e) => setTitle(e.target.value)} placeholder="例如：核心运营指标" />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <div>
                       <RequiredLabel label="语言" />
-                      <div style={{ height: 6 }} />
+                      <div style={{ height: 4 }} />
                       <Select
                         value={appearance.language}
                         disabled={readOnly}
@@ -1976,7 +2304,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     </div>
                     <div>
                       <RequiredLabel label="时区" />
-                      <div style={{ height: 6 }} />
+                      <div style={{ height: 4 }} />
                       <Select
                         value={appearance.timeZone}
                         disabled={readOnly}
@@ -2129,7 +2457,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
                 <div>
                   <RequiredLabel label="主题风格" />
-                  <div style={{ height: 6 }} />
+                  <div style={{ height: 4 }} />
                   <ThemeStyleCardPicker
                     value={appearance.theme}
                     disabled={readOnly}
@@ -2145,7 +2473,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
                 <div>
                   <RequiredLabel label="图表色系" />
-                  <div style={{ height: 6 }} />
+                  <div style={{ height: 4 }} />
                   <Select
                     value={appearance.chartPalette}
                     disabled={readOnly}
@@ -2176,10 +2504,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   />
                 </div>
 
-                <div>
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                   <RequiredLabel label="页面布局" />
-                  <div style={{ height: 6 }} />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div style={{ height: 4 }} />
+                  <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, gridAutoRows: '1fr' }}>
                     {(
                       [
                         { key: 'main-sub' as const, title: '主次布局', desc: '主次分明/主体突出', icon: <LayoutWireframe kind="main-sub" /> },
@@ -2204,17 +2532,32 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
                             background: 'var(--studio-panel-card-bg)',
                             cursor: readOnly ? 'default' : 'pointer',
-                            padding: 8,
+                            padding: 4,
                             opacity: readOnly ? 0.9 : 1,
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
                           }}
                         >
-                          <div style={{ paddingInline: 0 }}>{it.icon}</div>
-                          <div style={{ height: 3 }} />
+                          <div
+                            style={{
+                              height: 90,
+                              padding: 4,
+                              boxSizing: 'border-box',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              justifyContent: 'center',
+                              width: '100%',
+                            }}
+                          >
+                            {it.icon}
+                          </div>
+                          <div style={{ height: 2 }} />
                           <div style={{ paddingInline: 0 }}>
-                            <Typography.Text strong style={{ display: 'block', lineHeight: 1.25, textAlign: 'left' }}>
+                            <Typography.Text strong style={{ display: 'block', lineHeight: 1.2, fontSize: 13, textAlign: 'left' }}>
                               {it.title}
                             </Typography.Text>
-                            <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, lineHeight: 1.25, marginTop: 2, textAlign: 'left' }}>
+                            <Typography.Text type="secondary" style={{ display: 'block', fontSize: 11, lineHeight: 1.2, marginTop: 1, textAlign: 'left' }}>
                               {it.desc}
                             </Typography.Text>
                           </div>
@@ -2229,17 +2572,17 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             })()}
 
             {layout.mode === 'free' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
                 <div>
-                  <Space size={6}>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  <Space size={4}>
+                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                       列数
                     </Typography.Text>
                     <Tooltip title="网格列数（默认 12）">
                       <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
                     </Tooltip>
                   </Space>
-                  <div style={{ height: 6 }} />
+                  <div style={{ height: 4 }} />
                   <InputNumber
                     style={{ width: '100%' }}
                     min={4}
@@ -2250,15 +2593,15 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   />
                 </div>
                 <div>
-                  <Space size={6}>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  <Space size={4}>
+                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                       行数
                     </Typography.Text>
                     <Tooltip title="网格行数（默认 8）">
                       <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
                     </Tooltip>
                   </Space>
-                  <div style={{ height: 6 }} />
+                  <div style={{ height: 4 }} />
                   <InputNumber
                     style={{ width: '100%' }}
                     min={2}
@@ -2269,15 +2612,15 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   />
                 </div>
                 <div>
-                  <Space size={6}>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  <Space size={4}>
+                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                       间距
                     </Typography.Text>
                     <Tooltip title="网格间距（像素）">
                       <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
                     </Tooltip>
                   </Space>
-                  <div style={{ height: 6 }} />
+                  <div style={{ height: 4 }} />
                   <InputNumber
                     style={{ width: '100%' }}
                     min={0}

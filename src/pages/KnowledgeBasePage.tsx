@@ -169,7 +169,7 @@ const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
             lineHeight: 1.35,
           }}
         >
-          <div style={{ color: 'rgba(148,163,184,0.55)', textAlign: 'right', paddingRight: 0, userSelect: 'none' }}>
+          <div style={{ color: 'rgba(148,163,184,0.55)', textAlign: 'right', paddingRight: 0, userSelect: 'none', marginLeft: -15 }}>
             {shown.map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
@@ -195,29 +195,66 @@ const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
 }
 
 const LogicTreeMini = ({ isDark, accent }: { isDark: boolean; accent: string }) => {
-  const stroke = isDark ? 'rgba(148,163,184,0.30)' : 'rgba(71,85,105,0.22)'
-  const fill = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)'
-  const soft = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.10)'
+  const baseOpacity = isDark ? 0.14 : 0.10
+  const dashOpacity = isDark ? 0.34 : 0.24
+  const pillFill = isDark ? 'rgba(255,255,255,0.016)' : 'rgba(15,23,42,0.022)'
+  const pillSheen = isDark ? 'rgba(255,255,255,0.020)' : 'rgba(255,255,255,0.26)'
+  const nodeBase = isDark ? 'rgba(255,255,255,0.055)' : 'rgba(15,23,42,0.05)'
+  const iconOn = isDark ? 'rgba(226,232,240,0.82)' : 'rgba(15,23,42,0.70)'
   return (
-    <svg viewBox="0 0 280 72" width="100%" height="72" xmlns="http://www.w3.org/2000/svg">
-      <path d="M44 36H72" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M192 36H208" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M208 36V22" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M208 36V50" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M208 22H245" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M208 50H245" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+    <svg viewBox="0 0 280 104" width="100%" height="88" xmlns="http://www.w3.org/2000/svg">
+      <rect x="62" y="10" width="156" height="30" rx="15" fill={pillFill} />
+      <rect x="62" y="10" width="156" height="15" rx="15" fill={pillSheen} opacity={0.65} />
 
-      <circle cx="32" cy="36" r="7.2" fill={soft} />
-      <circle cx="32" cy="36" r="4.8" fill={accent} opacity="0.92" />
+      <path d="M140 40 C140 56, 90 56, 78 72" stroke={accent} strokeOpacity={baseOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <path d="M140 40 V72" stroke={accent} strokeOpacity={baseOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <path d="M140 40 C140 56, 190 56, 202 72" stroke={accent} strokeOpacity={baseOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" />
 
-      <rect x="72" y="23" width="120" height="26" rx="13" fill={fill} stroke={accent} strokeWidth="1.8" opacity="0.95" />
-      <path d="M92 36h64" stroke={accent} strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
-      <path d="M92 32.1h44" stroke={accent} strokeWidth="1.8" strokeLinecap="round" opacity="0.35" />
+      <path
+        d="M140 40 C140 56, 90 56, 78 72"
+        stroke={accent}
+        strokeOpacity={dashOpacity}
+        strokeWidth="1.6"
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray="2.4 6.2"
+      >
+        <animate attributeName="stroke-dashoffset" values="0;-18" dur="1.8s" repeatCount="indefinite" />
+      </path>
+      <path d="M140 40 V72" stroke={accent} strokeOpacity={dashOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeDasharray="2.4 6.2">
+        <animate attributeName="stroke-dashoffset" values="0;-18" dur="1.8s" repeatCount="indefinite" />
+      </path>
+      <path
+        d="M140 40 C140 56, 190 56, 202 72"
+        stroke={accent}
+        strokeOpacity={dashOpacity}
+        strokeWidth="1.6"
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray="2.4 6.2"
+      >
+        <animate attributeName="stroke-dashoffset" values="0;-18" dur="1.8s" repeatCount="indefinite" />
+      </path>
 
-      <circle cx="250" cy="22" r="5.2" fill={soft} />
-      <circle cx="250" cy="22" r="3.3" fill={accent} opacity="0.65" />
-      <circle cx="250" cy="50" r="5.2" fill={soft} />
-      <circle cx="250" cy="50" r="3.3" fill={accent} opacity="0.65" />
+      <rect x="54" y="70" width="36" height="36" rx="10" fill={nodeBase} />
+      <path d="M62 84l6-6 6 6 6-6" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" opacity="0.70" />
+      <path d="M62 92h18" fill="none" stroke={iconOn} strokeWidth="1.7" strokeLinecap="round" opacity="0.52" />
+      <path d="M62 98h10" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" opacity="0.38" />
+
+      <rect x="122" y="70" width="36" height="36" rx="10" fill={nodeBase} />
+      <rect x="130" y="80" width="20" height="6" rx="3" fill={iconOn} opacity="0.18" />
+      <rect x="130" y="90" width="14" height="6" rx="3" fill={iconOn} opacity="0.14" />
+      <circle cx="126.5" cy="83" r="2" fill={accent} opacity="0.58" />
+      <circle cx="126.5" cy="93" r="2" fill={accent} opacity="0.40" />
+      <path d="M130 98h12" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" opacity="0.34" />
+
+      <rect x="190" y="70" width="36" height="36" rx="10" fill={nodeBase} />
+      <circle cx="201" cy="86" r="2.1" fill={iconOn} opacity="0.62" />
+      <circle cx="209" cy="90" r="2.1" fill={iconOn} opacity="0.48" />
+      <circle cx="217" cy="94" r="2.1" fill={iconOn} opacity="0.62" />
+      <path d="M201 86 H209" stroke={iconOn} strokeWidth="1.7" strokeLinecap="round" opacity="0.28" />
+      <path d="M209 90 H217" stroke={iconOn} strokeWidth="1.7" strokeLinecap="round" opacity="0.22" />
+      <path d="M202 98h14" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" opacity="0.34" />
     </svg>
   )
 }
@@ -349,7 +386,7 @@ const BaseCard = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <span style={{ lineHeight: 0, display: 'inline-flex', alignItems: 'center', flex: 'none' }}>{icon}</span>
             <Typography.Paragraph
-              ellipsis={{ rows: titleRows ?? 2 }}
+              ellipsis={{ rows: titleRows ?? 1 }}
               style={{
                 margin: 0,
                 fontSize: 14,
@@ -465,12 +502,12 @@ const TermCard = ({
     >
       <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 8, overflow: 'hidden' }}>
         {tags.map((s) => (
-          <Tag key={s} style={{ marginInlineEnd: 0 }}>
+          <Tag key={s} style={{ marginInlineEnd: 0, borderWidth: 1 }}>
             <span style={{ color: token.colorPrimary, fontWeight: 400 }}>{s}</span>
           </Tag>
         ))}
         {rest > 0 ? (
-          <Tag style={{ marginInlineEnd: 0, color: token.colorTextSecondary }}>+{rest}</Tag>
+          <Tag style={{ marginInlineEnd: 0, borderWidth: 1, color: token.colorTextSecondary }}>+{rest}</Tag>
         ) : null}
       </div>
       {item.desc ? (
@@ -632,7 +669,7 @@ const LogicTreeCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={218}
+      cardHeight={238}
       titleRows={1}
       isDark={isDark}
       token={token}

@@ -32,9 +32,10 @@ export function buildRadarOption(): EChartsOption {
       {
         name: '画像',
         type: 'radar',
-        symbolSize: 6,
+        symbol: 'none',
+        symbolSize: 0,
         areaStyle: { opacity: 0.18 },
-        lineStyle: { width: 2 },
+        lineStyle: { width: 1.5 },
         data: [
           { value: [84, 78, 86, 80, 76], name: '当前版本' },
           { value: [70, 72, 74, 66, 68], name: '上个版本' },

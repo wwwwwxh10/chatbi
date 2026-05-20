@@ -29,7 +29,7 @@ function buildPreviewOption(): EChartsOption {
         symbol: 'circle',
         symbolSize: 7,
         data: [120, 132, 101, 134, 90, 230, 210],
-        lineStyle: { width: 3 },
+        lineStyle: { width: 2 },
         areaStyle: { opacity: 0.12 },
       },
     ],

@@ -265,7 +265,7 @@ function buildDerivedChartOption(type: ChartTypeKey, r: MessageResult): EChartsO
         axisTick: { show: false },
         splitLine: { lineStyle: { opacity: 0.12 } },
       },
-      series: [{ type: 'line', smooth: true, symbol: 'circle', symbolSize: 7, lineStyle: { width: 3 }, areaStyle: { opacity: 0.08 }, data: vals }],
+      series: [{ type: 'line', smooth: true, symbol: 'circle', symbolSize: 7, lineStyle: { width: 2 }, areaStyle: { opacity: 0.08 }, data: vals }],
     }
   }
 
@@ -1019,11 +1019,45 @@ function parseStudioAppearanceFromConfig(configText: string | undefined | null):
     const language = a.language === 'en-US' ? 'en-US' : 'zh-CN'
     const timeZone = typeof a.timeZone === 'string' && a.timeZone.trim() ? a.timeZone : 'Asia/Shanghai'
     const theme = a.theme === 'obsidian' || a.theme === 'cyber' || a.theme === 'tech' ? a.theme : 'cyber'
-    const chartPalette = typeof a.chartPalette === 'string' && (a.chartPalette as any) in CHART_PALETTES ? (a.chartPalette as any) : 'cyber'
+    const rawPalette = typeof a.chartPalette === 'string' ? a.chartPalette : ''
+    const normalizedPalette = rawPalette === 'tech' ? 'deepsea' : rawPalette
+    const chartPalette = (normalizedPalette as any) in CHART_PALETTES ? (normalizedPalette as any) : 'cyber'
     return { language, timeZone, theme, chartPalette }
   } catch {
-    return null
+    const text = String(configText)
+    const pick = (re: RegExp) => {
+      const m = re.exec(text)
+      return m ? String(m[1] ?? '').trim() : ''
+    }
+    const rawLang = pick(/"language"\s*:\s*"([^"]+)"/)
+    const rawTz = pick(/"timeZone"\s*:\s*"([^"]+)"/)
+    const rawTheme = pick(/"theme"\s*:\s*"([^"]+)"/)
+    const rawPalette = pick(/"chartPalette"\s*:\s*"([^"]+)"/)
+    if (!rawLang && !rawTz && !rawTheme && !rawPalette) return null
+
+    const language = rawLang === 'en-US' ? 'en-US' : 'zh-CN'
+    const timeZone = rawTz ? rawTz : 'Asia/Shanghai'
+    const theme = rawTheme === 'obsidian' || rawTheme === 'cyber' || rawTheme === 'tech' ? (rawTheme as any) : 'cyber'
+    const normalizedPalette = rawPalette === 'tech' ? 'deepsea' : rawPalette
+    const chartPalette = (normalizedPalette as any) in CHART_PALETTES ? (normalizedPalette as any) : 'cyber'
+    return { language, timeZone, theme, chartPalette }
   }
+}
+
+function hexToRgb(hex: string) {
+  const s = String(hex || '').trim().replace('#', '')
+  if (s.length !== 6) return null
+  const r = Number.parseInt(s.slice(0, 2), 16)
+  const g = Number.parseInt(s.slice(2, 4), 16)
+  const b = Number.parseInt(s.slice(4, 6), 16)
+  if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) return null
+  return { r, g, b }
+}
+
+function rgba(hex: string, alpha: number) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
 }
 
 export default function DashboardChatWorkspacePage() {
@@ -1038,7 +1072,19 @@ export default function DashboardChatWorkspacePage() {
 
   const dashboardId = useMemo(() => {
     if (typeof window === 'undefined') return ''
-    return String(new URLSearchParams(window.location.search).get('dashboardId') ?? '')
+    return String(new URLSearchParams(window.location.search).get('dashboardId') ?? '').trim()
+  }, [])
+
+  const qsAppearance = useMemo((): StudioAppearance | null => {
+    if (typeof window === 'undefined') return null
+    const qs = new URLSearchParams(window.location.search)
+    const rawTheme = String(qs.get('theme') ?? '').trim()
+    const rawPalette = String(qs.get('chartPalette') ?? '').trim()
+    if (!rawTheme && !rawPalette) return null
+    const theme = rawTheme === 'obsidian' || rawTheme === 'cyber' || rawTheme === 'tech' ? (rawTheme as any) : 'cyber'
+    const normalizedPalette = rawPalette === 'tech' ? 'deepsea' : rawPalette
+    const chartPalette = (normalizedPalette as any) in CHART_PALETTES ? (normalizedPalette as any) : 'cyber'
+    return { language: 'zh-CN', timeZone: 'Asia/Shanghai', theme, chartPalette }
   }, [])
 
   const dashboardAppearance = useMemo(() => {
@@ -1047,18 +1093,45 @@ export default function DashboardChatWorkspacePage() {
     return parseStudioAppearanceFromConfig(item?.configText ?? null)
   }, [dashboardId, dashboards])
 
-  const studioPayload = useMemo(() => {
-    if (!debugStudio) return null
-    if (typeof window === 'undefined') return null
+  const [studioPayload, setStudioPayload] = useState<StudioDebugPayload | null>(null)
+
+  useEffect(() => {
+    if (!debugStudio) return
+    if (typeof window === 'undefined') return
+    const read = (raw?: string | null) => {
+      try {
+        const text = raw != null ? raw : localStorage.getItem('studio:debug-dashboard-v1')
+        setStudioPayload(text ? (JSON.parse(text) as StudioDebugPayload) : null)
+      } catch {
+        setStudioPayload(null)
+      }
+    }
+    read()
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'studio:debug-dashboard-v1') return
+      read(e.newValue)
+    }
+    window.addEventListener('storage', onStorage)
+    let ch: BroadcastChannel | null = null
     try {
-      const raw = localStorage.getItem('studio:debug-dashboard-v1')
-      return raw ? (JSON.parse(raw) as StudioDebugPayload) : null
+      ch = new BroadcastChannel('studio:debug-dashboard-v1')
+      ch.onmessage = (evt) => {
+        const data = (evt as any)?.data
+        if (!data || typeof data !== 'object') return
+        setStudioPayload(data as StudioDebugPayload)
+      }
     } catch {
-      return null
+    }
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      try {
+        ch?.close()
+      } catch {
+      }
     }
   }, [debugStudio])
 
-  const panelAppearance = debugStudio ? studioPayload?.appearance : dashboardAppearance
+  const panelAppearance = debugStudio ? studioPayload?.appearance : qsAppearance ?? dashboardAppearance
   const panelTheme = panelAppearance?.theme === 'obsidian' || panelAppearance?.theme === 'cyber' || panelAppearance?.theme === 'tech' ? panelAppearance.theme : null
   const panelPalette = panelAppearance?.chartPalette
   const previewPalette = panelPalette ? CHART_PALETTES[panelPalette] : null
@@ -1073,6 +1146,13 @@ export default function DashboardChatWorkspacePage() {
           : 'rgba(10, 14, 24, 0.92)'
   const panelBorderColor = panelTheme ? 'rgba(255,255,255,0.10)' : token.colorSplit
   const debugStudioBg = panelTheme === 'obsidian' ? token.colorBgLayout : '#03060c'
+  const themeTint = panelTheme === 'obsidian' ? token.colorPrimary : panelTheme ? THEME_ACCENT[panelTheme] : null
+  const paletteTint = previewPalette?.colors?.[0] ?? null
+  const panelTint = paletteTint ?? themeTint
+  const panelLlmBg = panelTint ? rgba(panelTint, 0.26) : panelTheme ? 'rgba(255, 255, 255, 0.045)' : null
+  const panelLlmText = panelTheme || panelTint ? 'rgba(255, 255, 255, 0.92)' : null
+  const panelInputBg = panelTint ? rgba(panelTint, 0.24) : panelTheme ? 'rgba(255, 255, 255, 0.02)' : null
+  const panelInputBgFocus = panelTint ? rgba(panelTint, 0.30) : panelTheme ? 'rgba(255, 255, 255, 0.03)' : null
 
   const debugStudioGap = useMemo(() => {
     const layout: any = (studioPayload as any)?.layout
@@ -1856,6 +1936,10 @@ export default function DashboardChatWorkspacePage() {
           bottom: isOverlay ? 12 : undefined,
           zIndex: isOverlay ? 30 : undefined,
           boxShadow: isOverlay ? '0 18px 48px rgba(0,0,0,0.22)' : undefined,
+          ['--chatbi-llm-bg' as any]: panelLlmBg ?? undefined,
+          ['--chatbi-llm-text' as any]: panelLlmText ?? undefined,
+          ['--chatbi-input-bg' as any]: panelInputBg ?? undefined,
+          ['--chatbi-input-bg-focus' as any]: panelInputBgFocus ?? undefined,
         }}
       >
         <div style={{ padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${panelBorderColor}` }}>
@@ -1953,11 +2037,17 @@ export default function DashboardChatWorkspacePage() {
 
                           return (
                           <div
+                            className={!isTextOnly ? 'chatbiResultCard' : undefined}
                             style={{
                               borderRadius: 14,
-                              border: isTextOnly ? 'none' : `1px solid ${token.colorSplit}`,
-                              background: isTextOnly ? 'transparent' : token.colorBgContainer,
+                              border: isTextOnly ? 'none' : `1px solid ${panelTheme ? 'rgba(255,255,255,0.10)' : token.colorSplit}`,
+                              background: isTextOnly ? 'transparent' : 'var(--chatbi-input-bg)',
                               padding: isTextOnly ? 0 : 12,
+                              color: isTextOnly ? undefined : 'var(--chatbi-llm-text)',
+                              ['--ant-color-text' as any]: panelTheme ? 'rgba(255,255,255,0.92)' : undefined,
+                              ['--ant-color-text-secondary' as any]: panelTheme ? 'rgba(255,255,255,0.72)' : undefined,
+                              ['--ant-color-text-tertiary' as any]: panelTheme ? 'rgba(255,255,255,0.52)' : undefined,
+                              ['--ant-color-text-quaternary' as any]: panelTheme ? 'rgba(255,255,255,0.40)' : undefined,
                             }}
                           >
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: isTextOnly ? 0 : 8 }}>
@@ -2128,7 +2218,7 @@ export default function DashboardChatWorkspacePage() {
                                       overflow: 'hidden',
                                       padding: 0,
                                       borderRadius: 10,
-                                      background: 'var(--chatbi-llm-bg)',
+                                      background: 'transparent',
                                     }}
                                   >
                                     <EChart key={chartType} option={activeOption || {}} />
@@ -2143,7 +2233,7 @@ export default function DashboardChatWorkspacePage() {
                                     overflow: 'hidden',
                                     padding: 0,
                                     borderRadius: 10,
-                                    background: 'var(--chatbi-llm-bg)',
+                                    background: 'transparent',
                                   }}
                                 >
                                   {activeResult.table ? (
@@ -2219,7 +2309,7 @@ export default function DashboardChatWorkspacePage() {
                             : {
                                 maxWidth: bubbleMax,
                                 whiteSpace: 'pre-wrap',
-                                color: token.colorText,
+                                color: 'inherit',
                               }
                         }
                       >

@@ -89,7 +89,7 @@ export function mockChartOption(): EChartsOption {
         smooth: true,
         symbol: 'circle',
         symbolSize: 7,
-        lineStyle: { width: 3 },
+        lineStyle: { width: 2 },
         areaStyle: { opacity: 0.12 },
         data: [120, 132, 101, 134, 90, 230, 210],
       },
@@ -206,7 +206,7 @@ export function buildMockResult(question: string): MessageResult {
             smooth: true,
             symbol: 'circle',
             symbolSize: 7,
-            lineStyle: { width: 3 },
+            lineStyle: { width: 2 },
             areaStyle: { opacity: 0.12 },
             data: [12, 18, 25, 31, 42, 36, 29, 38],
           },
@@ -288,7 +288,7 @@ export function buildMockResult(question: string): MessageResult {
         yAxis: { type: 'value', axisLabel: { opacity: 0.75 }, splitLine: { lineStyle: { opacity: 0.12 } } },
         series: [
           { name: '当月', type: 'bar', barWidth: 18, data: gmv, itemStyle: { borderRadius: [8, 8, 0, 0] } },
-          { name: '累计', type: 'line', smooth: true, symbol: 'circle', symbolSize: 7, lineStyle: { width: 3 }, data: ytd },
+          { name: '累计', type: 'line', smooth: true, symbol: 'circle', symbolSize: 7, lineStyle: { width: 2 }, data: ytd },
         ],
       }
 
@@ -368,7 +368,7 @@ export function buildMockResult(question: string): MessageResult {
           smooth: true,
           symbol: 'circle',
           symbolSize: 7,
-          lineStyle: { width: 3 },
+          lineStyle: { width: 2 },
           areaStyle: { opacity: 0.12 },
           data: [486120, 392840, 288930, 118650],
         },
@@ -635,7 +635,7 @@ export function buildMockResult(question: string): MessageResult {
         symbol: 'circle',
         symbolSize: 7,
         showSymbol: false,
-        lineStyle: { width: 3, color: colors.primary },
+        lineStyle: { width: 2, color: colors.primary },
         itemStyle: { color: colors.primary },
         areaStyle: {
           color: {

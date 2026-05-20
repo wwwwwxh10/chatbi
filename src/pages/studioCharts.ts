@@ -311,10 +311,11 @@ export function buildLineOption(title: string, themeColors: string[], unit = '')
         smooth: false,
         symbol: 'circle',
         symbolSize: 8,
+        showSymbol: false,
         data: [18.2, 20.1, 19.4, 21.6, 24.0, 26.8, 25.2],
-        lineStyle: { width: 4, shadowBlur: 14, shadowColor: withAlpha(themeColors[0], 0.35) },
+        lineStyle: { width: 3, shadowBlur: 14, shadowColor: withAlpha(themeColors[0], 0.35) },
         itemStyle: { borderWidth: 2, borderColor: '#fff' },
-        emphasis: { focus: 'series' },
+        emphasis: { focus: 'series', showSymbol: true },
       },
       {
         name: isEn() ? 'Benchmark' : '对比系列',
@@ -322,10 +323,11 @@ export function buildLineOption(title: string, themeColors: string[], unit = '')
         smooth: false,
         symbol: 'circle',
         symbolSize: 8,
+        showSymbol: false,
         data: [12.4, 13.8, 14.2, 15.6, 16.2, 18.4, 17.5],
-        lineStyle: { width: 4, shadowBlur: 14, shadowColor: withAlpha(themeColors[1] ?? themeColors[0], 0.35) },
+        lineStyle: { width: 3, shadowBlur: 14, shadowColor: withAlpha(themeColors[1] ?? themeColors[0], 0.35) },
         itemStyle: { borderWidth: 2, borderColor: '#fff' },
-        emphasis: { focus: 'series' },
+        emphasis: { focus: 'series', showSymbol: true },
       },
     ],
   }
@@ -347,7 +349,7 @@ export function buildAreaOption(title: string, themeColors: string[], unit = '')
         smooth: true,
         symbol: 'none',
         data: [32.1, 34.0, 33.6, 35.2, 36.8, 39.6, 38.4],
-        lineStyle: { width: 3 },
+        lineStyle: { width: 2 },
         areaStyle: {
           opacity: 0.35,
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -362,7 +364,7 @@ export function buildAreaOption(title: string, themeColors: string[], unit = '')
         smooth: true,
         symbol: 'none',
         data: [22.1, 23.8, 24.2, 25.6, 26.2, 28.4, 27.5],
-        lineStyle: { width: 3 },
+        lineStyle: { width: 2 },
         areaStyle: {
           opacity: 0.25,
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -391,10 +393,11 @@ export function buildCurveOption(title: string, themeColors: string[], unit = ''
         smooth: true,
         symbol: 'circle',
         symbolSize: 8,
+        showSymbol: false,
         data: [62.4, 70.1, 68.8, 75.6, 80.2, 92.3, 88.9],
-        lineStyle: { width: 4, shadowBlur: 16, shadowColor: withAlpha(themeColors[0], 0.35) },
+        lineStyle: { width: 3, shadowBlur: 16, shadowColor: withAlpha(themeColors[0], 0.35) },
         itemStyle: { borderWidth: 2, borderColor: '#fff' },
-        emphasis: { focus: 'series' },
+        emphasis: { focus: 'series', showSymbol: true },
       },
       {
         name: isEn() ? 'Benchmark' : '对比系列',
@@ -402,10 +405,11 @@ export function buildCurveOption(title: string, themeColors: string[], unit = ''
         smooth: true,
         symbol: 'circle',
         symbolSize: 8,
+        showSymbol: false,
         data: [42.1, 48.4, 45.6, 52.8, 58.4, 64.2, 60.1],
-        lineStyle: { width: 4, shadowBlur: 16, shadowColor: withAlpha(themeColors[1] ?? themeColors[0], 0.35) },
+        lineStyle: { width: 3, shadowBlur: 16, shadowColor: withAlpha(themeColors[1] ?? themeColors[0], 0.35) },
         itemStyle: { borderWidth: 2, borderColor: '#fff' },
-        emphasis: { focus: 'series' },
+        emphasis: { focus: 'series', showSymbol: true },
       },
     ],
   }
@@ -421,7 +425,7 @@ export function buildScatterOption(title: string, themeColors: string[]): EChart
     yAxis: { ...(common as any).yAxis, type: 'value' },
     series: [
       {
-        name: title || (isEn() ? 'Distribution' : '分布'),
+        name: isEn() ? 'Revenue' : '收益',
         type: 'scatter',
         itemStyle: { opacity: 0.8 },
         emphasis: { focus: 'series' },
@@ -456,11 +460,11 @@ export function buildBubbleOption(title: string, themeColors: string[]): ECharts
           : `分类：${p?.seriesName || ''}<br/>成本：${v[0]}<br/>收益：${v[1]}<br/>规模：${v[2]}`
       },
     },
-    xAxis: { ...(common as any).xAxis, type: 'value', name: isEn() ? 'Cost' : '成本', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } } },
-    yAxis: { ...(common as any).yAxis, type: 'value', name: isEn() ? 'Revenue' : '收益' },
+    xAxis: { ...(common as any).xAxis, type: 'value', name: '', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } } },
+    yAxis: { ...(common as any).yAxis, type: 'value', name: '' },
     series: [
       {
-        name: title || (isEn() ? 'Core' : '核心业务'),
+        name: isEn() ? 'Size' : '规模',
         type: 'scatter',
         symbolSize: (d: any) => sizeToBubble(d?.[2]),
         itemStyle: {
@@ -713,7 +717,7 @@ export function buildRadarOption(title: string, themeColors: string[]): EChartsO
           ],
       center: ['50%', '45%'],
       radius: '60%',
-      axisName: { color: UI_MUTED, fontSize: 13 },
+      axisName: { color: UI_MUTED, fontSize: 12 },
       splitNumber: 4,
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
       splitArea: { areaStyle: { color: ['rgba(255,255,255,0.02)', 'transparent'] } },
@@ -722,11 +726,13 @@ export function buildRadarOption(title: string, themeColors: string[]): EChartsO
     series: [
       {
         type: 'radar',
+        symbol: 'none',
+        symbolSize: 0,
         data: [
           {
             value: [78, 85, 60, 72, 88],
             name: isEn() ? 'Current' : '当前',
-            lineStyle: { width: 3, color: themeColors[0] },
+            lineStyle: { width: 1, color: themeColors[0] },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                 { offset: 0, color: withAlpha(themeColors[0], 0.4) },
@@ -738,7 +744,7 @@ export function buildRadarOption(title: string, themeColors: string[]): EChartsO
           {
             value: [65, 70, 85, 55, 75],
             name: isEn() ? 'Benchmark' : '对标',
-            lineStyle: { width: 3, color: themeColors[1] ?? themeColors[0] },
+            lineStyle: { width: 1, color: themeColors[1] ?? themeColors[0] },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                 { offset: 0, color: withAlpha(themeColors[1] ?? themeColors[0], 0.4) },
