@@ -1,9 +1,8 @@
 import { Button, Empty, Input, InputNumber, Modal, Select, Space, Tag, Tooltip, Typography, message, theme } from 'antd'
-import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
-  ArrowLeftRight,
   CopyPlus,
   Save,
   AreaChart,
@@ -22,6 +21,7 @@ import {
   Layers,
   Boxes,
   ArrowDownUp,
+  ArrowLeftRight,
   Network,
   CircleDot,
   Filter,
@@ -30,6 +30,7 @@ import {
 import {
   CodeOutlined,
   DeleteOutlined,
+  EditOutlined,
   InfoCircleOutlined,
   PlayCircleOutlined,
   CloseOutlined,
@@ -55,8 +56,6 @@ import {
   validateWidget,
 } from './studioModel'
 import type { StudioAppearance, StudioLayout, WidgetKind, WidgetSlot } from './studioModel'
-import { enhanceDashboardChartOption } from './dashboardChartInteractions'
-import { openAppPath } from '../utils/appNavigation'
 import {
   buildAreaOption,
   buildBarOption,
@@ -84,21 +83,6 @@ import {
 type StudioMode = 'new' | 'edit' | 'preview'
 type Ds = { id: string; name: string; type: string; tables: string[] }
 
-const TIME_ZONE_OPTIONS = [
-  { value: 'UTC+00:00', region: '格林威治标准时间 (GMT)' },
-  { value: 'UTC+08:00', region: '中国 (北京)、新加坡、吉隆坡、马尼拉' },
-  { value: 'UTC+07:00', region: '曼谷、雅加达、河内、胡志明市' },
-  { value: 'UTC+03:00', region: '利雅得、巴格达、卡塔尔、莫斯科' },
-  { value: 'UTC+04:00', region: '迪拜、阿布扎比、马斯喀特' },
-  { value: 'UTC+02:00', region: '开罗、安曼、耶路撒冷' },
-  { value: 'UTC+05:00', region: '塔什干、伊斯兰堡' },
-  { value: 'UTC+06:00', region: '阿拉木图、比什凯克' },
-  { value: 'UTC-03:00', region: '圣保罗、布宜诺斯艾利斯' },
-  { value: 'UTC-05:00', region: '波哥大、利马、墨西哥城' },
-  { value: 'UTC-04:00', region: '圣地亚哥、加拉加斯' },
-  { value: 'UTC-06:00', region: '墨西哥中部、哥斯达黎加' },
-] as const
-
 function buildTables(): Ds[] {
   return [
     { id: 'ds-biz', name: '业务库', type: 'PostgreSQL', tables: ['orders', 'order_items', 'users', 'events', 'products', 'sessions'] },
@@ -113,6 +97,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const navigate = useNavigate()
   const { id } = useParams()
 
+  const getStudioPopupContainer = useCallback((node: HTMLElement) => {
+    const root = node.closest?.('.studioThemeRoot') as HTMLElement | null
+    return root ?? document.body
+  }, [])
+
 
   const dashboards = useDashboardsStore((s) => s.items)
   const addItem = useDashboardsStore((s) => s.addItem)
@@ -124,6 +113,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [tables, setTables] = useState<string[]>([])
+  const [presetId, setPresetId] = useState<string | null>(null)
 
   const [appearance, setAppearance] = useState<StudioAppearance>({
     language: locale,
@@ -138,44 +128,29 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const [freeStartPoint, setFreeStartPoint] = useState<{ r: number; c: number } | null>(null)
   const [freeHoverPoint, setFreeHoverPoint] = useState<{ r: number; c: number } | null>(null)
   const [freeCursor, setFreeCursor] = useState<{ x: number; y: number } | null>(null)
+  const [moveTip, setMoveTip] = useState<{ x: number; y: number; text: string } | null>(null)
   const freeOverlayRef = useRef<HTMLDivElement | null>(null)
   const freeRafRef = useRef<number | null>(null)
-  const previewMode = mode === 'preview'
-  const [moveTip, setMoveTip] = useState<{ text: string } | null>(null)
-  const moveTipRef = useRef<HTMLDivElement | null>(null)
   const moveTipRafRef = useRef<number | null>(null)
-  const moveTipTextRef = useRef<string | null>(null)
+  const moveTipPendingRef = useRef<{ x: number; y: number; text: string } | null>(null)
+  const previewMode = mode === 'preview'
 
-  const updateMoveTipPosition = (x: number, y: number) => {
-    if (moveTipRafRef.current != null) cancelAnimationFrame(moveTipRafRef.current)
+  const scheduleMoveTip = (next: { x: number; y: number; text: string } | null) => {
+    if (next == null) {
+      if (moveTipRafRef.current != null) cancelAnimationFrame(moveTipRafRef.current)
+      moveTipRafRef.current = null
+      moveTipPendingRef.current = null
+      setMoveTip(null)
+      return
+    }
+    moveTipPendingRef.current = next
+    if (moveTipRafRef.current != null) return
     moveTipRafRef.current = requestAnimationFrame(() => {
       moveTipRafRef.current = null
-      const el = moveTipRef.current
-      if (!el) return
-      el.style.left = `${x}px`
-      el.style.top = `${Math.max(16, y - 10)}px`
+      const v = moveTipPendingRef.current
+      if (!v) return
+      setMoveTip((prev) => (prev && prev.x === v.x && prev.y === v.y && prev.text === v.text ? prev : v))
     })
-  }
-
-  const showMoveTip = (x: number, y: number, text: string) => {
-    updateMoveTipPosition(x, y)
-    if (moveTipTextRef.current === text) return
-    moveTipTextRef.current = text
-    setMoveTip({ text })
-  }
-
-  const clearMoveTip = () => {
-    if (moveTipRafRef.current != null) {
-      cancelAnimationFrame(moveTipRafRef.current)
-      moveTipRafRef.current = null
-    }
-    moveTipTextRef.current = null
-    const el = moveTipRef.current
-    if (el) {
-      el.style.left = '-9999px'
-      el.style.top = '-9999px'
-    }
-    setMoveTip(null)
   }
 
   const openDebug = () => {
@@ -191,7 +166,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       })),
     }
     localStorage.setItem('studio:debug-dashboard-v1', JSON.stringify(payload))
-    openAppPath('/dashboard/chat-workspace?debug=studio')
+    window.open('/dashboard/chat-workspace?debug=studio', '_blank', 'noopener,noreferrer')
   }
 
   useEffect(() => {
@@ -204,6 +179,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       setTitle('未命名仪表盘')
       setDescription('')
       setTables([])
+      setPresetId(null)
       setAppearance({ language: locale, timeZone: 'UTC+08:00', theme: 'obsidian', chartPalette: 'cyber' })
       setLayout(initialLayout)
       setSlots(normalizeSlots(layoutSpecs(initialLayout), []))
@@ -218,13 +194,45 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setDescription(hit.description ?? '')
     setTables(hit.tables ?? [])
 
-    const obj = (() => {
+    let obj: any = (() => {
       try {
         return hit.configText ? JSON.parse(hit.configText) : null
       } catch {
         return null
       }
     })()
+
+    const looksLikeStudioConfig = Boolean(obj && typeof obj === 'object' && ('appearance' in obj || 'layout' in obj || 'widgets' in obj))
+    const isSampleDashboard = String(hit.id ?? '').startsWith('custom-')
+    const isSamplePreset = obj && typeof obj === 'object' && String((obj as any).__preset ?? '') === 'studio-sample-v1'
+    const shouldForceSample =
+      isSampleDashboard &&
+      (mode === 'edit' || mode === 'preview') &&
+      (!isSamplePreset || (obj as any)?.appearance?.theme !== 'cyber')
+    if (!looksLikeStudioConfig || shouldForceSample) {
+      const seedConfig = {
+        __preset: 'studio-sample-v1',
+        name: hit.title,
+        description: hit.description ?? '',
+        tables: hit.tables ?? [],
+        appearance: { language: locale, timeZone: 'UTC+08:00', theme: 'cyber', chartPalette: 'deepsea' },
+        layout: { mode: 'template', template: 'main-sub' },
+        widgets: [
+          { kind: 'kpi', config: { title: 'ARPU均值', format: 'currency', valueKey: 'arpu' } },
+          { kind: 'kpi', config: { title: 'ARPU均值', format: 'currency', valueKey: 'arpu' } },
+          { kind: 'flip', config: { title: '在网总用户数', unit: '万', valueKey: 'subs' } },
+          { kind: 'progress', config: { title: '告警处理进度', valueKey: 'progress', max: 100 } },
+          { kind: 'line', config: { title: 'GMV 趋势', unit: '万', xKey: 'date', yKey: 'gmv' } },
+          { kind: 'radar', config: { title: '能力雷达', indicators: ['维度A', '维度B', '维度C', '维度D', '维度E'], valueKey: 'score' } },
+          { kind: 'bar', config: { title: '品类对比', unit: '万', xKey: 'category', yKey: 'gmv' } },
+          { kind: 'bubble', config: { title: '散点分布', xKey: 'x', yKey: 'y', sizeKey: 'size' } },
+        ],
+      }
+      const nextText = JSON.stringify(seedConfig, null, 2)
+      updateItem(String(hit.id ?? ''), { configText: nextText })
+      obj = seedConfig
+    }
+    setPresetId(obj && typeof obj === 'object' ? (typeof (obj as any).__preset === 'string' ? (obj as any).__preset : null) : null)
 
     const nextAppearance: StudioAppearance = (() => {
       const a = obj?.appearance
@@ -414,6 +422,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     })
     setSelectedSlotId(null)
     setDragOverIdx(null)
+    requestAnimationFrame(() => setDragOverIdx(null))
   }
 
   const onSlotDragStart = (idx: number, e: DragEvent<HTMLDivElement>) => {
@@ -422,7 +431,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setEditingSlotId(null)
     setDragFromIdx(idx)
     setDragOverIdx(null)
-    showMoveTip(e.clientX, e.clientY, '拖拽可移动换位')
     e.dataTransfer.setData('application/x-dashboard-slot-index', String(idx))
     e.dataTransfer.effectAllowed = 'move'
     try {
@@ -439,12 +447,13 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setDragOverIdx(null)
     setSelectedSlotId(null)
     setDraggingKind(null)
-    clearMoveTip()
+    scheduleMoveTip(null)
   }
 
   useEffect(() => {
     if (dragFromIdx == null && draggingKind == null && dragOverIdx != null) {
       setDragOverIdx(null)
+      requestAnimationFrame(() => setDragOverIdx(null))
     }
   }, [dragFromIdx, dragOverIdx, draggingKind])
 
@@ -453,7 +462,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       setDragFromIdx(null)
       setDragOverIdx(null)
       setDraggingKind(null)
-      clearMoveTip()
     }
     window.addEventListener('dragend', clear)
     window.addEventListener('drop', clear)
@@ -464,20 +472,27 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   }, [])
 
   useEffect(() => {
-    return () => {
-      if (moveTipRafRef.current != null) cancelAnimationFrame(moveTipRafRef.current)
+    if (readOnly || previewMode) return
+    if (dragFromIdx == null) return
+    const onDragOver = (e: globalThis.DragEvent) => {
+      e.preventDefault()
+      scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
     }
-  }, [])
+    window.addEventListener('dragover', onDragOver)
+    return () => {
+      window.removeEventListener('dragover', onDragOver)
+    }
+  }, [dragFromIdx, previewMode, readOnly])
 
   useEffect(() => {
     if (readOnly || previewMode) return
-    if (dragFromIdx == null && draggingKind == null) return
+    if (dragFromIdx == null) return
     const prev = document.body.style.cursor
-    document.body.style.cursor = 'none'
+    document.body.style.cursor = 'default'
     return () => {
       document.body.style.cursor = prev
     }
-  }, [dragFromIdx, draggingKind, previewMode, readOnly])
+  }, [dragFromIdx, previewMode, readOnly])
 
   const canSave = useMemo(() => {
     if (readOnly) return false
@@ -519,7 +534,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
         if (!obj || typeof obj !== 'object') return s
         const next = { ...obj }
         if (typeof next.title === 'string' && map[next.title]) next.title = map[next.title]
-        if (s.kind === 'flip' && typeof next.unit === 'string') {
+        if (typeof next.unit === 'string') {
           if (to === 'en-US' && next.unit === '万') next.unit = 'k'
           if (to === 'zh-CN' && next.unit === 'k') next.unit = '万'
         }
@@ -544,7 +559,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     const unit = typeof parsed.unit === 'string' ? String(parsed.unit) : ''
     const colors = CHART_PALETTES[appearance.chartPalette].colors.slice(0, 10)
     const name = String(parsed.title ?? KIND_NAME[slot.kind])
-    const base: any =
+    const base =
       slot.kind === 'bar'
         ? buildBarOption(name, colors, unit)
         : slot.kind === 'bar-h'
@@ -590,17 +605,20 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                         : slot.kind === 'wave'
                                           ? buildWaterOption(name, colors)
                                     : null
-
-    return base && typeof base === 'object'
-      ? enhanceDashboardChartOption(slot.kind, base, {
-          accent,
-          mode: previewMode ? 'preview' : 'edit',
-        })
-      : base
+    return base
   }
 
   const renderSlotBody = (slot: WidgetSlot, idx: number) => {
     if (!slot.kind) {
+      if (readOnly || previewMode) {
+        return (
+          <div style={{ height: '100%', position: 'relative', display: 'grid', placeItems: 'center', color: token.colorTextSecondary }}>
+            <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>
+              {appearance.language === 'en-US' ? 'Not Configured' : '未配置'}
+            </Typography.Text>
+          </div>
+        )
+      }
       return (
         <div style={{ height: '100%', position: 'relative', display: 'grid', placeItems: 'center', color: token.colorTextSecondary }}>
           <div style={{ display: 'grid', placeItems: 'center' }}>
@@ -610,7 +628,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           </div>
           <div style={{ position: 'absolute', left: 0, right: 0, top: 'calc(50% + 34px)', display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
             <Typography.Text className="studioSlotHint" style={{ fontSize: 12, color: 'inherit', fontWeight: 600 }}>
-              从左侧拖拽组件到此处
+              {appearance.language === 'en-US' ? 'Drag from the left panel to add' : '从左侧拖拽组件到此处'}
             </Typography.Text>
           </div>
         </div>
@@ -626,13 +644,14 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     const chartTitle = String(parsed?.title ?? KIND_NAME[slot.kind])
     const palette = CHART_PALETTES[appearance.chartPalette]
     const c0 = palette.colors[0] ?? accent
+    const swapHint = appearance.language === 'en-US' ? 'Drag to reorder' : '拖拽可移动换位'
 
     if (slot.kind === 'flip') {
       const baseRaw = Number(parsed?.value ?? 6_894)
       const base = Number.isFinite(baseRaw) ? baseRaw : 0
       const value = Math.max(0, Math.round(base))
       const unit = String(parsed?.unit ?? '次')
-      const titleFixed = appearance.language === 'en-US' ? 'Total Subscribers' : '在网总用户数'
+      const titleText = chartTitle
       return (
         <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div
@@ -642,9 +661,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             onMouseMove={(e) => {
               if (readOnly || previewMode) return
               if (dragFromIdx != null || draggingKind != null) return
-              showMoveTip(e.clientX, e.clientY, '拖拽可移动换位')
+              scheduleMoveTip({ x: e.clientX, y: e.clientY, text: swapHint })
             }}
-            onMouseLeave={clearMoveTip}
+            onMouseLeave={() => scheduleMoveTip(null)}
             onDragStart={(e) => onSlotDragStart(idx, e)}
             onDragEnd={onSlotDragEnd}
           >
@@ -664,14 +683,14 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   <CircleDot size={14} />
                 </span>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {titleFixed}
+                  {titleText}
                 </Typography.Text>
               </Space>
             </div>
           </div>
 
           <div style={{ flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10, paddingTop: 12 }}>
-            <FlipCounter title={titleFixed} unit={unit} target={value} showTitle={false} />
+            <FlipCounter title={titleText} unit={unit} target={value} showTitle={false} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
             <span />
@@ -694,9 +713,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             onMouseMove={(e) => {
               if (readOnly || previewMode) return
               if (dragFromIdx != null || draggingKind != null) return
-              showMoveTip(e.clientX, e.clientY, '拖拽可移动换位')
+              scheduleMoveTip({ x: e.clientX, y: e.clientY, text: swapHint })
             }}
-            onMouseLeave={clearMoveTip}
+            onMouseLeave={() => scheduleMoveTip(null)}
             onDragStart={(e) => onSlotDragStart(idx, e)}
             onDragEnd={onSlotDragEnd}
           >
@@ -771,7 +790,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 0.2 }}>{kpiValue(fmt)}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <Typography.Text style={{ fontSize: 12, color: '#22c55e' }}>同比 +12.4%</Typography.Text>
+            <Typography.Text style={{ fontSize: 12, color: '#22c55e' }}>
+              {appearance.language === 'en-US' ? 'YoY +12.4%' : '同比 +12.4%'}
+            </Typography.Text>
             {slot.error ? <Tag color="error">解析失败</Tag> : null}
           </div>
         </div>
@@ -789,9 +810,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           onMouseMove={(e) => {
             if (readOnly || previewMode) return
             if (dragFromIdx != null || draggingKind != null) return
-            showMoveTip(e.clientX, e.clientY, '拖拽可移动换位')
+            scheduleMoveTip({ x: e.clientX, y: e.clientY, text: swapHint })
           }}
-          onMouseLeave={clearMoveTip}
+          onMouseLeave={() => scheduleMoveTip(null)}
           onDragStart={(e) => onSlotDragStart(idx, e)}
           onDragEnd={onSlotDragEnd}
         >
@@ -868,7 +889,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     const widgets = slots
       .filter((s) => s.kind)
       .map((s) => ({ kind: s.kind, config: (() => { try { return JSON.parse(s.configText) } catch { return {} } })() }))
-    const payload = { name: title.trim(), description: description.trim(), tables, layout, appearance, widgets }
+    const payload = { ...(presetId ? { __preset: presetId } : {}), name: title.trim(), description: description.trim(), tables, layout, appearance, widgets }
     const configText = JSON.stringify(payload, null, 2)
     if (mode === 'new') {
       addItem({ id: createDashboardId(), title: title.trim(), description: description.trim(), tables, updatedAt: touchUpdatedAt(), published: false, configText })
@@ -980,10 +1001,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
                 background: surfaceBg,
                 cursor: disabled ? 'default' : 'pointer',
-                padding: 12,
+                padding: 10,
                 opacity: disabled ? 0.9 : 1,
                 transition: 'border-color 200ms ease, transform 200ms ease',
                 position: 'relative',
+                overflow: 'hidden',
                 color: token.colorTextSecondary,
               }}
             >
@@ -1022,7 +1044,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       const cellW = (160 - padX * 2 - gap * (cols - 1)) / cols
       const cellH = (110 - padY * 2 - gap * (rows - 1)) / rows
       return (
-        <svg viewBox="0 0 160 110" width="100%" height={86} preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <svg viewBox="0 0 160 110" width="100%" height={64} preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
           {items.map((it, i) => {
             const x = padX + (it.colStart - 1) * (cellW + gap)
             const y = padY + (it.rowStart - 1) * (cellH + gap)
@@ -1115,7 +1137,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const CustomGridPreview = () => {
     return (
-      <div style={{ height: 86, borderRadius: 10, border: `1px dashed ${token.colorSplit}`, display: 'grid', placeItems: 'center', color: token.colorTextTertiary }}>
+      <div style={{ height: 64, borderRadius: 10, border: `1px dashed ${token.colorSplit}`, display: 'grid', placeItems: 'center', color: token.colorTextTertiary }}>
         <svg width="30" height="30" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 7h16M4 12h16M4 17h16M7 4v16M12 4v16M17 4v16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.9" />
         </svg>
@@ -1209,6 +1231,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
         ? 'rgba(10, 20, 38, 0.76)'
         : 'rgba(10, 16, 32, 0.76)'
 
+  const slotBodies = useMemo(
+    () => slots.map((s, idx) => renderSlotBody(s, idx)),
+    [slots, appearance.chartPalette, appearance.language, appearance.theme, readOnly, previewMode, accent, token.colorError, token.colorText, token.colorTextSecondary],
+  )
+
   return (
     <div
       className="studioThemeRoot"
@@ -1224,91 +1251,86 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     >
       <div
         className="studioShellGrid"
-        style={{ height: '100%', display: 'grid', gridTemplateColumns: previewMode ? '1fr' : '300px 1fr 300px', minHeight: 0, position: 'relative' }}
+        style={{ height: '100%', display: 'grid', gridTemplateColumns: '300px 1fr 300px', minHeight: 0, position: 'relative' }}
       >
-        {previewMode ? null : (
-          <div style={{ borderRight: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <div className="studioColHeader" style={{ background: sidePanelBg }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10 }}>
-                <Button type="text" onClick={() => navigate('/dashboard')} className="iconOnly" aria-label="返回" icon={<ArrowLeft size={18} />} />
-                <Typography.Text strong>组件库</Typography.Text>
-              </div>
-            </div>
-            <div className="studioColBody" style={{ padding: 12 }}>
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                {libraryGroups.map((g) => (
-                  <div key={g.label}>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {g.label}
-                    </Typography.Text>
-                    <div style={{ height: 8 }} />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
-                      {g.items.map((it) => (
-                        <div
-                          key={it.kind}
-                          className="studioLibraryCard"
-                          draggable={!readOnly}
-                          onDragStart={(e) => {
-                            setDraggingKind(it.kind)
-                            setDragOverIdx(null)
-                            e.dataTransfer.setData('text/plain', it.kind)
-                            e.dataTransfer.setData('application/x-dashboard-widget', it.kind)
-                            e.dataTransfer.effectAllowed = 'copy'
-                            try {
-                              const img = new Image()
-                              img.src =
-                                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'
-                              e.dataTransfer.setDragImage(img, 0, 0)
-                            } catch {
-                              // ignore
-                            }
-                          }}
-                          onDragEnd={() => {
-                            setDraggingKind(null)
-                            setDragOverIdx(null)
-                            clearMoveTip()
-                          }}
-                          style={{ border: `1px solid var(--studio-field-border)`, background: 'var(--studio-panel-card-bg)', borderRadius: 14, padding: 12, cursor: readOnly ? 'default' : 'grab' }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                            <div
-                              style={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: 10,
-                                background: 'transparent',
-                                display: 'grid',
-                                placeItems: 'center',
-                                flex: 'none',
-                                color: token.colorTextSecondary,
-                              }}
-                            >
-                              {(() => {
-                                const Icon = it.icon
-                                return <Icon size={16} />
-                              })()}
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <Typography.Text strong style={{ display: 'block', lineHeight: 1.25 }}>
-                                {it.title}
-                              </Typography.Text>
-                              <Typography.Text
-                                type="secondary"
-                                style={{ display: 'block', fontSize: 12, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                              >
-                                {it.desc}
-                              </Typography.Text>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </Space>
+        <div style={{ borderRight: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="studioColHeader" style={{ background: sidePanelBg }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10 }}>
+              <Button type="text" onClick={() => navigate('/dashboard')} className="iconOnly" aria-label="返回" icon={<ArrowLeft size={18} />} />
+              <Typography.Text strong>组件库</Typography.Text>
             </div>
           </div>
-        )}
+          <div className="studioColBody" style={{ padding: 12 }}>
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              {libraryGroups.map((g) => (
+                <div key={g.label}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {g.label}
+                  </Typography.Text>
+                  <div style={{ height: 8 }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+                    {g.items.map((it) => (
+                      <div
+                        key={it.kind}
+                        className="studioLibraryCard"
+                        draggable={!readOnly}
+                        onDragStart={(e) => {
+                          setDraggingKind(it.kind)
+                          e.dataTransfer.setData('text/plain', it.kind)
+                          e.dataTransfer.setData('application/x-dashboard-widget', it.kind)
+                          e.dataTransfer.effectAllowed = 'copy'
+                          try {
+                            const img = new Image()
+                            img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'
+                            e.dataTransfer.setDragImage(img, 0, 0)
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        onDragEnd={() => {
+                          setDraggingKind(null)
+                          setDragOverIdx(null)
+                        }}
+                        style={{ border: `1px solid var(--studio-field-border)`, background: 'var(--studio-panel-card-bg)', borderRadius: 14, padding: 12, cursor: readOnly ? 'default' : 'grab' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <div
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 10,
+                              background: 'transparent',
+                              display: 'grid',
+                              placeItems: 'center',
+                              flex: 'none',
+                              color: token.colorTextSecondary,
+                            }}
+                          >
+                            {(() => {
+                              const Icon = it.icon
+                              return <Icon size={16} />
+                            })()}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <Typography.Text strong style={{ display: 'block', lineHeight: 1.25 }}>
+                              {it.title}
+                            </Typography.Text>
+                            <Typography.Text
+                              type="secondary"
+                              style={{ display: 'block', fontSize: 12, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            >
+                              {it.desc}
+                            </Typography.Text>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </Space>
+          </div>
+        </div>
 
         <div style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'transparent' }}>
           <div className="studioColHeader" style={{ justifyContent: 'space-between', gap: 12, background: sidePanelBg }}>
@@ -1323,23 +1345,31 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               </div>
             </Space>
             <Space size={6}>
-              <Button icon={<PlayCircleOutlined />} onClick={openDebug}>
-                预览
-              </Button>
-              <Button type="primary" icon={<Save size={16} />} disabled={!canSave} onClick={save}>
-                保存
-              </Button>
+              {previewMode ? (
+                <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/dashboard/studio/${encodeURIComponent(String(id ?? ''))}`)}>
+                  编辑
+                </Button>
+              ) : (
+                <>
+                  <Button icon={<PlayCircleOutlined />} onClick={openDebug}>
+                    预览
+                  </Button>
+                  <Button type="primary" icon={<Save size={16} />} disabled={!canSave} onClick={save}>
+                    保存
+                  </Button>
+                </>
+              )}
             </Space>
           </div>
 
-          <div style={{ flex: 1, minHeight: 0, padding: previewMode ? 0 : 10, background: canvasBg }}>
+          <div style={{ flex: 1, minHeight: 0, padding: 10, background: canvasBg }}>
             <div
               ref={canvasRef}
               onDragOver={(e) => {
                 if (readOnly || previewMode) return
                 if (dragFromIdx != null) {
                   e.preventDefault()
-                  updateMoveTipPosition(e.clientX, e.clientY)
+                  scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
                 }
                 const t = e.target as HTMLElement
                 if (!t?.closest?.('.studioSlot')) {
@@ -1464,7 +1494,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         return colOverlap && rowOverlap
                       })
                       if (overlap) {
-                        message.error('与已有卡片重叠')
+                        message.error(appearance.language === 'en-US' ? 'Overlaps with an existing card' : '与已有卡片重叠')
                         return
                       }
                       applyLayout({ ...layout, cards: [...layout.cards, nextCard] })
@@ -1475,7 +1505,13 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     {freeCursor ? (
                       <div style={{ position: 'absolute', left: freeCursor.x + 12, top: freeCursor.y + 12, zIndex: 3, pointerEvents: 'none' }}>
                         <div style={{ padding: '8px 10px', borderRadius: 12, background: 'rgba(9, 12, 18, 0.62)', color: token.colorText, fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
-                          {freeStartPoint ? '点击终点生成卡片' : '点击起点'}
+                          {freeStartPoint
+                            ? appearance.language === 'en-US'
+                              ? 'Click end point to create'
+                              : '点击终点生成卡片'
+                            : appearance.language === 'en-US'
+                              ? 'Click start point'
+                              : '点击起点'}
                         </div>
                       </div>
                     ) : null}
@@ -1484,9 +1520,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         style={{
                           gridColumn: `${Math.min(freeStartPoint.c, freeHoverPoint.c)} / span ${Math.abs(freeStartPoint.c - freeHoverPoint.c) + 1}`,
                           gridRow: `${Math.min(freeStartPoint.r, freeHoverPoint.r)} / span ${Math.abs(freeStartPoint.r - freeHoverPoint.r) + 1}`,
-                          background: 'rgba(59, 130, 246, 0.10)',
-                          border: `1px solid ${accent}44`,
-                          borderRadius: 10,
+                          background: `${accent}14`,
+                          border: `2px solid ${accent}AA`,
+                          borderRadius: 12,
+                          boxShadow: `0 0 0 1px ${accent}33, 0 0 18px ${accent}26`,
                         }}
                       />
                     ) : null}
@@ -1498,8 +1535,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           key={i}
                           style={{
                             borderRadius: 14,
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            background: 'rgba(255,255,255,0.02)',
+                            border: `1px dashed ${fieldBorder}`,
+                            background: 'rgba(255,255,255,0.014)',
                             pointerEvents: 'none',
                           }}
                         />
@@ -1526,6 +1563,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         ? accent
                         : token.colorSplit
                     : token.colorSplit
+                  const borderWidth = slot.kind && (isEditing || isSelected) ? 2 : 1
                   const surfaceBg =
                     appearance.theme === 'obsidian'
                       ? token.colorBgContainer
@@ -1547,7 +1585,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         borderRadius: 14,
                         border:
                           slot.kind
-                            ? `1px solid ${borderColor}`
+                            ? `${borderWidth}px solid ${borderColor}`
                             : `1px dashed ${borderColor}`,
                         background:
                           slot.kind
@@ -1563,7 +1601,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         zIndex: layout.mode === 'free' ? 2 : 1,
                         overflow: 'hidden',
                         cursor: slot.kind ? 'default' : !readOnly && !previewMode ? 'pointer' : 'default',
-                        boxShadow: undefined,
+                        boxShadow: slot.kind && (isEditing || isSelected) ? `0 0 0 1px ${accent}26, 0 0 22px ${accent}14` : undefined,
                         outline: undefined,
                       }}
                       onClick={() => {
@@ -1576,6 +1614,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         if (dragFromIdx != null && dragFromIdx === idx) return
                         setDragOverIdx((prev) => (prev === idx ? prev : idx))
                       }}
+                      onDragEnterCapture={() => {
+                        if (readOnly || previewMode) return
+                        if (dragFromIdx != null && dragFromIdx === idx) return
+                        setDragOverIdx((prev) => (prev === idx ? prev : idx))
+                      }}
                       onDragOver={(e) => {
                         if (readOnly || previewMode) return
                         e.preventDefault()
@@ -1584,14 +1627,20 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         e.dataTransfer.dropEffect = isMove ? 'move' : 'copy'
                         if (dragFromIdx != null && dragFromIdx === idx) return
                         if (isMove || isAdd) setDragOverIdx((prev) => (prev === idx ? prev : idx))
-                        if (isMove) {
-                          updateMoveTipPosition(e.clientX, e.clientY)
-                        }
+                        if (isMove) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+                      }}
+                      onDragOverCapture={(e) => {
+                        if (readOnly || previewMode) return
+                        e.preventDefault()
+                        if (dragFromIdx != null && dragFromIdx === idx) return
+                        setDragOverIdx((prev) => (prev === idx ? prev : idx))
+                        const isMove = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-slot-index'))
+                        if (isMove) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
                       }}
                       onDrop={(e) => {
                         if (readOnly || previewMode) return
                         e.preventDefault()
-                        clearMoveTip()
+                        scheduleMoveTip(null)
                         const movingIdxRaw = e.dataTransfer.getData('application/x-dashboard-slot-index')
                         if (movingIdxRaw) {
                           const from = Number(movingIdxRaw)
@@ -1601,6 +1650,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           setDragFromIdx(null)
                           setDragOverIdx(null)
                           setDraggingKind(null)
+                          requestAnimationFrame(() => setDragOverIdx(null))
                           return
                         }
                         const k = (e.dataTransfer.getData('application/x-dashboard-widget') || e.dataTransfer.getData('text/plain')) as WidgetKind
@@ -1609,9 +1659,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         assignWidget(idx, k)
                         setDragOverIdx(null)
                         setDraggingKind(null)
+                        requestAnimationFrame(() => setDragOverIdx(null))
                       }}
                     >
-                      {slot.kind ? (
+                      {slot.kind && !previewMode ? (
                         <div className="studioSlotActions" style={{ position: 'absolute', top: 8, right: 8, zIndex: 30, display: 'flex', gap: 6, alignItems: 'center' }}>
                           <Tooltip title={readOnly || previewMode ? '查看代码' : '编辑代码'}>
                             <Button
@@ -1619,10 +1670,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                               size="small"
                               className="studioSlotIconBtn"
                               icon={<CodeOutlined />}
+                              disabled={readOnly || previewMode}
                               draggable={false}
                               onMouseDown={(ev) => ev.stopPropagation()}
                               onClick={(ev) => {
                                 ev.stopPropagation()
+                                if (readOnly || previewMode) return
                                 setEditingSlotId(slot.id)
                               }}
                               aria-label={readOnly || previewMode ? '查看代码' : '编辑代码'}
@@ -1649,7 +1702,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         </div>
                       ) : null}
 
-                      {renderSlotBody(slot, idx)}
+                      {slotBodies[idx]}
                     </div>
                   )
                 })}
@@ -1740,71 +1793,195 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           ) : null}
         </Modal>
 
-        {previewMode ? null : (
-          <div style={{ borderLeft: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <div className="studioColHeader" style={{ background: sidePanelBg }}>
-              <Typography.Text strong>页面配置</Typography.Text>
-            </div>
-            <div className="studioColBody" style={{ padding: 12 }}>
-              <Space direction="vertical" size={14} style={{ width: '100%' }}>
-                {(() => {
-                  const RequiredLabel = ({ label }: { label: string }) => (
-                    <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                      <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
-                      {label}
-                    </Typography.Text>
-                  )
+        <div style={{ borderLeft: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="studioColHeader" style={{ background: sidePanelBg }}>
+            <Typography.Text strong>页面配置</Typography.Text>
+          </div>
+          <div
+            className="studioColBody"
+            style={{ padding: 14, overflowX: 'hidden', overflowY: layout.mode === 'template' ? 'hidden' : 'auto' }}
+          >
+            {(() => {
+              const RequiredLabel = ({ label }: { label: string }) => (
+                <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                  <span style={{ color: token.colorError, marginRight: 4 }}>*</span>
+                  {label}
+                </Typography.Text>
+              )
 
-                  return (
-                    <>
-                <div>
-                  <RequiredLabel label="名称" />
-                  <div style={{ height: 6 }} />
-                  <Input value={title} disabled={readOnly} onChange={(e) => setTitle(e.target.value)} placeholder="例如：核心运营指标" />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <RequiredLabel label="语言" />
+              return (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  <div>
+                    <RequiredLabel label="名称" />
                     <div style={{ height: 6 }} />
-                    <Select
-                      value={appearance.language}
-                      disabled={readOnly}
-                      onChange={(v) => {
-                        setAppearance((p) => ({ ...p, language: v }))
-                        setLocale(v)
-                        translateSlots(v)
-                      }}
-                      options={[{ value: 'zh-CN', label: '简体中文' }, { value: 'en-US', label: 'English' }]}
-                    />
+                    <Input value={title} disabled={readOnly} onChange={(e) => setTitle(e.target.value)} placeholder="例如：核心运营指标" />
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <RequiredLabel label="时区" />
-                    <div style={{ height: 6 }} />
-                    <Select
-                      style={{ width: '100%' }}
-                      value={appearance.timeZone}
-                      disabled={readOnly}
-                      onChange={(v) => setAppearance((p) => ({ ...p, timeZone: String(v) }))}
-                      popupMatchSelectWidth={false}
-                      placement="bottomRight"
-                      dropdownStyle={{ minWidth: 360, maxWidth: 'calc(100vw - 24px)' }}
-                      labelRender={({ value }) => <span>{value}</span>}
-                      filterOption={(input, option) => String((option as { searchText?: string } | undefined)?.searchText ?? '').toLowerCase().includes(input.toLowerCase())}
-                      options={TIME_ZONE_OPTIONS.map((it) => ({
-                        value: it.value,
-                        searchText: `${it.value} ${it.region}`,
-                        label: (
-                          <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
-                            <Typography.Text strong style={{ lineHeight: 1.25 }}>
-                              {it.value}
-                            </Typography.Text>
-                            <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, lineHeight: 1.35 }}>
-                              {it.region}
-                            </Typography.Text>
-                          </div>
-                        ),
-                      }))}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <RequiredLabel label="语言" />
+                      <div style={{ height: 6 }} />
+                      <Select
+                        value={appearance.language}
+                        disabled={readOnly}
+                        getPopupContainer={getStudioPopupContainer}
+                        onChange={(v) => {
+                          if (typeof document !== 'undefined') document.documentElement.lang = v
+                          setAppearance((p) => ({ ...p, language: v }))
+                          setLocale(v)
+                          translateSlots(v)
+                        }}
+                        options={[{ value: 'zh-CN', label: '简体中文' }, { value: 'en-US', label: 'English' }]}
+                      />
+                    </div>
+                    <div>
+                      <RequiredLabel label="时区" />
+                      <div style={{ height: 6 }} />
+                      <Select
+                        value={appearance.timeZone}
+                        disabled={readOnly}
+                        getPopupContainer={getStudioPopupContainer}
+                        onChange={(v) => setAppearance((p) => ({ ...p, timeZone: String(v) }))}
+                        style={{ width: '100%', minWidth: 0 }}
+                        placement="bottomRight"
+                        dropdownMatchSelectWidth={false}
+                        dropdownStyle={{ minWidth: 360 }}
+                        optionLabelProp="shortLabel"
+                        optionFilterProp="searchText"
+                        options={[
+                        {
+                          value: 'UTC+00:00',
+                          shortLabel: 'UTC+00:00',
+                          searchText: 'UTC+00:00 格林威治标准时间 GMT',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC+00:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>格林威治标准时间 (GMT)</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC+08:00',
+                          shortLabel: 'UTC+08:00',
+                          searchText: 'UTC+08:00 中国 北京 新加坡 吉隆坡 马尼拉',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC+08:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>中国 (北京)、新加坡、吉隆坡、马尼拉</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC+07:00',
+                          shortLabel: 'UTC+07:00',
+                          searchText: 'UTC+07:00 曼谷 雅加达 河内 胡志明市',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC+07:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>曼谷、雅加达、河内、胡志明市</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC+03:00',
+                          shortLabel: 'UTC+03:00',
+                          searchText: 'UTC+03:00 利雅得 巴格达 卡塔尔 莫斯科',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC+03:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>利雅得、巴格达、卡塔尔、(莫斯科)</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC+04:00',
+                          shortLabel: 'UTC+04:00',
+                          searchText: 'UTC+04:00 迪拜 阿布扎比 马斯喀特',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC+04:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>迪拜、阿布扎比、马斯喀特</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC+02:00',
+                          shortLabel: 'UTC+02:00',
+                          searchText: 'UTC+02:00 开罗 安曼 耶路撒冷',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC+02:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>开罗、安曼、耶路撒冷</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC+05:00',
+                          shortLabel: 'UTC+05:00',
+                          searchText: 'UTC+05:00 塔什干 乌兹别克斯坦 伊斯兰堡',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC+05:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>塔什干 (乌兹别克斯坦)、伊斯兰堡</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC+06:00',
+                          shortLabel: 'UTC+06:00',
+                          searchText: 'UTC+06:00 阿拉木图 哈萨克斯坦 比什凯克',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC+06:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>阿拉木图 (哈萨克斯坦)、比什凯克</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC-03:00',
+                          shortLabel: 'UTC-03:00',
+                          searchText: 'UTC-03:00 圣保罗 巴西 布宜诺斯艾利斯 阿根廷',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC-03:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>圣保罗 (巴西)、布宜诺斯艾利斯 (阿根廷)</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC-05:00',
+                          shortLabel: 'UTC-05:00',
+                          searchText: 'UTC-05:00 波哥大 哥伦比亚 利马 秘鲁 墨西哥城',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC-05:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>波哥大 (哥伦比亚)、利马 (秘鲁)、墨西哥城</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC-04:00',
+                          shortLabel: 'UTC-04:00',
+                          searchText: 'UTC-04:00 圣地亚哥 智利 加拉加斯 委内瑞拉',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC-04:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>圣地亚哥 (智利)、加拉加斯 (委内瑞拉)</div>
+                            </div>
+                          ),
+                        },
+                        {
+                          value: 'UTC-06:00',
+                          shortLabel: 'UTC-06:00',
+                          searchText: 'UTC-06:00 墨西哥中部 哥斯达黎加',
+                          label: (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}>
+                              <div style={{ fontWeight: 700 }}>UTC-06:00</div>
+                              <div style={{ fontSize: 12, opacity: 0.72 }}>墨西哥中部、哥斯达黎加</div>
+                            </div>
+                          ),
+                        },
+                      ]}
                       showSearch
                     />
                   </div>
@@ -1812,7 +1989,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
                 <div>
                   <RequiredLabel label="主题风格" />
-                  <div style={{ height: 8 }} />
+                  <div style={{ height: 6 }} />
                   <ThemeStyleCardPicker
                     value={appearance.theme}
                     disabled={readOnly}
@@ -1828,10 +2005,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
                 <div>
                   <RequiredLabel label="图表色系" />
-                  <div style={{ height: 8 }} />
+                  <div style={{ height: 6 }} />
                   <Select
                     value={appearance.chartPalette}
                     disabled={readOnly}
+                    getPopupContainer={getStudioPopupContainer}
                     onChange={(v) => setAppearance((p) => ({ ...p, chartPalette: safeChartPalette(v) }))}
                     style={{ width: '100%' }}
                     optionLabelProp="label"
@@ -1860,7 +2038,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
                 <div>
                   <RequiredLabel label="页面布局" />
-                  <div style={{ height: 8 }} />
+                  <div style={{ height: 6 }} />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     {(
                       [
@@ -1886,12 +2064,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
                             background: 'var(--studio-panel-card-bg)',
                             cursor: readOnly ? 'default' : 'pointer',
-                            padding: 4,
+                            padding: 6,
                             opacity: readOnly ? 0.9 : 1,
                           }}
                         >
-                          {it.icon}
-                          <div style={{ height: 6 }} />
+                          <div style={{ paddingInline: 2 }}>{it.icon}</div>
+                          <div style={{ height: 4 }} />
                           <div style={{ paddingInline: 2 }}>
                             <Typography.Text strong style={{ display: 'block', lineHeight: 1.25 }}>
                               {it.title}
@@ -1906,11 +2084,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   </div>
                 </div>
 
-                    </>
-                  )
-                })()}
+                </div>
+              )
+            })()}
 
-                {layout.mode === 'free' ? (
+            {layout.mode === 'free' ? (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                     <div>
                       <Space size={6}>
@@ -1971,30 +2149,44 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     </div>
                   </div>
                 ) : null}
-              </Space>
-            </div>
           </div>
-        )}
+        </div>
 
         {moveTip && !readOnly && !previewMode ? (
           <div
-            ref={moveTipRef}
             style={{
               position: 'fixed',
-              left: -9999,
-              top: -9999,
+              left: moveTip.x,
+              top: moveTip.y,
               transform: 'translate(-50%, -100%)',
               zIndex: 9999,
               pointerEvents: 'none',
-              display: dragFromIdx != null || Boolean(moveTip.text) ? 'block' : 'none',
+              display: dragFromIdx != null || (draggingKind == null && moveTip.text) ? 'block' : 'none',
             }}
           >
-            <div style={{ padding: '8px 10px', borderRadius: 12, background: 'rgba(9, 12, 18, 0.72)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 14px 28px rgba(0,0,0,0.22)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 18, height: 18, display: 'grid', placeItems: 'center', color: accent, flex: '0 0 18px' }}>
-                <ArrowLeftRight size={16} strokeWidth={1.8} />
-              </span>
-              <div style={{ fontSize: 12, fontWeight: 600, color: accent, whiteSpace: 'nowrap', textAlign: 'center', lineHeight: 1.2 }}>
-                {dragFromIdx != null ? (dragOverIdx != null && slots[dragOverIdx]?.kind ? '移入此位置' : '拖拽可移动换位') : moveTip.text}
+            <div
+              style={{
+                padding: '8px 12px',
+                borderRadius: 10,
+                background: 'rgba(9, 12, 18, 0.75)',
+                backdropFilter: 'blur(8px)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <ArrowLeftRight size={16} style={{ color: '#C9CBD3' }} />
+              <div style={{ fontSize: 12, fontWeight: 700, color: accent, whiteSpace: 'nowrap', textAlign: 'center' }}>
+                {dragFromIdx != null
+                  ? dragOverIdx != null && slots[dragOverIdx]?.kind
+                    ? appearance.language === 'en-US'
+                      ? 'Drop here'
+                      : '移入此位置'
+                    : appearance.language === 'en-US'
+                      ? 'Drag to reorder'
+                      : '拖拽可移动换位'
+                  : moveTip.text}
               </div>
             </div>
           </div>

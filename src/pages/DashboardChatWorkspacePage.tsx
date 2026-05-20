@@ -41,7 +41,7 @@ import { buildMockResult } from './chat/chatUtils'
 import type { MessageResult } from './chat/chatUtils'
 import { CHART_PALETTES, KIND_NAME, THEME_ACCENT } from './studioModel'
 import type { StudioAppearance, StudioLayout, WidgetKind } from './studioModel'
-import { enhanceDashboardChartOption, isGroupBarKind } from './dashboardChartInteractions'
+import { enhanceDashboardChartOption } from './dashboardChartInteractions'
 import {
   buildAreaOption,
   buildBarOption,
@@ -444,7 +444,6 @@ type StudioDatumSelection = {
   value?: unknown
   dataType?: string
   color?: string
-  isGroup?: boolean
 }
 
 function StudioDebugDashboardCanvas({
@@ -462,7 +461,7 @@ function StudioDebugDashboardCanvas({
 }) {
   const { token } = theme.useToken()
 
-  const appearance = payload.appearance ?? { language: 'zh-CN', timeZone: 'UTC+08:00', theme: 'obsidian', chartPalette: 'cyber' }
+  const appearance = payload.appearance ?? { language: 'zh-CN', timeZone: 'Asia/Shanghai', theme: 'obsidian', chartPalette: 'cyber' }
   const layout = payload.layout ?? { mode: 'template', template: 'main-sub' }
   const palette = CHART_PALETTES[appearance.chartPalette] ?? CHART_PALETTES.cyber
   const themeColors = palette.colors ?? []
@@ -573,6 +572,10 @@ function StudioDebugDashboardCanvas({
     if (kind === 'gauge') return buildGaugeOption(name, themeColors)
     if (kind === 'wave') return buildWaterOption(name, themeColors)
     return null
+  }
+
+  const enhanceSelectableOption = (kind: WidgetKind, opt: EChartsOption) => {
+    return enhanceDashboardChartOption(kind, opt, { accent, mode: 'preview' })
   }
 
   const renderSlotBody = (idx: number, raw: { kind: WidgetKind | null; configText: string } | undefined) => {
@@ -720,14 +723,43 @@ function StudioDebugDashboardCanvas({
 
     const unit = typeof parsed?.unit === 'string' ? String(parsed.unit) : ''
     const opt = optionForSlot(kind, chartTitle, unit)
-    const finalOpt =
-      opt && kind
-        ? enhanceDashboardChartOption(kind, opt, {
-            accent,
-            mode: 'preview',
-          })
-        : null
-    const renderOpt = finalOpt
+    const finalOpt = opt ? enhanceSelectableOption(kind, opt) : null
+    const renderOpt = (() => {
+      if (!finalOpt) return finalOpt
+      const pointKinds = new Set<WidgetKind>(['line', 'line-area', 'line-curve', 'bubble', 'scatter'])
+      if (!pointKinds.has(kind)) return finalOpt
+      if (!selectedDatum || selectedDatum.slotIdx !== idx) return finalOpt
+      const nameText = String(selectedDatum.name ?? selectedDatum.seriesName ?? '').trim()
+      const v = selectedDatum.value
+      const coord = (() => {
+        if (kind === 'bubble' || kind === 'scatter') {
+          if (Array.isArray(v) && v.length >= 2) return [v[0], v[1]]
+          return null
+        }
+        const y = typeof v === 'number' || typeof v === 'string' ? v : Array.isArray(v) ? v[1] : null
+        if (!nameText || y == null) return null
+        return [nameText, y]
+      })()
+      if (!coord) return finalOpt
+      const c = String(selectedDatum.color || accent)
+      const next: any = { ...(finalOpt as any) }
+      const baseSeries = Array.isArray(next.series) ? next.series.filter((s: any) => String(s?.id ?? '') !== '__selected_point_overlay__') : []
+      baseSeries.push({
+        id: '__selected_point_overlay__',
+        type: 'effectScatter',
+        z: 999,
+        coordinateSystem: 'cartesian2d',
+        silent: true,
+        data: [{ name: nameText, value: coord }],
+        symbol: 'circle',
+        symbolSize: 12,
+        itemStyle: { color: c, borderWidth: 2, borderColor: '#fff', shadowBlur: 22, shadowColor: c, opacity: 0.92 },
+        rippleEffect: { scale: 2.2, brushType: 'stroke', period: 4, number: 2 },
+        tooltip: { show: false },
+      })
+      next.series = baseSeries
+      return next as EChartsOption
+    })()
     return opt ? (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div className="studioSlotHeader" style={{ padding: '12px 12px 8px 12px' }}>
@@ -781,62 +813,39 @@ function StudioDebugDashboardCanvas({
             </Space>
           </div>
         </div>
-        <div
-          style={{ flex: 1, minHeight: 0, paddingTop: kind === 'funnel' ? 0 : 10 }}
-          onClick={(e) => {
-            if (kind === 'sankey') return
-            e.stopPropagation()
-          }}
-          onMouseDown={(e) => {
-            if (kind === 'sankey') return
-            e.stopPropagation()
-          }}
-        >
+        <div style={{ flex: 1, minHeight: 0, paddingTop: kind === 'funnel' ? 0 : 10 }}>
           <EChart
             option={renderOpt as any}
-            selectionEnabled={kind !== 'sankey'}
-            selectedItems={
-              selectedDatum &&
-              selectedDatum.slotIdx === idx &&
-              (kind === 'bar-grouped' || kind === 'bar-stacked') &&
-              renderOpt &&
-              Array.isArray((renderOpt as any).series)
-                ? selectedDatum.isGroup
-                  ? ((renderOpt as any).series as any[])
-                      .map((s: any, seriesIndex: number) => (String(s?.type) === 'bar' ? { seriesIndex, dataIndex: selectedDatum.dataIndex } : null))
-                      .filter((x): x is { seriesIndex: number; dataIndex: number } => x !== null)
-                  : [{ seriesIndex: selectedDatum.seriesIndex, dataIndex: selectedDatum.dataIndex }]
-                : null
-            }
             selected={
               selectedDatum &&
               selectedDatum.slotIdx === idx &&
-              !(kind === 'bar-grouped' || kind === 'bar-stacked')
+              kind !== 'sankey'
                 ? { seriesIndex: selectedDatum.seriesIndex, dataIndex: selectedDatum.dataIndex }
                 : null
             }
-            pulseEnabled={true}
+            pulseEnabled={kind !== 'sankey'}
             legendSingleLine
-            onBlankAreaClick={() => {
-              onDatumSelect(null, '')
-            }}
-            onSelectedChange={(next, click) => {
+            onSelectedChange={kind === 'sankey' ? undefined : (next, click) => {
               if (!kind) return
-              if (kind === 'sankey') return
               const pointKinds = new Set<WidgetKind>(['line', 'line-area', 'line-curve', 'bubble', 'scatter'])
-              const blockKinds = new Set<WidgetKind>(['bar', 'bar-h', 'bar-grouped', 'bar-stacked', 'bar-gradient', 'pie', 'donut', 'rose', 'funnel', 'sankey'])
+              const blockKinds = new Set<WidgetKind>([
+                'bar',
+                'bar-h',
+                'bar-grouped',
+                'bar-stacked',
+                'bar-gradient',
+                'pie',
+                'donut',
+                'rose',
+                'funnel',
+                'sankey',
+              ])
               const labelKind = pointKinds.has(kind) ? '数据点' : blockKinds.has(kind) ? '数据块' : '数据点'
-              
-              // Task 6: Handle group selection name
-              const isGroup = isGroupBarKind(kind) && (next as any)?.isGroup === true
-              const nameText = isGroup ? (click.name || '当前组') : String(click.name ?? click.seriesName ?? '').trim()
+              const nameText = String(click.name ?? click.seriesName ?? '').trim()
               const v = click.value
-              const valueText = isGroup ? '' : Array.isArray(v) ? v.map((x) => String(x)).join(', ') : String(v ?? '').trim()
-              
-              const detail = isGroup 
-                ? `${labelKind}组：${nameText}`
-                : nameText && valueText ? `${labelKind}：${nameText}=${valueText}` : nameText ? `${labelKind}：${nameText}` : valueText ? `${labelKind}：${valueText}` : labelKind
-              
+              const valueText = Array.isArray(v) ? v.map((x) => String(x)).join(', ') : String(v ?? '').trim()
+              const detail =
+                nameText && valueText ? `${labelKind}：${nameText}=${valueText}` : nameText ? `${labelKind}：${nameText}` : valueText ? `${labelKind}：${valueText}` : labelKind
               const ctx = `${cardContext}｜${detail}`
               if (!next) {
                 onDatumSelect(null, ctx)
@@ -857,7 +866,6 @@ function StudioDebugDashboardCanvas({
                   value: click.value,
                   dataType: click.dataType,
                   color: click.color,
-                  isGroup: isGroup, // Task 6: Pass group info
                 },
                 ctx,
               )
@@ -929,10 +937,6 @@ function StudioDebugDashboardCanvas({
                   tabIndex={kind ? 0 : undefined}
                   onClick={() => {
                     if (!kind) return
-                    if (selectedDatum?.slotIdx === idx) {
-                      onDatumSelect(null, '')
-                      return
-                    }
                     const parsed = (() => {
                       try {
                         return raw?.configText ? JSON.parse(raw.configText) : null
@@ -948,10 +952,6 @@ function StudioDebugDashboardCanvas({
                     if (!kind) return
                     if (e.key !== 'Enter' && e.key !== ' ') return
                     e.preventDefault()
-                    if (selectedDatum?.slotIdx === idx) {
-                      onDatumSelect(null, '')
-                      return
-                    }
                     const parsed = (() => {
                       try {
                         return raw?.configText ? JSON.parse(raw.configText) : null

@@ -23,6 +23,28 @@ function toFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
+function asColorString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
+function resolveSeriesSelectionColor(series: any, index: number, palette: unknown[], accent: string) {
+  const paletteColor = asColorString(palette[index]) ?? asColorString(palette[0])
+  const lineColor = asColorString(series?.lineStyle?.color)
+  const itemColor = asColorString(series?.itemStyle?.color)
+  const borderColor = asColorString(series?.itemStyle?.borderColor)
+  const data = Array.isArray(series?.data) ? series.data : []
+  const firstDataItem = data.find((entry: any) => entry && typeof entry === 'object')
+  const dataItemColor = asColorString(firstDataItem?.itemStyle?.color)
+  const dataBorderColor = asColorString(firstDataItem?.itemStyle?.borderColor)
+  const isLineSeries = String(series?.type) === 'line'
+
+  if (isLineSeries) {
+    return lineColor ?? itemColor ?? dataItemColor ?? paletteColor ?? dataBorderColor ?? borderColor ?? accent
+  }
+
+  return dataItemColor ?? itemColor ?? dataBorderColor ?? borderColor ?? lineColor ?? paletteColor ?? accent
+}
+
 export function isGroupBarKind(kind: WidgetKind | null | undefined): kind is 'bar-grouped' | 'bar-stacked' {
   return kind === 'bar-grouped' || kind === 'bar-stacked'
 }
@@ -44,7 +66,7 @@ export function enhanceDashboardChartOption(
 
   const isAxis = AXIS_KINDS.has(kind)
   const isPreview = mode === 'preview'
-  const shadowColor = typeof accent === 'string' && accent.startsWith('#') ? `${accent}F0` : String(accent)
+  const palette = Array.isArray(next.color) ? next.color : []
 
   next.tooltip = {
     ...(next.tooltip ?? {}),
@@ -55,7 +77,7 @@ export function enhanceDashboardChartOption(
           triggerOn: 'mousemove|click',
           enterable: true,
           confine: true,
-          backgroundColor: 'rgba(10,14,24,0.92)',
+          backgroundColor: 'rgba(0, 0, 0, 0.82)',
           borderWidth: 0,
           padding: [10, 12],
           extraCssText: 'border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.38);backdrop-filter:blur(10px);',
@@ -80,6 +102,8 @@ export function enhanceDashboardChartOption(
     const rawSymbolSize = series.symbolSize
     const hasDynamicSymbolSize = typeof rawSymbolSize === 'function'
     const baseSymbolSize = toFiniteNumber(rawSymbolSize) ?? (isLineKind ? 8 : isPointKind && !hasDynamicSymbolSize ? 8 : null)
+    const seriesSelectionColor = resolveSeriesSelectionColor(series, index, palette, accent)
+    const shadowColor = typeof seriesSelectionColor === 'string' && seriesSelectionColor.startsWith('#') ? `${seriesSelectionColor}F0` : String(seriesSelectionColor)
 
     if (isLineKind) {
       series.showSymbol = false
@@ -113,11 +137,15 @@ export function enhanceDashboardChartOption(
     emphasisItemStyle.shadowOffsetX = emphasisItemStyle.shadowOffsetX ?? 0
     emphasisItemStyle.shadowOffsetY = emphasisItemStyle.shadowOffsetY ?? 0
     emphasisItemStyle.opacity = emphasisItemStyle.opacity ?? 1
+    if (isLineKind) {
+      emphasisItemStyle.borderWidth = series.itemStyle?.borderWidth ?? emphasisItemStyle.borderWidth
+      emphasisItemStyle.borderColor = series.itemStyle?.borderColor ?? emphasisItemStyle.borderColor
+    }
     emphasis.itemStyle = emphasisItemStyle
     emphasis.scale = true
     emphasis.scaleSize = isLineKind ? 22 : POINT_KINDS.has(kind) ? 20 : BLOCK_KINDS.has(kind) ? 18 : 18
-    emphasis.focus = series.type === 'sankey' ? 'adjacency' : 'self'
-    emphasis.blurScope = 'global'
+    emphasis.focus = isLineKind || series.type === 'sankey' ? 'none' : 'self'
+    emphasis.blurScope = emphasis.focus === 'self' ? 'global' : undefined
     if (!hasDynamicSymbolSize && baseSymbolSize != null) emphasis.symbolSize = Math.max(baseSymbolSize + (isLineKind ? 12 : 18), baseSymbolSize)
     series.emphasis = emphasis
 
@@ -146,9 +174,15 @@ export function enhanceDashboardChartOption(
     selectItemStyle.shadowColor = selectItemStyle.shadowColor ?? shadowColor
     selectItemStyle.shadowOffsetX = selectItemStyle.shadowOffsetX ?? 0
     selectItemStyle.shadowOffsetY = selectItemStyle.shadowOffsetY ?? 0
+    if (isLineKind) {
+      selectItemStyle.borderWidth = series.itemStyle?.borderWidth ?? selectItemStyle.borderWidth
+      selectItemStyle.borderColor = series.itemStyle?.borderColor ?? selectItemStyle.borderColor
+    }
     select.itemStyle = selectItemStyle
     select.scale = true
     select.scaleSize = isLineKind ? 18 : POINT_KINDS.has(kind) ? 18 : BLOCK_KINDS.has(kind) ? 14 : 14
+    select.focus = isLineKind || series.type === 'sankey' ? 'none' : 'self'
+    select.blurScope = select.focus === 'self' ? 'global' : undefined
     if (!hasDynamicSymbolSize && baseSymbolSize != null) select.symbolSize = Math.max(baseSymbolSize + (isLineKind ? 14 : 20), baseSymbolSize)
     series.select = select
     series.selectedMode = series.selectedMode ?? 'single'

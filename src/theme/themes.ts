@@ -32,7 +32,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       axisLabel: 'rgba(214, 223, 255, 0.72)',
       axisLine: 'rgba(136, 173, 255, 0.22)',
       splitLine: 'rgba(136, 173, 255, 0.14)',
-      tooltipBg: 'rgba(10, 16, 30, 0.92)',
+      tooltipBg: 'rgba(0, 0, 0, 0.82)',
       tooltipText: 'rgba(243, 246, 255, 0.92)',
     },
   },
@@ -67,7 +67,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       axisLabel: 'rgba(255, 234, 210, 0.74)',
       axisLine: 'rgba(255, 210, 63, 0.22)',
       splitLine: 'rgba(255, 210, 63, 0.14)',
-      tooltipBg: 'rgba(18, 12, 18, 0.92)',
+      tooltipBg: 'rgba(0, 0, 0, 0.82)',
       tooltipText: 'rgba(255, 250, 244, 0.92)',
     },
   },
@@ -102,7 +102,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       axisLabel: 'rgba(203, 255, 247, 0.74)',
       axisLine: 'rgba(0, 188, 212, 0.22)',
       splitLine: 'rgba(0, 188, 212, 0.14)',
-      tooltipBg: 'rgba(6, 16, 20, 0.92)',
+      tooltipBg: 'rgba(0, 0, 0, 0.82)',
       tooltipText: 'rgba(238, 255, 252, 0.92)',
     },
   },
@@ -111,4 +111,3 @@ export const THEMES: Record<ThemeId, Theme> = {
 export function getTheme(id: ThemeId): Theme {
   return THEMES[id]
 }
-

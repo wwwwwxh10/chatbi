@@ -10,8 +10,8 @@ import ChatConversationPage from './pages/ChatConversationPage'
 import DashboardDetailPage from './pages/DashboardDetailPage'
 import DashboardPreviewPage from './pages/DashboardPreviewPage'
 import DashboardStudioPageV2 from './pages/DashboardStudioPageV2'
-import KnowledgeBasePage from './pages/KnowledgeBasePage'
 import DataSourcesPage from './pages/DataSourcesPage'
+import KnowledgeBasePage from './pages/KnowledgeBasePage'
 import NotFoundPage from './pages/NotFoundPage'
 import SystemManagementPage from './pages/SystemManagementPage'
 import LoginPage from './pages/LoginPage'
@@ -73,8 +73,8 @@ export default function App() {
 
   const pageMeta: PageMeta = useMemo(() => {
     if (location.pathname.startsWith('/dashboard/chat')) return { title: t('dashboard.chat') }
-    if (location.pathname.startsWith('/knowledge-base')) return { title: t('knowledge.title') }
     if (location.pathname.startsWith('/data-sources')) return { title: t('dataSources.title') }
+    if (location.pathname.startsWith('/knowledge-base')) return { title: t('nav.knowledgeBase') }
     if (location.pathname.startsWith('/system')) return { title: t('system.title') }
     if (location.pathname.startsWith('/login')) return { title: 'Login' }
     return { title: t('nav.dashboard') }

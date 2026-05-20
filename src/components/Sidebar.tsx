@@ -3,15 +3,15 @@ import type { MenuProps } from 'antd'
 import {
   BookOpen,
   BookOpenText,
-  Braces,
   ChartNoAxesCombined,
   ChevronsLeft,
   ChevronsRight,
   Database,
   GitBranch,
   Sigma,
-  TextCursorInput,
 } from 'lucide-react'
+import { KbRegexIcon } from './icons/KbRegexIcon'
+import { KbSqlIcon } from './icons/KbSqlIcon'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../store/appStore'
@@ -103,9 +103,9 @@ export function Sidebar({
       children: [
         { key: 'kb:terms', icon: <BookOpen size={16} />, label: t('kb.terms') },
         { key: 'kb:metrics', icon: <Sigma size={16} />, label: t('kb.metrics') },
-        { key: 'kb:regex', icon: <TextCursorInput size={16} />, label: t('kb.regex') },
+        { key: 'kb:regex', icon: <KbRegexIcon size={16} />, label: t('kb.regex') },
         { key: 'kb:logic-tree', icon: <GitBranch size={16} />, label: t('kb.logicTree') },
-        { key: 'kb:sql-examples', icon: <Braces size={16} />, label: t('kb.sqlExamples') },
+        { key: 'kb:sql-examples', icon: <KbSqlIcon size={16} />, label: t('kb.sqlExamples') },
       ],
     },
     {
@@ -142,19 +142,19 @@ export function Sidebar({
       }}
     >
       {showBrand ? (
-        <div style={{ padding: collapsed ? '12px 10px' : '0 16px', display: 'flex', alignItems: 'center' }}>
+        <div style={{ padding: collapsed ? '12px 10px' : '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <Button
             type="text"
             onClick={() => navigate('/dashboard')}
             style={{
               width: '100%',
-              height: 56,
+              height: collapsed ? 44 : 56,
               display: 'flex',
               alignItems: 'center',
               justifyContent: collapsed ? 'center' : 'flex-start',
               gap: 10,
-              paddingInline: 0,
-              borderRadius: 0,
+              paddingInline: collapsed ? 0 : 10,
+              borderRadius: 12,
             }}
           >
             {logoDataUrl ? (
@@ -172,9 +172,7 @@ export function Sidebar({
             ) : (
               <AppLogoMark size={32} />
             )}
-            {collapsed || (!logoDataUrl && systemName === 'ChatBI') ? null : (
-              <span style={{ fontSize: 18, fontWeight: 700, color: token.colorText, letterSpacing: 0.2 }}>{systemName}</span>
-            )}
+            {collapsed || (!logoDataUrl && systemName === 'ChatBI') ? null : <span style={{ fontWeight: 800, color: token.colorText, letterSpacing: 0.2 }}>{systemName}</span>}
           </Button>
         </div>
       ) : null}

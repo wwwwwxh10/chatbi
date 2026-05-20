@@ -363,15 +363,13 @@ html[data-mode='dark'] .dsCardActive {
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
 }
 
-.kbCardMenuButton {
+.dsCardActions {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 120ms ease;
+  transition: opacity 140ms ease;
 }
 
-.kbCardShell:hover .kbCardMenuButton,
-.kbCardShell:focus-within .kbCardMenuButton,
-.kbCardMenuButtonOpen {
+.dsCard:hover .dsCardActions {
   opacity: 1;
   pointer-events: auto;
 }
@@ -754,35 +752,35 @@ html[data-mode='dark'] .ant-menu-submenu-popup .ant-menu-item-selected {
 }
 
 .studioSlotEmpty.studioSlotCanDrop {
-  transition: transform 60ms ease-out, box-shadow 60ms ease-out, border-color 60ms ease-out, border-width 60ms ease-out;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
   cursor: pointer;
 }
 
 .studioSlotHeader[draggable='true'] {
-  cursor: grab;
+  cursor: default;
 }
 
 .studioSlotHeader[draggable='true']:active {
-  cursor: grabbing;
+  cursor: default;
 }
 
 .studioSlotEmpty.studioSlotCanDrop:hover,
 .studioSlotEmpty.studioSlotCanDrop.studioSlotDragOver {
   transform: translateY(-2px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
-  border-width: 2px !important;
   border-color: rgba(43, 92, 246, 0.55) !important;
+  border-width: 2px !important;
 }
 
 html[data-mode='dark'] .studioSlotEmpty.studioSlotCanDrop:hover,
 html[data-mode='dark'] .studioSlotEmpty.studioSlotCanDrop.studioSlotDragOver {
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
-  border-width: 2px !important;
   border-color: rgba(51, 112, 255, 0.55) !important;
+  border-width: 2px !important;
 }
 
 .studioSlotEmpty .studioSlotAdd {
-  transition: background 60ms ease-out, color 60ms ease-out, border-color 60ms ease-out, border-style 60ms ease-out, box-shadow 60ms ease-out, border-width 60ms ease-out;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, border-style 160ms ease, box-shadow 160ms ease;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.10);
@@ -818,7 +816,7 @@ html[data-mode='dark'] .studioSlotEmpty.studioSlotCanDrop.studioSlotDragOver .st
 .studioSlotEmpty .studioSlotHint {
   opacity: 0;
   transform: translateY(-2px);
-  transition: opacity 60ms ease-out, color 60ms ease-out, text-shadow 60ms ease-out, transform 60ms ease-out;
+  transition: opacity 160ms ease, color 160ms ease, text-shadow 160ms ease, transform 160ms ease;
 }
 
 .studioSlotEmpty.studioSlotCanDrop:hover .studioSlotHint,
@@ -1018,26 +1016,9 @@ html[data-mode='dark'] .studioPaletteSwatch {
 .studioColBody {
   flex: 1;
   min-height: 0;
-  min-width: 0;
-  overflow: auto;
   overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
-}
-
-.studioThemeRoot,
-.studioShellGrid,
-.studioThemeRoot .ant-select,
-.studioThemeRoot .ant-select-selection-wrap,
-.studioThemeRoot .ant-select-selection-search,
-.studioThemeRoot .ant-select-selection-item,
-.studioThemeRoot .ant-select-selection-placeholder {
-  min-width: 0;
-}
-
-.studioThemeRoot .ant-select-selection-item,
-.studioThemeRoot .ant-select-selection-placeholder {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .studioThemeRoot .ant-input,
@@ -1070,6 +1051,45 @@ html[data-mode='dark'] .studioThemeRoot .ant-select-focused .ant-select-selector
   box-shadow: 0 0 0 2px rgba(51, 112, 255, 0.18) !important;
 }
 
+.studioThemeRoot .ant-select-dropdown {
+  background: var(--studio-panel-card-bg) !important;
+  border: 1px solid var(--studio-field-border) !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55) !important;
+  padding: 6px !important;
+}
+
+.studioThemeRoot .ant-select-item-option {
+  border-radius: 10px;
+}
+
+.studioThemeRoot .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background: color-mix(in srgb, var(--studio-accent) 14%, transparent) !important;
+}
+
+.studioThemeRoot .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background: color-mix(in srgb, var(--studio-accent) 20%, transparent) !important;
+}
+
+.studioThemeRoot .ant-select-arrow {
+  color: rgba(189, 203, 227, 0.75) !important;
+}
+
+.studioThemeRoot .ant-select:hover .ant-select-arrow {
+  color: var(--studio-accent) !important;
+}
+
+.studioThemeRoot .ant-input-number-handler-wrap {
+  background: transparent !important;
+}
+
+.studioThemeRoot .ant-input-number-handler {
+  border-left-color: var(--studio-field-border) !important;
+}
+
+.studioThemeRoot .ant-input-number-handler:hover {
+  background: color-mix(in srgb, var(--studio-accent) 14%, transparent) !important;
+}
+
 .kpiTitle {
   font-size: 12px;
   font-weight: 600;
@@ -1083,7 +1103,7 @@ html[data-mode='light'] .kpiTitle {
 }
 
 .kpiUnit {
-  margin-left: 4px;
+  margin-left: 8px;
   font-size: 12px;
   font-weight: 700;
   color: rgba(189, 203, 227, 0.65);
@@ -1099,9 +1119,6 @@ html[data-mode='light'] .kpiUnit {
   justify-items: center;
   align-content: center;
   gap: 10px;
-  padding-inline: 16px;
-  padding-top: 12px;
-  box-sizing: border-box;
 }
 
 .flipRow {
@@ -1111,33 +1128,33 @@ html[data-mode='light'] .kpiUnit {
   gap: 6px;
   flex-wrap: nowrap;
   overflow: hidden;
-  transform: translateY(-2px);
+  transform: translateY(-6px);
 }
 
 .flipDigit {
-  width: 32px;
-  height: 48px;
+  width: 26px;
+  height: 38px;
   display: grid;
   place-items: center;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(245, 248, 255, 0.95);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: rgba(245, 248, 255, 0.92);
   font-weight: 900;
-  font-size: 32px;
+  font-size: 22px;
   line-height: 1;
-  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
   animation: flipJump 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
   will-change: transform;
 }
 
 html[data-mode='light'] .flipDigit {
-  background: rgba(31, 36, 48, 0.06);
-  border: 1px solid rgba(31, 36, 48, 0.15);
-  color: rgba(31, 36, 48, 0.95);
-  box-shadow: 0 12px 28px rgba(31, 36, 48, 0.12);
+  background: rgba(31, 36, 48, 0.04);
+  border: 1px solid rgba(31, 36, 48, 0.12);
+  color: rgba(31, 36, 48, 0.92);
+  box-shadow: 0 12px 28px rgba(31, 36, 48, 0.10);
 }
 
 @keyframes flipJump {
