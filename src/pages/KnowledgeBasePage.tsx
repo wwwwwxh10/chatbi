@@ -11,6 +11,7 @@ import {
   Row,
   Select,
   Space,
+  Tag,
   Typography,
   message,
   theme,
@@ -149,7 +150,7 @@ const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
       <div
         style={{
           height: 140,
-          borderRadius: 12,
+          borderRadius: 4,
           background: bg,
           overflow: 'hidden',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
@@ -199,24 +200,24 @@ const LogicTreeMini = ({ isDark, accent }: { isDark: boolean; accent: string }) 
   const soft = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.10)'
   return (
     <svg viewBox="0 0 280 72" width="100%" height="72" xmlns="http://www.w3.org/2000/svg">
-      <path d="M64 36H90" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M194 36H214" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M214 36V22" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M214 36V50" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M214 22H254" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M214 50H254" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M44 36H72" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M192 36H208" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M208 36V22" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M208 36V50" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M208 22H245" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M208 50H245" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
 
-      <circle cx="54" cy="36" r="7.2" fill={soft} />
-      <circle cx="54" cy="36" r="4.8" fill={accent} opacity="0.92" />
+      <circle cx="32" cy="36" r="7.2" fill={soft} />
+      <circle cx="32" cy="36" r="4.8" fill={accent} opacity="0.92" />
 
-      <rect x="90" y="23" width="104" height="26" rx="13" fill={fill} stroke={accent} strokeWidth="1.8" opacity="0.95" />
-      <path d="M108 36h56" stroke={accent} strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
-      <path d="M108 32.1h40" stroke={accent} strokeWidth="1.8" strokeLinecap="round" opacity="0.35" />
+      <rect x="72" y="23" width="120" height="26" rx="13" fill={fill} stroke={accent} strokeWidth="1.8" opacity="0.95" />
+      <path d="M92 36h64" stroke={accent} strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
+      <path d="M92 32.1h44" stroke={accent} strokeWidth="1.8" strokeLinecap="round" opacity="0.35" />
 
-      <circle cx="260" cy="22" r="5.2" fill={soft} />
-      <circle cx="260" cy="22" r="3.3" fill={accent} opacity="0.65" />
-      <circle cx="260" cy="50" r="5.2" fill={soft} />
-      <circle cx="260" cy="50" r="3.3" fill={accent} opacity="0.65" />
+      <circle cx="250" cy="22" r="5.2" fill={soft} />
+      <circle cx="250" cy="22" r="3.3" fill={accent} opacity="0.65" />
+      <circle cx="250" cy="50" r="5.2" fill={soft} />
+      <circle cx="250" cy="50" r="3.3" fill={accent} opacity="0.65" />
     </svg>
   )
 }
@@ -234,6 +235,7 @@ const BaseCard = ({
   cardHeight,
   contentPaddingTop,
   titleRows,
+  bodyPaddingBottom,
   isDark,
   token,
 }: {
@@ -249,6 +251,7 @@ const BaseCard = ({
   cardHeight?: number
   contentPaddingTop?: number
   titleRows?: number
+  bodyPaddingBottom?: number
   isDark: boolean
   token: any
 }) => {
@@ -328,7 +331,14 @@ const BaseCard = ({
         bordered
         onClick={onView}
         className={menu.openId === id ? 'dsCard dsCardActive' : 'dsCard'}
-        styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
+        styles={{
+          body: {
+            padding: `16px 16px ${bodyPaddingBottom ?? 8}px`,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          },
+        }}
         style={{
           borderRadius: 14,
           background: token.colorBgContainer,
@@ -391,7 +401,9 @@ const BaseCard = ({
           </span>
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, paddingTop: contentPaddingTop ?? 8, overflow: 'hidden' }}>{children}</div>
+        <div style={{ flex: 1, minHeight: 0, paddingTop: contentPaddingTop ?? 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {children}
+        </div>
       </Card>
     </div>
   )
@@ -435,8 +447,6 @@ const TermCard = ({
 }) => {
   const tags = item.synonyms.slice(0, 3)
   const rest = Math.max(0, item.synonyms.length - tags.length)
-  const tagBg = isDark ? 'rgba(43, 92, 246, 0.14)' : 'rgba(43, 92, 246, 0.10)'
-  const tagBorder = isDark ? 'rgba(43, 92, 246, 0.22)' : 'rgba(43, 92, 246, 0.18)'
 
   return (
     <BaseCard
@@ -448,25 +458,23 @@ const TermCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={152}
+      cardHeight={124}
       contentPaddingTop={8}
       isDark={isDark}
       token={token}
     >
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 8, overflow: 'hidden' }}>
         {tags.map((s) => (
-          <span key={s} style={{ padding: '3px 10px', borderRadius: 10, background: tagBg, border: `1px solid ${tagBorder}`, color: token.colorPrimary, fontSize: 11, fontWeight: 650 }}>
-            {s}
-          </span>
+          <Tag key={s} style={{ marginInlineEnd: 0 }}>
+            <span style={{ color: token.colorPrimary, fontWeight: 400 }}>{s}</span>
+          </Tag>
         ))}
         {rest > 0 ? (
-          <span style={{ padding: '3px 10px', borderRadius: 10, background: tagBg, border: `1px solid ${tagBorder}`, color: token.colorTextSecondary, fontSize: 11, fontWeight: 650 }}>
-            +{rest}
-          </span>
+          <Tag style={{ marginInlineEnd: 0, color: token.colorTextSecondary }}>+{rest}</Tag>
         ) : null}
       </div>
       {item.desc ? (
-        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 8, marginBottom: 0, minHeight: 38, fontSize: 12, lineHeight: 1.6, color: token.colorTextSecondary }}>
+        <Typography.Paragraph ellipsis={{ rows: 1 }} style={{ marginTop: 12, marginBottom: 0, minHeight: 20, fontSize: 12, lineHeight: 1.6, color: token.colorTextSecondary }}>
           {item.desc}
         </Typography.Paragraph>
       ) : null}
@@ -505,23 +513,19 @@ const MetricCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={198}
+      cardHeight={130}
+      titleRows={1}
       isDark={isDark}
       token={token}
     >
-      <div style={{ borderRadius: 12, background: contentBg, border: 'none', padding: 12 }}>
+      <div style={{ borderRadius: 4, background: contentBg, border: 'none', padding: 10 }}>
         <Typography.Paragraph
           ellipsis={{ rows: 2 }}
-          style={{ margin: 0, minHeight: 41, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.7, color: token.colorText }}
+          style={{ margin: 0, minHeight: 38, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.6, color: token.colorText }}
         >
           {highlightAggregates(code)}
         </Typography.Paragraph>
       </div>
-      {item.definition ? (
-        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 8, marginBottom: 0, minHeight: 38, fontSize: 12, lineHeight: 1.6, color: token.colorTextSecondary }}>
-          {item.definition}
-        </Typography.Paragraph>
-      ) : null}
     </BaseCard>
   )
 }
@@ -543,7 +547,7 @@ const RegexCard = ({
   isDark: boolean
   token: any
 }) => {
-  const green = isDark ? 'rgba(34,197,94,0.95)' : 'rgba(22,163,74,0.95)'
+  const blue = token.colorPrimary
   const innerBg = isDark ? 'rgba(8, 13, 23, 0.58)' : token.colorFillTertiary
   const dashed = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(15,23,42,0.12)'
 
@@ -557,38 +561,38 @@ const RegexCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={196}
+      cardHeight={152}
       titleRows={1}
       contentPaddingTop={8}
       isDark={isDark}
       token={token}
     >
-      <div style={{ borderRadius: 12, background: innerBg, border: 'none', padding: 10 }}>
+      <div style={{ borderRadius: 4, background: innerBg, border: 'none', padding: 8 }}>
         <Typography.Paragraph
           ellipsis={{ rows: 1 }}
-          style={{ margin: 0, minHeight: 20, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.5, color: green, fontWeight: 750 }}
+          style={{ margin: 0, minHeight: 18, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.4, color: blue, fontWeight: 750 }}
         >
           /{String(item.pattern ?? '').replace(/^\^|\$$/g, '')}/
         </Typography.Paragraph>
 
-        <div style={{ marginTop: 6, borderTop: `1px dashed ${dashed}` }} />
+        <div style={{ marginTop: 4, borderTop: `1px dashed ${dashed}` }} />
 
-        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 3px minmax(0, 1fr)', alignItems: 'stretch', gap: 10 }}>
+        <div style={{ marginTop: 6, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 3px minmax(0, 1fr)', alignItems: 'stretch', gap: 10 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 4 }}>输入样例</div>
+            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 2 }}>输入样例</div>
             <Typography.Paragraph
               ellipsis={{ rows: 1 }}
-              style={{ margin: 0, minHeight: 20, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 13, lineHeight: 1.45, color: token.colorTextSecondary }}
+              style={{ margin: 0, minHeight: 18, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.4, color: token.colorTextSecondary }}
             >
               {item.exampleIn || '-'}
             </Typography.Paragraph>
           </div>
-          <div style={{ width: 3, borderRadius: 999, background: green, opacity: 0.75 }} />
+          <div style={{ width: 3, borderRadius: 999, background: blue, opacity: 0.75 }} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 4 }}>标准输出</div>
+            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 2 }}>标准输出</div>
             <Typography.Paragraph
               ellipsis={{ rows: 1 }}
-              style={{ margin: 0, minHeight: 20, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 13, lineHeight: 1.45, color: green, fontWeight: 750 }}
+              style={{ margin: 0, minHeight: 18, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.4, color: blue, fontWeight: 750 }}
             >
               {item.exampleOut || '-'}
             </Typography.Paragraph>
@@ -628,16 +632,16 @@ const LogicTreeCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={224}
+      cardHeight={218}
       titleRows={1}
       isDark={isDark}
       token={token}
     >
-      <div style={{ borderRadius: 12, background: innerBg, border: 'none', padding: 10 }}>
+      <div style={{ borderRadius: 4, background: innerBg, border: 'none', padding: 12 }}>
         <LogicTreeMini isDark={isDark} accent={token.colorPrimary} />
       </div>
       {item.scenario ? (
-        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 6, marginBottom: 0, minHeight: 38, fontSize: 12, lineHeight: 1.6, color: token.colorTextSecondary }}>
+        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 10, marginBottom: 0, minHeight: 38, fontSize: 12, lineHeight: 1.6, color: token.colorTextSecondary }}>
           {item.scenario}
         </Typography.Paragraph>
       ) : null}
@@ -671,7 +675,7 @@ const SqlExampleCard = ({
     onDelete={onDelete}
     onView={onView}
     menu={menu}
-    cardHeight={212}
+    cardHeight={206}
     isDark={isDark}
     token={token}
   >
@@ -787,7 +791,7 @@ export default function KnowledgeBasePage() {
     if (!editorOpen) return
 
     if (!editing) {
-      if (tab === 'terms') form.setFieldsValue({ term: '', synonyms: [] })
+      if (tab === 'terms') form.setFieldsValue({ term: '', synonyms: [], desc: '' })
       if (tab === 'metrics') form.setFieldsValue({ name: '', formula: '' })
       if (tab === 'regex') form.setFieldsValue({ name: '', pattern: '' })
       if (tab === 'logic-tree') form.setFieldsValue({ name: '', scenario: '', steps: '' })
@@ -795,7 +799,7 @@ export default function KnowledgeBasePage() {
       return
     }
 
-    if (editing.category === 'terms') form.setFieldsValue({ term: editing.term, synonyms: editing.synonyms })
+    if (editing.category === 'terms') form.setFieldsValue({ term: editing.term, synonyms: editing.synonyms, desc: editing.desc })
     if (editing.category === 'metrics') form.setFieldsValue({ name: editing.name, formula: editing.formula })
     if (editing.category === 'regex') form.setFieldsValue({ name: editing.name, pattern: editing.pattern })
     if (editing.category === 'logic-tree') form.setFieldsValue({ name: editing.name, scenario: editing.scenario, steps: editing.steps })
@@ -973,13 +977,14 @@ export default function KnowledgeBasePage() {
     if (tab === 'terms') {
       const term = String((v as any).term ?? '').trim()
       const synonyms = uniqTrim((v as any).synonyms)
+      const desc = String((v as any).desc ?? '').trim()
       if (!term) return
       const next: KnowledgeItem = {
         id: editing?.id ?? nowId(),
         category: 'terms',
         term,
         synonyms,
-        desc: editing?.category === 'terms' ? editing.desc : '',
+        desc,
         updatedAt,
         referenceCount: preservedReferenceCount,
       }
@@ -1232,6 +1237,9 @@ export default function KnowledgeBasePage() {
               </Form.Item>
               <Form.Item name="synonyms" label="同义词" initialValue={[] as string[]} required rules={[{ type: 'array', min: 1, required: true, message: t('validation.required') }]}>
                 <Select disabled={isViewMode} mode="tags" tokenSeparators={[',', '，', ' ']} placeholder="例如：用户产值 平均收入 每用户收入" />
+              </Form.Item>
+              <Form.Item name="desc" label="描述" rules={[{ required: true, message: t('validation.required') }]}>
+                <Input.TextArea disabled={isViewMode} rows={3} placeholder="补充术语解释与使用口径" />
               </Form.Item>
             </>
           ) : null}

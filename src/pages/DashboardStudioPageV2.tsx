@@ -1038,13 +1038,13 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       rows: number,
     ) => {
       const cols = 12
-      const padX = 2
-      const padY = 6
-      const gap = 4
+      const padX = 0
+      const padY = 0
+      const gap = 3
       const cellW = (160 - padX * 2 - gap * (cols - 1)) / cols
       const cellH = (110 - padY * 2 - gap * (rows - 1)) / rows
       return (
-        <svg viewBox="0 0 160 110" width="100%" height={64} preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <svg viewBox="0 0 160 110" width="100%" height={74} preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
           {items.map((it, i) => {
             const x = padX + (it.colStart - 1) * (cellW + gap)
             const y = padY + (it.rowStart - 1) * (cellH + gap)
@@ -1137,7 +1137,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const CustomGridPreview = () => {
     return (
-      <div style={{ height: 86, borderRadius: 10, border: `1px dashed ${token.colorSplit}`, display: 'grid', placeItems: 'center', color: token.colorTextTertiary }}>
+      <div style={{ height: 90, borderRadius: 10, border: `1px dashed ${token.colorSplit}`, display: 'grid', placeItems: 'center', color: token.colorTextTertiary }}>
         <svg width="30" height="30" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 7h16M4 12h16M4 17h16M7 4v16M12 4v16M17 4v16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.9" />
         </svg>
@@ -1255,14 +1255,25 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
         className="studioShellGrid"
         style={{ height: '100%', display: 'grid', gridTemplateColumns: '300px 1fr 300px', minHeight: 0, position: 'relative' }}
       >
-        <div style={{ borderRight: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{
+            borderRight: `1px solid ${token.colorSplit}`,
+            background: sidePanelBg,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            zIndex: 3,
+            boxShadow: 'inset -10px 0 18px rgba(0,0,0,0.18)',
+          }}
+        >
           <div className="studioColHeader" style={{ background: sidePanelBg }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10 }}>
               <Button type="text" onClick={() => navigate('/dashboard')} className="iconOnly" aria-label="返回" icon={<ArrowLeft size={18} />} />
               <Typography.Text strong>组件库</Typography.Text>
             </div>
           </div>
-          <div className="studioColBody" style={{ padding: 12 }}>
+          <div className="studioColBody studioLibraryBody" style={{ padding: 12 }}>
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               {libraryGroups.map((g) => (
                 <div key={g.label}>
@@ -1421,7 +1432,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
                       gridTemplateRows: `repeat(${freeRows}, minmax(0, 1fr))`,
                       gap,
-                      zIndex: 0,
+                      zIndex: 30,
                       pointerEvents: 'auto',
                       padding: gap,
                       cursor: 'crosshair',
@@ -1534,8 +1545,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                               background: `${accent}10`,
                               border: `1px solid ${accent}B8`,
                               borderRadius: 14,
-                              boxShadow: `0 0 0 1px ${accent}22`,
-                              zIndex: 2,
+                              boxShadow: `0 0 0 1px ${accent}22, 0 0 12px ${accent}2e`,
+                              zIndex: 40,
                             }}
                           >
                             <div
@@ -1552,6 +1563,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                 fontWeight: 800,
                                 lineHeight: 1,
                                 whiteSpace: 'nowrap',
+                                zIndex: 60,
                               }}
                             >
                               {rowSpan}行*{colSpan}列
@@ -1559,10 +1571,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                               {(
                                 [
-                                  { top: 0, left: 0, borders: ['borderTop', 'borderLeft'] as const },
-                                  { top: 0, right: 0, borders: ['borderTop', 'borderRight'] as const },
-                                  { bottom: 0, left: 0, borders: ['borderBottom', 'borderLeft'] as const },
-                                  { bottom: 0, right: 0, borders: ['borderBottom', 'borderRight'] as const },
+                                  { top: 0, left: 0, borders: ['borderBottom', 'borderRight'] as const },
+                                  { top: 0, right: 0, borders: ['borderBottom', 'borderLeft'] as const },
+                                  { bottom: 0, left: 0, borders: ['borderTop', 'borderRight'] as const },
+                                  { bottom: 0, right: 0, borders: ['borderTop', 'borderLeft'] as const },
                                 ] as Array<{
                                   top?: number
                                   right?: number
@@ -1573,17 +1585,17 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                               ).map((p, i) => {
                                 const style: any = {
                                   position: 'absolute',
-                                  width: 15,
-                                  height: 15,
+                                  width: 18,
+                                  height: 18,
                                   borderColor: accent,
                                   borderStyle: 'solid',
                                   borderRadius: 0,
                                 }
-                                if (p.top != null) style.top = 0
-                                if (p.bottom != null) style.bottom = 0
-                                if (p.left != null) style.left = 0
-                                if (p.right != null) style.right = 0
-                                for (const k of p.borders) style[k] = '2px'
+                                if (p.top != null) style.top = -2
+                                if (p.bottom != null) style.bottom = -2
+                                if (p.left != null) style.left = -2
+                                if (p.right != null) style.right = -2
+                                for (const k of p.borders) style[k] = '18px'
                                 return <div key={i} style={style} />
                               })}
                             </div>
@@ -1787,10 +1799,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           </div>
                           {(
                             [
-                              { top: 0, left: 0, borders: ['borderTop', 'borderLeft'] as const },
-                              { top: 0, right: 0, borders: ['borderTop', 'borderRight'] as const },
-                              { bottom: 0, left: 0, borders: ['borderBottom', 'borderLeft'] as const },
-                              { bottom: 0, right: 0, borders: ['borderBottom', 'borderRight'] as const },
+                              { top: 0, left: 0, borders: ['borderBottom', 'borderRight'] as const },
+                              { top: 0, right: 0, borders: ['borderBottom', 'borderLeft'] as const },
+                              { bottom: 0, left: 0, borders: ['borderTop', 'borderRight'] as const },
+                              { bottom: 0, right: 0, borders: ['borderTop', 'borderLeft'] as const },
                             ] as Array<{
                               top?: number
                               right?: number
@@ -1801,17 +1813,17 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           ).map((p, i) => {
                             const style: any = {
                               position: 'absolute',
-                              width: 15,
-                              height: 15,
+                              width: 18,
+                              height: 18,
                               borderColor: accent,
                               borderStyle: 'solid',
                               borderRadius: 0,
                             }
-                            if (p.top != null) style.top = 0
-                            if (p.bottom != null) style.bottom = 0
-                            if (p.left != null) style.left = 0
-                            if (p.right != null) style.right = 0
-                            for (const k of p.borders) style[k] = '2px'
+                            if (p.top != null) style.top = -2
+                            if (p.bottom != null) style.bottom = -2
+                            if (p.left != null) style.left = -2
+                            if (p.right != null) style.right = -2
+                            for (const k of p.borders) style[k] = '18px'
                             return <div key={i} style={style} />
                           })}
                         </div>
@@ -1910,7 +1922,18 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           ) : null}
         </Modal>
 
-        <div style={{ borderLeft: `1px solid ${token.colorSplit}`, background: sidePanelBg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{
+            borderLeft: `1px solid ${token.colorSplit}`,
+            background: sidePanelBg,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            zIndex: 3,
+            boxShadow: 'inset 10px 0 18px rgba(0,0,0,0.18)',
+          }}
+        >
           <div className="studioColHeader" style={{ background: sidePanelBg }}>
             <Typography.Text strong>页面配置</Typography.Text>
           </div>
@@ -1927,7 +1950,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               )
 
               return (
-                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <div style={{ width: '100%', minHeight: '100%', display: 'grid', gridAutoRows: 'min-content', rowGap: 14, alignContent: 'space-between' }}>
                   <div>
                     <RequiredLabel label="名称" />
                     <div style={{ height: 6 }} />
@@ -2156,7 +2179,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 <div>
                   <RequiredLabel label="页面布局" />
                   <div style={{ height: 6 }} />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {(
                       [
                         { key: 'main-sub' as const, title: '主次布局', desc: '主次分明/主体突出', icon: <LayoutWireframe kind="main-sub" /> },
@@ -2181,12 +2204,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
                             background: 'var(--studio-panel-card-bg)',
                             cursor: readOnly ? 'default' : 'pointer',
-                            padding: 10,
+                            padding: 8,
                             opacity: readOnly ? 0.9 : 1,
                           }}
                         >
                           <div style={{ paddingInline: 0 }}>{it.icon}</div>
-                          <div style={{ height: 4 }} />
+                          <div style={{ height: 3 }} />
                           <div style={{ paddingInline: 0 }}>
                             <Typography.Text strong style={{ display: 'block', lineHeight: 1.25, textAlign: 'left' }}>
                               {it.title}

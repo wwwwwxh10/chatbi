@@ -42,6 +42,7 @@ import type { MessageResult } from './chat/chatUtils'
 import { CHART_PALETTES, KIND_NAME, THEME_ACCENT } from './studioModel'
 import type { StudioAppearance, StudioLayout, WidgetKind } from './studioModel'
 import { enhanceDashboardChartOption } from './dashboardChartInteractions'
+import { useDashboardsStore } from '../store/dashboardsStore'
 import {
   buildAreaOption,
   buildBarOption,
@@ -1009,13 +1010,42 @@ function nowId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+function parseStudioAppearanceFromConfig(configText: string | undefined | null): StudioAppearance | null {
+  if (!configText) return null
+  try {
+    const obj: any = JSON.parse(configText)
+    const a = obj?.appearance
+    if (!a || typeof a !== 'object') return null
+    const language = a.language === 'en-US' ? 'en-US' : 'zh-CN'
+    const timeZone = typeof a.timeZone === 'string' && a.timeZone.trim() ? a.timeZone : 'Asia/Shanghai'
+    const theme = a.theme === 'obsidian' || a.theme === 'cyber' || a.theme === 'tech' ? a.theme : 'cyber'
+    const chartPalette = typeof a.chartPalette === 'string' && (a.chartPalette as any) in CHART_PALETTES ? (a.chartPalette as any) : 'cyber'
+    return { language, timeZone, theme, chartPalette }
+  } catch {
+    return null
+  }
+}
+
 export default function DashboardChatWorkspacePage() {
   const { token } = theme.useToken()
+
+  const dashboards = useDashboardsStore((s) => s.items)
 
   const debugStudio = useMemo(() => {
     if (typeof window === 'undefined') return false
     return new URLSearchParams(window.location.search).get('debug') === 'studio'
   }, [])
+
+  const dashboardId = useMemo(() => {
+    if (typeof window === 'undefined') return ''
+    return String(new URLSearchParams(window.location.search).get('dashboardId') ?? '')
+  }, [])
+
+  const dashboardAppearance = useMemo(() => {
+    if (!dashboardId) return null
+    const item = dashboards.find((x) => x.id === dashboardId)
+    return parseStudioAppearanceFromConfig(item?.configText ?? null)
+  }, [dashboardId, dashboards])
 
   const studioPayload = useMemo(() => {
     if (!debugStudio) return null
@@ -1028,10 +1058,9 @@ export default function DashboardChatWorkspacePage() {
     }
   }, [debugStudio])
 
-  const previewAppearance = studioPayload?.appearance
-  const previewTheme = previewAppearance?.theme
-  const panelTheme = previewTheme === 'obsidian' || previewTheme === 'cyber' || previewTheme === 'tech' ? previewTheme : null
-  const panelPalette = previewAppearance?.chartPalette
+  const panelAppearance = debugStudio ? studioPayload?.appearance : dashboardAppearance
+  const panelTheme = panelAppearance?.theme === 'obsidian' || panelAppearance?.theme === 'cyber' || panelAppearance?.theme === 'tech' ? panelAppearance.theme : null
+  const panelPalette = panelAppearance?.chartPalette
   const previewPalette = panelPalette ? CHART_PALETTES[panelPalette] : null
   const panelAccent = previewPalette?.colors?.[0] ?? (panelTheme === 'obsidian' ? token.colorPrimary : panelTheme ? THEME_ACCENT[panelTheme] : token.colorPrimary)
   const panelBg =
@@ -1044,6 +1073,7 @@ export default function DashboardChatWorkspacePage() {
           : 'rgba(10, 14, 24, 0.92)'
   const panelBorderColor = panelTheme ? 'rgba(255,255,255,0.10)' : token.colorSplit
   const debugStudioBg = panelTheme === 'obsidian' ? token.colorBgLayout : '#03060c'
+
   const debugStudioGap = useMemo(() => {
     const layout: any = (studioPayload as any)?.layout
     if (!debugStudio || !layout) return 0
@@ -2097,6 +2127,8 @@ export default function DashboardChatWorkspacePage() {
                                       height: chartType === 'funnel' ? 240 : 320,
                                       overflow: 'hidden',
                                       padding: 0,
+                                      borderRadius: 10,
+                                      background: 'var(--chatbi-llm-bg)',
                                     }}
                                   >
                                     <EChart key={chartType} option={activeOption || {}} />
@@ -2110,6 +2142,8 @@ export default function DashboardChatWorkspacePage() {
                                     height: 320,
                                     overflow: 'hidden',
                                     padding: 0,
+                                    borderRadius: 10,
+                                    background: 'var(--chatbi-llm-bg)',
                                   }}
                                 >
                                   {activeResult.table ? (

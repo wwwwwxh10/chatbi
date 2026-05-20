@@ -106,7 +106,7 @@ export function Sidebar({
         {
           key: 'kb:regex',
           icon: (
-            <span style={{ width: 26, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ width: 18, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
               <KbRegexIcon size={16} />
             </span>
           ),

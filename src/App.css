@@ -539,16 +539,18 @@ html[data-mode='light'] .dashboardInspiration {
   border-radius: 10px;
   padding: 12px;
   transition: background-color 200ms ease-out;
+  background: var(--chatbi-llm-bg);
+  color: var(--chatbi-llm-text);
 }
 
-html[data-mode='dark'] .llmOutputBox {
-  background: rgba(255, 255, 255, 0.045);
-  color: rgba(255, 255, 255, 0.92);
+html[data-mode='dark'] {
+  --chatbi-llm-bg: rgba(255, 255, 255, 0.045);
+  --chatbi-llm-text: rgba(255, 255, 255, 0.92);
 }
 
-html[data-mode='light'] .llmOutputBox {
-  background: #f5f5f5;
-  color: rgba(0, 0, 0, 0.88);
+html[data-mode='light'] {
+  --chatbi-llm-bg: #f5f5f5;
+  --chatbi-llm-text: rgba(0, 0, 0, 0.88);
 }
 
 html[data-mode='dark'] .chatInputBox {
@@ -974,13 +976,13 @@ html[data-mode='dark'] .studioPaletteCard:not(.studioPaletteCardDisabled):hover 
 .studioPaletteSwatches {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex: none;
 }
 
 .studioPaletteSwatch {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 4px;
   border: none;
   box-shadow: none;
@@ -1025,6 +1027,16 @@ html[data-mode='dark'] .studioPaletteSwatch {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.studioLibraryBody {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.studioLibraryBody::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .studioThemeRoot .ant-input,
