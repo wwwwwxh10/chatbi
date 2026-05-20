@@ -9,7 +9,6 @@ import {
   ChevronsRight,
   Database,
   GitBranch,
-  Regex,
   Sigma,
 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -19,6 +18,7 @@ import { useSystemStore } from '../store/systemStore'
 import { useEffect, useMemo, useState } from 'react'
 import { AppLogoMark } from './logo/AppLogoMark'
 import { AppLogoWordmark } from './logo/AppLogoWordmark'
+import { KbRegexIcon } from './icons/KbRegexIcon'
 
 export type KnowledgeTabKey =
   | 'terms'
@@ -103,7 +103,15 @@ export function Sidebar({
       children: [
         { key: 'kb:terms', icon: <BookOpen size={16} />, label: t('kb.terms') },
         { key: 'kb:metrics', icon: <Sigma size={16} />, label: t('kb.metrics') },
-        { key: 'kb:regex', icon: <Regex size={16} />, label: t('kb.regex') },
+        {
+          key: 'kb:regex',
+          icon: (
+            <span style={{ width: 26, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <KbRegexIcon size={16} />
+            </span>
+          ),
+          label: t('kb.regex'),
+        },
         { key: 'kb:logic-tree', icon: <GitBranch size={16} />, label: t('kb.logicTree') },
         { key: 'kb:sql-examples', icon: <Code2 size={16} />, label: t('kb.sqlExamples') },
       ],

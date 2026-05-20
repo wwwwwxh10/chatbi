@@ -1137,7 +1137,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const CustomGridPreview = () => {
     return (
-      <div style={{ height: 64, borderRadius: 10, border: `1px dashed ${token.colorSplit}`, display: 'grid', placeItems: 'center', color: token.colorTextTertiary }}>
+      <div style={{ height: 86, borderRadius: 10, border: `1px dashed ${token.colorSplit}`, display: 'grid', placeItems: 'center', color: token.colorTextTertiary }}>
         <svg width="30" height="30" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 7h16M4 12h16M4 17h16M7 4v16M12 4v16M17 4v16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.9" />
         </svg>
@@ -1342,9 +1342,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   {title.trim() || '未命名仪表盘'}
                 </Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {appearance.language === 'en-US'
-                    ? `Theme ${THEME_NAME[appearance.theme]} · Palette ${CHART_PALETTES[appearance.chartPalette].name}`
-                    : `主题风格 ${THEME_NAME[appearance.theme]} · 图表色系 ${CHART_PALETTES[appearance.chartPalette].name}`}
+                  {THEME_NAME[appearance.theme]} · {CHART_PALETTES[appearance.chartPalette].name}
                 </Typography.Text>
               </div>
             </Space>
@@ -1520,16 +1518,78 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       </div>
                     ) : null}
                     {freeStartPoint && freeHoverPoint ? (
-                      <div
-                        style={{
-                          gridColumn: `${Math.min(freeStartPoint.c, freeHoverPoint.c)} / span ${Math.abs(freeStartPoint.c - freeHoverPoint.c) + 1}`,
-                          gridRow: `${Math.min(freeStartPoint.r, freeHoverPoint.r)} / span ${Math.abs(freeStartPoint.r - freeHoverPoint.r) + 1}`,
-                          background: `${accent}14`,
-                          border: `2px solid ${accent}AA`,
-                          borderRadius: 12,
-                          boxShadow: `0 0 0 1px ${accent}33, 0 0 18px ${accent}26`,
-                        }}
-                      />
+                      (() => {
+                        const rowStart = Math.min(freeStartPoint.r, freeHoverPoint.r)
+                        const rowEnd = Math.max(freeStartPoint.r, freeHoverPoint.r)
+                        const colStart = Math.min(freeStartPoint.c, freeHoverPoint.c)
+                        const colEnd = Math.max(freeStartPoint.c, freeHoverPoint.c)
+                        const rowSpan = rowEnd - rowStart + 1
+                        const colSpan = colEnd - colStart + 1
+                        return (
+                          <div
+                            style={{
+                              gridColumn: `${colStart} / span ${colSpan}`,
+                              gridRow: `${rowStart} / span ${rowSpan}`,
+                              position: 'relative',
+                              background: `${accent}10`,
+                              border: `1px solid ${accent}B8`,
+                              borderRadius: 14,
+                              boxShadow: `0 0 0 1px ${accent}22`,
+                              zIndex: 2,
+                            }}
+                          >
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: 12,
+                                top: -26,
+                                padding: '4px 9px',
+                                borderRadius: 8,
+                                background: 'rgba(6, 10, 18, 0.92)',
+                                border: `1px solid ${accent}66`,
+                                color: accent,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                lineHeight: 1,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {rowSpan}行*{colSpan}列
+                            </div>
+                            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                              {(
+                                [
+                                  { top: 0, left: 0, borders: ['borderTop', 'borderLeft'] as const },
+                                  { top: 0, right: 0, borders: ['borderTop', 'borderRight'] as const },
+                                  { bottom: 0, left: 0, borders: ['borderBottom', 'borderLeft'] as const },
+                                  { bottom: 0, right: 0, borders: ['borderBottom', 'borderRight'] as const },
+                                ] as Array<{
+                                  top?: number
+                                  right?: number
+                                  bottom?: number
+                                  left?: number
+                                  borders: ReadonlyArray<'borderTop' | 'borderRight' | 'borderBottom' | 'borderLeft'>
+                                }>
+                              ).map((p, i) => {
+                                const style: any = {
+                                  position: 'absolute',
+                                  width: 15,
+                                  height: 15,
+                                  borderColor: accent,
+                                  borderStyle: 'solid',
+                                  borderRadius: 0,
+                                }
+                                if (p.top != null) style.top = 0
+                                if (p.bottom != null) style.bottom = 0
+                                if (p.left != null) style.left = 0
+                                if (p.right != null) style.right = 0
+                                for (const k of p.borders) style[k] = '2px'
+                                return <div key={i} style={style} />
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })()
                     ) : null}
 
                     {Array.from({ length: freeRows * 12 }).map((_, i) => {
@@ -1602,7 +1662,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                   : panelBg,
                         position: 'relative',
                         zIndex: layout.mode === 'free' ? 2 : 1,
-                        overflow: 'hidden',
+                        overflow: layout.mode === 'free' ? 'visible' : 'hidden',
                         cursor: slot.kind ? 'default' : !readOnly && !previewMode ? 'pointer' : 'default',
                         boxShadow: undefined,
                         outline: undefined,
@@ -1706,16 +1766,16 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       ) : null}
 
                       {layout.mode === 'free' && isSelected && slot.kind ? (
-                        <div style={{ position: 'absolute', inset: -2, pointerEvents: 'none', zIndex: 22 }}>
+                        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 22 }}>
                           <div
                             style={{
                               position: 'absolute',
                               left: 12,
-                              top: -22,
-                              padding: '3px 8px',
+                              top: -26,
+                              padding: '4px 9px',
                               borderRadius: 8,
                               background: 'rgba(6, 10, 18, 0.92)',
-                              border: `1px solid ${accent}55`,
+                              border: `1px solid ${accent}66`,
                               color: accent,
                               fontSize: 12,
                               fontWeight: 800,
@@ -1741,22 +1801,25 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           ).map((p, i) => {
                             const style: any = {
                               position: 'absolute',
-                              width: 16,
-                              height: 16,
+                              width: 15,
+                              height: 15,
                               borderColor: accent,
                               borderStyle: 'solid',
+                              borderRadius: 0,
                             }
-                            if (p.top != null) style.top = p.top
-                            if (p.bottom != null) style.bottom = p.bottom
-                            if (p.left != null) style.left = p.left
-                            if (p.right != null) style.right = p.right
+                            if (p.top != null) style.top = 0
+                            if (p.bottom != null) style.bottom = 0
+                            if (p.left != null) style.left = 0
+                            if (p.right != null) style.right = 0
                             for (const k of p.borders) style[k] = '2px'
                             return <div key={i} style={style} />
                           })}
                         </div>
                       ) : null}
 
-                      {slotBodies[idx]}
+                      <div style={{ height: '100%', borderRadius: 14, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+                        {slotBodies[idx]}
+                      </div>
                     </div>
                   )
                 })}
@@ -2118,7 +2181,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
                             background: 'var(--studio-panel-card-bg)',
                             cursor: readOnly ? 'default' : 'pointer',
-                            padding: 6,
+                            padding: 10,
                             opacity: readOnly ? 0.9 : 1,
                           }}
                         >
@@ -2143,66 +2206,66 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             })()}
 
             {layout.mode === 'free' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                    <div>
-                      <Space size={6}>
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          列数
-                        </Typography.Text>
-                        <Tooltip title="网格列数（默认 12）">
-                          <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
-                        </Tooltip>
-                      </Space>
-                      <div style={{ height: 6 }} />
-                      <InputNumber
-                        style={{ width: '100%' }}
-                        min={4}
-                        max={24}
-                        value={layout.cols}
-                        disabled={readOnly}
-                        onChange={(v) => setLayout((p) => (p.mode === 'free' ? { ...p, cols: Number(v || 12) } : p))}
-                      />
-                    </div>
-                    <div>
-                      <Space size={6}>
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          行数
-                        </Typography.Text>
-                        <Tooltip title="网格行数（默认 8）">
-                          <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
-                        </Tooltip>
-                      </Space>
-                      <div style={{ height: 6 }} />
-                      <InputNumber
-                        style={{ width: '100%' }}
-                        min={2}
-                        max={24}
-                        value={layout.rows}
-                        disabled={readOnly}
-                        onChange={(v) => setLayout((p) => (p.mode === 'free' ? { ...p, rows: Number(v || 8) } : p))}
-                      />
-                    </div>
-                    <div>
-                      <Space size={6}>
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          间距
-                        </Typography.Text>
-                        <Tooltip title="网格间距（像素）">
-                          <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
-                        </Tooltip>
-                      </Space>
-                      <div style={{ height: 6 }} />
-                      <InputNumber
-                        style={{ width: '100%' }}
-                        min={0}
-                        max={40}
-                        value={layout.gap}
-                        disabled={readOnly}
-                        onChange={(v) => setLayout((p) => (p.mode === 'free' ? { ...p, gap: Number(v || 16) } : p))}
-                      />
-                    </div>
-                  </div>
-                ) : null}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                <div>
+                  <Space size={6}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      列数
+                    </Typography.Text>
+                    <Tooltip title="网格列数（默认 12）">
+                      <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
+                    </Tooltip>
+                  </Space>
+                  <div style={{ height: 6 }} />
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={4}
+                    max={24}
+                    value={layout.cols}
+                    disabled={readOnly}
+                    onChange={(v) => setLayout((p) => (p.mode === 'free' ? { ...p, cols: Number(v || 12) } : p))}
+                  />
+                </div>
+                <div>
+                  <Space size={6}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      行数
+                    </Typography.Text>
+                    <Tooltip title="网格行数（默认 8）">
+                      <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
+                    </Tooltip>
+                  </Space>
+                  <div style={{ height: 6 }} />
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={2}
+                    max={24}
+                    value={layout.rows}
+                    disabled={readOnly}
+                    onChange={(v) => setLayout((p) => (p.mode === 'free' ? { ...p, rows: Number(v || 8) } : p))}
+                  />
+                </div>
+                <div>
+                  <Space size={6}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      间距
+                    </Typography.Text>
+                    <Tooltip title="网格间距（像素）">
+                      <InfoCircleOutlined style={{ color: token.colorTextTertiary }} />
+                    </Tooltip>
+                  </Space>
+                  <div style={{ height: 6 }} />
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    max={40}
+                    value={layout.gap}
+                    disabled={readOnly}
+                    onChange={(v) => setLayout((p) => (p.mode === 'free' ? { ...p, gap: Number(v || 16) } : p))}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 

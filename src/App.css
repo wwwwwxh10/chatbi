@@ -100,8 +100,8 @@ body.appModalInset .ant-modal-root .ant-modal-wrap {
 }
 
 .biSparkleIcon {
-  width: 22px;
-  height: 22px;
+  width: var(--bi-sparkle-size, 22px);
+  height: var(--bi-sparkle-size, 22px);
   display: inline-grid;
   place-items: center;
   flex: none;
@@ -110,8 +110,8 @@ body.appModalInset .ant-modal-root .ant-modal-wrap {
 }
 
 .biSparkleIcon svg {
-  width: 22px;
-  height: 22px;
+  width: 100%;
+  height: 100%;
   display: block;
 }
 
@@ -130,6 +130,12 @@ body.appModalInset .ant-modal-root .ant-modal-wrap {
   animation: biSparkleTwinkle 0.9s ease-in-out infinite;
   animation-delay: 0.15s;
 }
+
+.kbCodeScroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 
 .quickPromptMenu {
   max-height: 240px;
@@ -1063,11 +1069,11 @@ html[data-mode='dark'] .studioThemeRoot .ant-select-focused .ant-select-selector
 }
 
 .studioThemeRoot .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-  background: color-mix(in srgb, var(--studio-accent) 14%, transparent) !important;
+  background: color-mix(in srgb, var(--studio-popup-bg) 94%, var(--studio-accent) 6%) !important;
 }
 
 .studioThemeRoot .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-  background: color-mix(in srgb, var(--studio-accent) 20%, transparent) !important;
+  background: color-mix(in srgb, var(--studio-popup-bg) 90%, var(--studio-accent) 10%) !important;
 }
 
 .studioThemeRoot .ant-select-arrow {

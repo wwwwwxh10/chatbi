@@ -25,8 +25,9 @@ import { PageIntro } from '../components/PageIntro'
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import { UploadPanel } from '../components/UploadPanel'
 import * as XLSX from 'xlsx'
-import { BookOpen, Code2, GitBranch, Regex, Sigma } from 'lucide-react'
+import { BookOpen, Code2, GitBranch, Sigma } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
+import { KbRegexIcon } from '../components/icons/KbRegexIcon'
 
 function tabLabel(t: (k: string) => string, k: KnowledgeTabKey) {
   if (k === 'terms') return t('kb.terms')
@@ -132,17 +133,22 @@ function sqlHighlightNodes(line: string): ReactNode[] {
 const CARD_MIN_HEIGHT = 132
 
 const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
-  const lines = useMemo(() => String(sql ?? '').split('\n'), [sql])
+  const lines = useMemo(() => {
+    const normalized = String(sql ?? '').replace(/\r\n?/g, '\n')
+    const raw = normalized.split('\n')
+    while (raw.length && raw[raw.length - 1] === '') raw.pop()
+    return raw
+  }, [sql])
   const shown = lines.slice(0, 6)
   const hasMore = lines.length > 6
+  const weakLine = hasMore ? lines[6] : null
   const bg = isDark ? 'rgba(8, 13, 23, 0.88)' : 'rgba(2, 6, 23, 0.92)'
-  const morePillBg = 'rgba(255,255,255,0.06)'
 
   return (
-    <div style={{ height: 124, position: 'relative' }}>
+    <div style={{ height: 140, position: 'relative' }}>
       <div
         style={{
-          height: 124,
+          height: 140,
           borderRadius: 12,
           background: bg,
           overflow: 'hidden',
@@ -166,61 +172,51 @@ const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
             {shown.map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
+            {weakLine != null ? <div style={{ opacity: 0.45 }}>7</div> : null}
           </div>
           <div style={{ background: 'rgba(255,255,255,0.10)', height: '100%' }} />
-          <div style={{ minWidth: 0 }}>
+          <div className="kbCodeScroll" style={{ minWidth: 0, overflow: 'auto', scrollbarWidth: 'none' as any, msOverflowStyle: 'none' as any }}>
             {shown.map((ln, i) => (
-              <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              <div key={i} style={{ whiteSpace: 'pre' }}>
                 {sqlHighlightNodes(ln)}
               </div>
             ))}
+            {weakLine != null ? (
+              <div style={{ whiteSpace: 'pre', opacity: 0.45 }}>
+                {sqlHighlightNodes(weakLine)}
+              </div>
+            ) : null}
           </div>
         </div>
-
-        {hasMore ? (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 36,
-              background: 'linear-gradient(180deg, rgba(2,6,23,0) 0%, rgba(2,6,23,0.92) 100%)',
-              pointerEvents: 'none',
-            }}
-          />
-        ) : null}
       </div>
-      {hasMore ? (
-        <div style={{ position: 'absolute', right: 10, bottom: 10, padding: '2px 8px', borderRadius: 999, background: morePillBg, color: 'rgba(148,163,184,0.92)', fontSize: 11, fontWeight: 700 }}>
-          ...
-        </div>
-      ) : null}
     </div>
   )
 }
 
 const LogicTreeMini = ({ isDark, accent }: { isDark: boolean; accent: string }) => {
-  const stroke = isDark ? 'rgba(148,163,184,0.28)' : 'rgba(71,85,105,0.22)'
-  const node2 = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)'
+  const stroke = isDark ? 'rgba(148,163,184,0.30)' : 'rgba(71,85,105,0.22)'
+  const fill = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)'
+  const soft = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.10)'
   return (
-    <svg viewBox="0 0 280 78" width="100%" height="78" xmlns="http://www.w3.org/2000/svg">
-      <path d="M72 39H130" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M130 39V22" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M130 39V56" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M130 22H196" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M130 56H196" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M196 22V12" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M196 56V66" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M196 39H236" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+    <svg viewBox="0 0 280 72" width="100%" height="72" xmlns="http://www.w3.org/2000/svg">
+      <path d="M64 36H90" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M194 36H214" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M214 36V22" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M214 36V50" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M214 22H254" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M214 50H254" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
 
-      <circle cx="60" cy="39" r="6.5" fill={accent} opacity="0.92" />
-      <circle cx="130" cy="39" r="6.5" fill={accent} opacity="0.92" />
-      <circle cx="196" cy="39" r="5.6" fill={accent} opacity="0.78" />
+      <circle cx="54" cy="36" r="7.2" fill={soft} />
+      <circle cx="54" cy="36" r="4.8" fill={accent} opacity="0.92" />
 
-      <rect x="232" y="33" width="16" height="16" rx="4" fill={node2} stroke={accent} strokeWidth="2" />
-      <rect x="188" y="6" width="16" height="16" rx="4" fill={node2} stroke={accent} strokeWidth="2" opacity="0.9" />
-      <rect x="188" y="56" width="16" height="16" rx="4" fill={node2} stroke={accent} strokeWidth="2" opacity="0.9" />
+      <rect x="90" y="23" width="104" height="26" rx="13" fill={fill} stroke={accent} strokeWidth="1.8" opacity="0.95" />
+      <path d="M108 36h56" stroke={accent} strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
+      <path d="M108 32.1h40" stroke={accent} strokeWidth="1.8" strokeLinecap="round" opacity="0.35" />
+
+      <circle cx="260" cy="22" r="5.2" fill={soft} />
+      <circle cx="260" cy="22" r="3.3" fill={accent} opacity="0.65" />
+      <circle cx="260" cy="50" r="5.2" fill={soft} />
+      <circle cx="260" cy="50" r="3.3" fill={accent} opacity="0.65" />
     </svg>
   )
 }
@@ -237,6 +233,7 @@ const BaseCard = ({
   menu,
   cardHeight,
   contentPaddingTop,
+  titleRows,
   isDark,
   token,
 }: {
@@ -251,6 +248,7 @@ const BaseCard = ({
   menu: CardMenuState
   cardHeight?: number
   contentPaddingTop?: number
+  titleRows?: number
   isDark: boolean
   token: any
 }) => {
@@ -327,14 +325,13 @@ const BaseCard = ({
 
       <Card
         hoverable
-        bordered={false}
+        bordered
         onClick={onView}
         className={menu.openId === id ? 'dsCard dsCardActive' : 'dsCard'}
-        styles={{ body: { padding: '14px 16px 12px', display: 'flex', flexDirection: 'column' } }}
+        styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
         style={{
           borderRadius: 14,
           background: token.colorBgContainer,
-          border: `1px solid ${token.colorBorderSecondary}`,
           height: cardHeight ?? CARD_MIN_HEIGHT,
         }}
       >
@@ -342,7 +339,7 @@ const BaseCard = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <span style={{ lineHeight: 0, display: 'inline-flex', alignItems: 'center', flex: 'none' }}>{icon}</span>
             <Typography.Paragraph
-              ellipsis={{ rows: 2 }}
+              ellipsis={{ rows: titleRows ?? 2 }}
               style={{
                 margin: 0,
                 fontSize: 14,
@@ -358,7 +355,8 @@ const BaseCard = ({
           <span
             style={{
               flex: 'none',
-              padding: '4px 10px',
+              height: 26,
+              padding: '0 10px',
               borderRadius: 999,
               background: pillBg,
               border: 'none',
@@ -366,10 +364,14 @@ const BaseCard = ({
               fontSize: 11,
               fontWeight: 600,
               whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 1,
             }}
           >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span className="biSparkleIcon" style={{ width: 14, height: 14, color: sparkleColor, filter: 'none' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span className="biSparkleIcon" style={{ width: 16, height: 16, color: sparkleColor, filter: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
                     d="M12 2.8l1.4 6a1.7 1.7 0 0 0 1.25 1.25l6 1.4-6 1.4a1.7 1.7 0 0 0-1.25 1.25l-1.4 6-1.4-6a1.7 1.7 0 0 0-1.25-1.25l-6-1.4 6-1.4A1.7 1.7 0 0 0 10.6 8.8l1.4-6Z"
@@ -389,7 +391,7 @@ const BaseCard = ({
           </span>
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, paddingTop: contentPaddingTop ?? 8 }}>{children}</div>
+        <div style={{ flex: 1, minHeight: 0, paddingTop: contentPaddingTop ?? 8, overflow: 'hidden' }}>{children}</div>
       </Card>
     </div>
   )
@@ -446,7 +448,7 @@ const TermCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={144}
+      cardHeight={152}
       contentPaddingTop={8}
       isDark={isDark}
       token={token}
@@ -464,7 +466,7 @@ const TermCard = ({
         ) : null}
       </div>
       {item.desc ? (
-        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 8, marginBottom: 0, fontSize: 12, lineHeight: 1.6, color: token.colorTextSecondary }}>
+        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 8, marginBottom: 0, minHeight: 38, fontSize: 12, lineHeight: 1.6, color: token.colorTextSecondary }}>
           {item.desc}
         </Typography.Paragraph>
       ) : null}
@@ -503,20 +505,20 @@ const MetricCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={192}
+      cardHeight={198}
       isDark={isDark}
       token={token}
     >
       <div style={{ borderRadius: 12, background: contentBg, border: 'none', padding: 12 }}>
         <Typography.Paragraph
           ellipsis={{ rows: 2 }}
-          style={{ margin: 0, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.7, color: token.colorText }}
+          style={{ margin: 0, minHeight: 41, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.7, color: token.colorText }}
         >
           {highlightAggregates(code)}
         </Typography.Paragraph>
       </div>
       {item.definition ? (
-        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 10, marginBottom: 0, fontSize: 12, lineHeight: 1.65, color: token.colorTextSecondary }}>
+        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 8, marginBottom: 0, minHeight: 38, fontSize: 12, lineHeight: 1.6, color: token.colorTextSecondary }}>
           {item.definition}
         </Typography.Paragraph>
       ) : null}
@@ -549,37 +551,45 @@ const RegexCard = ({
     <BaseCard
       id={item.id}
       title={item.name}
-      icon={<Regex size={18} color={token.colorPrimary} />}
+      icon={<KbRegexIcon size={18} color={token.colorPrimary} />}
       referenceCount={item.referenceCount}
       onEdit={onEdit}
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={192}
+      cardHeight={196}
+      titleRows={1}
+      contentPaddingTop={8}
       isDark={isDark}
       token={token}
     >
-      <div style={{ borderRadius: 12, background: innerBg, border: 'none', padding: 12 }}>
+      <div style={{ borderRadius: 12, background: innerBg, border: 'none', padding: 10 }}>
         <Typography.Paragraph
-          ellipsis={{ rows: 2 }}
-          style={{ margin: 0, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.7, color: green, fontWeight: 750 }}
+          ellipsis={{ rows: 1 }}
+          style={{ margin: 0, minHeight: 20, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.5, color: green, fontWeight: 750 }}
         >
           /{String(item.pattern ?? '').replace(/^\^|\$$/g, '')}/
         </Typography.Paragraph>
 
-        <div style={{ marginTop: 10, borderTop: `1px dashed ${dashed}` }} />
+        <div style={{ marginTop: 6, borderTop: `1px dashed ${dashed}` }} />
 
-        <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 3px minmax(0, 1fr)', alignItems: 'stretch', gap: 12 }}>
+        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 3px minmax(0, 1fr)', alignItems: 'stretch', gap: 10 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 8 }}>输入样例</div>
-            <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 13, color: token.colorTextSecondary }}>
+            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 4 }}>输入样例</div>
+            <Typography.Paragraph
+              ellipsis={{ rows: 1 }}
+              style={{ margin: 0, minHeight: 20, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 13, lineHeight: 1.45, color: token.colorTextSecondary }}
+            >
               {item.exampleIn || '-'}
             </Typography.Paragraph>
           </div>
           <div style={{ width: 3, borderRadius: 999, background: green, opacity: 0.75 }} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 8 }}>标准输出</div>
-            <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 13, color: green, fontWeight: 750 }}>
+            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 4 }}>标准输出</div>
+            <Typography.Paragraph
+              ellipsis={{ rows: 1 }}
+              style={{ margin: 0, minHeight: 20, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 13, lineHeight: 1.45, color: green, fontWeight: 750 }}
+            >
               {item.exampleOut || '-'}
             </Typography.Paragraph>
           </div>
@@ -618,15 +628,16 @@ const LogicTreeCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={208}
+      cardHeight={224}
+      titleRows={1}
       isDark={isDark}
       token={token}
     >
-      <div style={{ borderRadius: 12, background: innerBg, border: 'none', padding: 12 }}>
+      <div style={{ borderRadius: 12, background: innerBg, border: 'none', padding: 10 }}>
         <LogicTreeMini isDark={isDark} accent={token.colorPrimary} />
       </div>
       {item.scenario ? (
-        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 10, marginBottom: 0, fontSize: 12, lineHeight: 1.65, color: token.colorTextSecondary }}>
+        <Typography.Paragraph ellipsis={{ rows: 2 }} style={{ marginTop: 6, marginBottom: 0, minHeight: 38, fontSize: 12, lineHeight: 1.6, color: token.colorTextSecondary }}>
           {item.scenario}
         </Typography.Paragraph>
       ) : null}

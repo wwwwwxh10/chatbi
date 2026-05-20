@@ -481,7 +481,7 @@ export default function DataSourcesPage() {
             ))}
           </Row>
 
-          {filtered.length > PAGE_SIZE ? (
+          {filtered.length > 0 ? (
             <div style={{ paddingTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
               <Pagination size="small" current={page} pageSize={PAGE_SIZE} total={filtered.length} showSizeChanger={false} onChange={(p) => setPage(p)} />
             </div>

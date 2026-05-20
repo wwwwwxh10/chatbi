@@ -1940,7 +1940,7 @@ export default function DashboardChatWorkspacePage() {
                                 )}
 
                                 {!isTextOnly ? (
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', position: 'relative', left: -30 }}>
                                   <div
                                     style={{
                                       display: 'inline-flex',
