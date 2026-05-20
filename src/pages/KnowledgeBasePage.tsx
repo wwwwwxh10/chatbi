@@ -22,13 +22,11 @@ import { buildSeed, nowId, readTab, setQuery } from './knowledgeBase/kbModel'
 import type { KnowledgeItem, KnowledgeTabKey, LogicTreeItem, MetricItem, RegexItem, SqlExampleItem, TermItem } from './knowledgeBase/kbModel'
 import { useTranslation } from 'react-i18next'
 import { PageIntro } from '../components/PageIntro'
-import { DeleteOutlined, EditOutlined, LinkOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import { UploadPanel } from '../components/UploadPanel'
 import * as XLSX from 'xlsx'
-import { BookOpen, GitBranch, Sigma } from 'lucide-react'
+import { BookOpen, Code2, GitBranch, Regex, Sigma } from 'lucide-react'
 import { useAppStore } from '../store/appStore'
-import { KbRegexIcon } from '../components/icons/KbRegexIcon'
-import { KbSqlIcon } from '../components/icons/KbSqlIcon'
 
 function tabLabel(t: (k: string) => string, k: KnowledgeTabKey) {
   if (k === 'terms') return t('kb.terms')
@@ -156,20 +154,20 @@ const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
           style={{
             height: '100%',
             display: 'grid',
-            gridTemplateColumns: '28px 1px minmax(0, 1fr)',
-            gap: 0,
+            gridTemplateColumns: '30px 1px minmax(0, 1fr)',
+            gap: 10,
             padding: 12,
             fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
             fontSize: 12,
             lineHeight: 1.35,
           }}
         >
-          <div style={{ color: 'rgba(148,163,184,0.55)', textAlign: 'right', paddingRight: 8, userSelect: 'none' }}>
+          <div style={{ color: 'rgba(148,163,184,0.55)', textAlign: 'right', paddingRight: 0, userSelect: 'none' }}>
             {shown.map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.08)', marginRight: 10 }} />
+          <div style={{ background: 'rgba(255,255,255,0.10)', height: '100%' }} />
           <div style={{ minWidth: 0 }}>
             {shown.map((ln, i) => (
               <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -206,18 +204,23 @@ const LogicTreeMini = ({ isDark, accent }: { isDark: boolean; accent: string }) 
   const stroke = isDark ? 'rgba(148,163,184,0.28)' : 'rgba(71,85,105,0.22)'
   const node2 = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)'
   return (
-    <svg viewBox="0 0 260 72" width="100%" height="72" xmlns="http://www.w3.org/2000/svg">
-      <path d="M66 36H124" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M124 36V20" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M124 36V52" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M124 20H188" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M124 52H188" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+    <svg viewBox="0 0 280 78" width="100%" height="78" xmlns="http://www.w3.org/2000/svg">
+      <path d="M72 39H130" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      <path d="M130 39V22" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      <path d="M130 39V56" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      <path d="M130 22H196" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      <path d="M130 56H196" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      <path d="M196 22V12" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      <path d="M196 56V66" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      <path d="M196 39H236" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
 
-      <circle cx="56" cy="36" r="6.5" fill={accent} opacity="0.92" />
-      <circle cx="124" cy="36" r="6.5" fill={accent} opacity="0.92" />
+      <circle cx="60" cy="39" r="6.5" fill={accent} opacity="0.92" />
+      <circle cx="130" cy="39" r="6.5" fill={accent} opacity="0.92" />
+      <circle cx="196" cy="39" r="5.6" fill={accent} opacity="0.78" />
 
-      <rect x="184" y="14" width="16" height="16" rx="4" fill={node2} stroke={accent} strokeWidth="2" />
-      <rect x="184" y="46" width="16" height="16" rx="4" fill={node2} stroke={accent} strokeWidth="2" />
+      <rect x="232" y="33" width="16" height="16" rx="4" fill={node2} stroke={accent} strokeWidth="2" />
+      <rect x="188" y="6" width="16" height="16" rx="4" fill={node2} stroke={accent} strokeWidth="2" opacity="0.9" />
+      <rect x="188" y="56" width="16" height="16" rx="4" fill={node2} stroke={accent} strokeWidth="2" opacity="0.9" />
     </svg>
   )
 }
