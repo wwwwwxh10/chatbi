@@ -20,6 +20,7 @@ import {
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
+  HistoryOutlined,
   MessageOutlined,
   MoreOutlined,
   PlusOutlined,
@@ -289,255 +290,44 @@ function buildDerivedChartOption(type: ChartTypeKey, r: MessageResult): EChartsO
   return null
 }
 
-type WorkspaceUi = {
-  colorBgContainer: string
-  colorSplit: string
-  colorPrimary: string
-  colorAccent2: string
-  colorText: string
-  colorTextSecondary: string
-  colorFillSecondary: string
-  colorFillTertiary: string
-  colorFillQuaternary: string
-}
-
-function NeutralDashboardCanvas({
-  selectedKey,
-  onSelect,
-  ui: uiOverride,
-}: {
-  selectedKey: string
-  onSelect: (key: string, context: string) => void
-  ui?: WorkspaceUi
-}) {
+function NeutralDashboardCanvas({ selectedKey, onSelect }: { selectedKey: string; onSelect: (key: string, context: string) => void }) {
   const { token } = theme.useToken()
-  const ui: WorkspaceUi = uiOverride ?? {
-    colorBgContainer: token.colorBgContainer,
-    colorSplit: token.colorSplit,
-    colorPrimary: token.colorPrimary,
-    colorAccent2: token.colorInfo,
-    colorText: token.colorText,
-    colorTextSecondary: token.colorTextSecondary,
-    colorFillSecondary: token.colorFillSecondary,
-    colorFillTertiary: token.colorFillTertiary,
-    colorFillQuaternary: token.colorFillQuaternary,
-  }
 
-  const cardRadius = 14
-
-  const Card = ({
-    k,
-    context,
-    active,
-    children,
-  }: {
-    k: string
-    context: string
-    active: boolean
-    children: ReactNode
-  }) => (
+  const CardPlaceholder = ({ children, clickable, active, onClick }: { children?: ReactNode; clickable?: boolean; active?: boolean; onClick?: () => void }) => (
     <div
       className="dashboardChartCard"
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(k, context)}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={onClick}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onSelect(k, context)
+        if (!clickable) return
+        if (e.key === 'Enter' || e.key === ' ') onClick?.()
       }}
       style={{
         height: '100%',
-        borderRadius: cardRadius,
-        background: ui.colorBgContainer,
-        border: `1px solid ${active ? ui.colorPrimary : ui.colorSplit}`,
+        borderRadius: 14,
+        background: token.colorBgContainer,
+        border: `1px solid ${active ? token.colorPrimary : token.colorSplit}`,
         display: 'flex',
         flexDirection: 'column',
-        padding: 14,
+        padding: 16,
         overflow: 'hidden',
-        cursor: 'pointer',
+        cursor: clickable ? 'pointer' : 'default',
       }}
     >
       {children}
     </div>
   )
 
-  const headerLeft = (icon: ReactNode, title: string) => (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-      <span style={{ display: 'grid', placeItems: 'center', width: 18, height: 18, color: ui.colorTextSecondary, opacity: 0.9 }}>{icon}</span>
-      <span style={{ fontSize: 12, fontWeight: 650, color: ui.colorTextSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
-    </div>
+  const MetricCard = ({ title, k }: { title: string; k: string }) => (
+    <CardPlaceholder clickable active={selectedKey === k} onClick={() => onSelect(k, '2025年3月｜上海｜销售额')}>
+      <div style={{ fontSize: 12, color: token.colorTextSecondary }}>{title}</div>
+      <div style={{ height: 10 }} />
+      <div style={{ width: '70%', height: 34, borderRadius: 10, background: token.colorFillTertiary }} />
+      <div style={{ height: 10 }} />
+      <div style={{ width: '42%', height: 12, borderRadius: 8, background: token.colorFillSecondary }} />
+    </CardPlaceholder>
   )
-
-  const lineOption = useMemo((): EChartsOption => {
-    const cats = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-    return {
-      backgroundColor: 'transparent',
-      grid: { left: 42, right: 18, top: 34, bottom: 34 },
-      legend: {
-        bottom: 6,
-        itemWidth: 10,
-        itemHeight: 8,
-        textStyle: { color: ui.colorTextSecondary, fontSize: 11 },
-        data: ['主系列', '对比系列'],
-      },
-      xAxis: {
-        type: 'category',
-        data: cats,
-        axisTick: { show: false },
-        axisLine: { lineStyle: { color: ui.colorSplit, opacity: 0.7 } },
-        axisLabel: { color: ui.colorTextSecondary, fontSize: 11, margin: 12 },
-      },
-      yAxis: {
-        type: 'value',
-        min: 0,
-        max: 30,
-        splitNumber: 6,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: ui.colorTextSecondary, fontSize: 11, margin: 10 },
-        splitLine: { lineStyle: { color: ui.colorSplit, opacity: 0.35 } },
-      },
-      series: [
-        {
-          name: '主系列',
-          type: 'line',
-          smooth: true,
-          showSymbol: false,
-          lineStyle: { width: 2, color: ui.colorPrimary },
-          itemStyle: { color: ui.colorPrimary },
-          areaStyle: { opacity: 0.06, color: ui.colorPrimary },
-          data: [18, 20, 19, 22, 25, 27, 26],
-        },
-        {
-          name: '对比系列',
-          type: 'line',
-          smooth: true,
-          showSymbol: false,
-          lineStyle: { width: 2, color: ui.colorAccent2, opacity: 0.95 },
-          itemStyle: { color: ui.colorAccent2 },
-          areaStyle: { opacity: 0.05, color: ui.colorAccent2 },
-          data: [14, 15, 15, 16, 17, 18, 17],
-        },
-      ],
-    }
-  }, [ui.colorAccent2, ui.colorPrimary, ui.colorSplit, ui.colorTextSecondary])
-
-  const radarOption = useMemo((): EChartsOption => {
-    return {
-      backgroundColor: 'transparent',
-      legend: { bottom: 6, itemWidth: 10, itemHeight: 8, textStyle: { color: ui.colorTextSecondary, fontSize: 11 }, data: ['当前', '对标'] },
-      radar: {
-        radius: '62%',
-        center: ['50%', '46%'],
-        splitNumber: 4,
-        indicator: [
-          { name: '维度A', max: 100 },
-          { name: '维度B', max: 100 },
-          { name: '维度C', max: 100 },
-          { name: '维度D', max: 100 },
-          { name: '维度E', max: 100 },
-        ],
-        axisName: { color: ui.colorTextSecondary, fontSize: 11 },
-        splitLine: { lineStyle: { color: ui.colorSplit, opacity: 0.5 } },
-        splitArea: { areaStyle: { color: ['rgba(0,0,0,0.0)'] } },
-        axisLine: { lineStyle: { color: ui.colorSplit, opacity: 0.35 } },
-      },
-      series: [
-        {
-          type: 'radar',
-          data: [
-            { name: '当前', value: [72, 58, 64, 52, 68] },
-            { name: '对标', value: [60, 46, 58, 44, 54] },
-          ],
-          itemStyle: { borderWidth: 0 },
-          lineStyle: { width: 2 },
-          emphasis: { lineStyle: { width: 2 } },
-          areaStyle: { opacity: 0.10 },
-        },
-      ],
-      color: [ui.colorPrimary, ui.colorAccent2],
-    }
-  }, [ui.colorAccent2, ui.colorPrimary, ui.colorSplit, ui.colorTextSecondary])
-
-  const barOption = useMemo((): EChartsOption => {
-    const cats = ['产品A', '产品B', '产品C', '产品D', '产品E']
-    return {
-      backgroundColor: 'transparent',
-      grid: { left: 42, right: 18, top: 34, bottom: 32 },
-      xAxis: {
-        type: 'category',
-        data: cats,
-        axisTick: { show: false },
-        axisLine: { lineStyle: { color: ui.colorSplit, opacity: 0.7 } },
-        axisLabel: { color: ui.colorTextSecondary, fontSize: 11, margin: 12 },
-      },
-      yAxis: {
-        type: 'value',
-        min: 0,
-        max: 22,
-        splitNumber: 4,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: ui.colorTextSecondary, fontSize: 11, margin: 10 },
-        splitLine: { lineStyle: { color: ui.colorSplit, opacity: 0.35 } },
-      },
-      series: [
-        {
-          type: 'bar',
-          data: [19, 15, 12, 10, 9],
-          barWidth: 18,
-          itemStyle: { color: ui.colorPrimary, borderRadius: [6, 6, 0, 0] },
-        },
-      ],
-    }
-  }, [ui.colorPrimary, ui.colorSplit, ui.colorTextSecondary])
-
-  const bubbleOption = useMemo((): EChartsOption => {
-    const data = [
-      [10, 20, 18],
-      [16, 36, 26],
-      [26, 46, 14],
-      [32, 28, 12],
-      [40, 60, 34],
-      [55, 46, 30],
-    ]
-    return {
-      backgroundColor: 'transparent',
-      grid: { left: 42, right: 18, top: 34, bottom: 32 },
-      xAxis: {
-        type: 'value',
-        min: 0,
-        max: 60,
-        splitNumber: 6,
-        axisLine: { lineStyle: { color: ui.colorSplit, opacity: 0.7 } },
-        axisTick: { show: false },
-        axisLabel: { color: ui.colorTextSecondary, fontSize: 11, margin: 10 },
-        splitLine: { lineStyle: { color: ui.colorSplit, opacity: 0.25 } },
-      },
-      yAxis: {
-        type: 'value',
-        min: 0,
-        max: 60,
-        splitNumber: 6,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: ui.colorTextSecondary, fontSize: 11, margin: 10 },
-        splitLine: { lineStyle: { color: ui.colorSplit, opacity: 0.25 } },
-      },
-      series: [
-        {
-          type: 'scatter',
-          data,
-          symbolSize: (v: any) => Math.max(10, Math.min(42, Number(v?.[2] ?? 12) * 1.2)),
-          itemStyle: {
-            color: ui.colorPrimary,
-            opacity: 0.55,
-            borderColor: ui.colorPrimary,
-            borderWidth: 1,
-          },
-        },
-      ],
-    }
-  }, [ui.colorPrimary, ui.colorSplit, ui.colorTextSecondary])
 
   return (
     <div style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -547,113 +337,88 @@ function NeutralDashboardCanvas({
           minHeight: 0,
           display: 'grid',
           gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
-          gridTemplateRows: '110px minmax(0, 1fr) minmax(0, 1fr)',
+          gridTemplateRows: '140px minmax(0, 1fr) minmax(0, 1fr)',
           gap: 12,
         }}
       >
         <div style={{ gridColumn: 'span 3', height: '100%' }}>
-          <Card k="kpi-arpu-a" context="ARPU均值｜2025年3月｜上海" active={selectedKey === 'kpi-arpu-a'}>
-            {headerLeft(<Sigma size={16} />, 'ARPU均值')}
-            <div style={{ height: 10 }} />
-            <div style={{ fontSize: 22, fontWeight: 900, color: ui.colorText, letterSpacing: 0.2 }}>¥182,346</div>
-            <div style={{ height: 8 }} />
-            <div style={{ fontSize: 12, fontWeight: 650, color: '#1DD27F' }}>同比 +12.4%</div>
-          </Card>
+          <MetricCard k="kpi-a" title="核心指标 A" />
         </div>
         <div style={{ gridColumn: 'span 3', height: '100%' }}>
-          <Card k="kpi-arpu-b" context="ARPU均值｜2025年3月｜上海" active={selectedKey === 'kpi-arpu-b'}>
-            {headerLeft(<Sigma size={16} />, 'ARPU均值')}
-            <div style={{ height: 10 }} />
-            <div style={{ fontSize: 22, fontWeight: 900, color: ui.colorText, letterSpacing: 0.2 }}>¥182,346</div>
-            <div style={{ height: 8 }} />
-            <div style={{ fontSize: 12, fontWeight: 650, color: '#1DD27F' }}>同比 +12.4%</div>
-          </Card>
+          <MetricCard k="kpi-b" title="核心指标 B" />
         </div>
         <div style={{ gridColumn: 'span 3', height: '100%' }}>
-          <Card k="kpi-users" context="在贷用户数｜2025年3月｜上海" active={selectedKey === 'kpi-users'}>
-            {headerLeft(<CircleDot size={16} />, '在贷用户数')}
-            <div style={{ flex: 1, display: 'grid', placeItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, transform: 'translateY(-4px)' }} aria-label="在贷用户数 6894 万">
-                {String(6894)
-                  .replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-                  .split('')
-                  .map((ch, idx) =>
-                    ch === ',' ? (
-                      <span key={idx} style={{ fontWeight: 900, fontSize: 18, color: ui.colorTextSecondary, opacity: 0.8, marginInline: 2 }}>
-                        ,
-                      </span>
-                    ) : (
-                      <span key={idx} className="flipDigit">
-                        {ch}
-                      </span>
-                    ),
-                  )}
-                <span style={{ fontSize: 12, fontWeight: 700, color: ui.colorTextSecondary, opacity: 0.8 }}>万</span>
-              </div>
-            </div>
-          </Card>
+          <MetricCard k="kpi-c" title="核心指标 C" />
         </div>
         <div style={{ gridColumn: 'span 3', height: '100%' }}>
-          <Card k="kpi-progress" context="盘盈处理进度｜2025年3月｜上海" active={selectedKey === 'kpi-progress'}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              {headerLeft(<Workflow size={16} />, '盘盈处理进度')}
-              <span style={{ fontSize: 12, fontWeight: 700, color: ui.colorTextSecondary }}>78%</span>
-            </div>
-            <div style={{ height: 10 }} />
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 650, color: ui.colorTextSecondary }}>15.6k</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: ui.colorPrimary }}>↑</span>
-              </div>
-              <span style={{ fontSize: 12, fontWeight: 650, color: ui.colorTextSecondary }}>已完成</span>
-            </div>
-            <div style={{ height: 10 }} />
-            <div style={{ height: 6, borderRadius: 99, background: ui.colorFillTertiary, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: '78%', background: ui.colorPrimary, borderRadius: 99 }} />
-            </div>
-          </Card>
+          <MetricCard k="kpi-d" title="核心指标 D" />
         </div>
 
         <div style={{ gridColumn: 'span 8', height: '100%' }}>
-          <Card k="chart-gmv" context="GMV趋势｜2025年3月｜上海" active={selectedKey === 'chart-gmv'}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-              {headerLeft(<LineChart size={16} />, 'GMV 趋势')}
+          <CardPlaceholder
+            clickable
+            active={selectedKey === 'sales'}
+            onClick={() => onSelect('sales', '2025年3月｜上海｜销售额')}
+          >
+            <div style={{ width: 120, height: 16, borderRadius: 6, background: token.colorFillTertiary, marginBottom: 16 }} />
+            <div style={{ flex: 1, borderRadius: 12, background: token.colorFillQuaternary, position: 'relative', overflow: 'hidden' }}>
+              <svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0 }}>
+                {[20, 40, 60, 80].map((y) => (
+                  <line key={y} x1="0" y1={y} x2="100" y2={y} stroke={token.colorSplit} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.6" />
+                ))}
+                {[20, 40, 60, 80].map((x) => (
+                  <line key={x} x1={x} y1="0" x2={x} y2="100" stroke={token.colorSplit} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.35" />
+                ))}
+                <path d="M 0,78 L 14,60 L 28,66 L 42,44 L 56,54 L 70,30 L 84,36 L 100,18" fill="none" stroke={token.colorPrimary} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                <path d="M 0,86 L 14,74 L 28,78 L 42,62 L 56,66 L 70,52 L 84,58 L 100,46" fill="none" stroke={token.colorSplit} strokeWidth="2" vectorEffect="non-scaling-stroke" opacity="0.9" />
+              </svg>
             </div>
-            <div style={{ flex: 1, minHeight: 0 }}>
-              <EChart option={lineOption} style={{ height: '100%' }} />
-            </div>
-          </Card>
+          </CardPlaceholder>
         </div>
         <div style={{ gridColumn: 'span 4', height: '100%' }}>
-          <Card k="chart-radar" context="能力雷达｜2025年3月｜上海" active={selectedKey === 'chart-radar'}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-              {headerLeft(<Radar size={16} />, '能力雷达')}
+          <CardPlaceholder clickable active={selectedKey === 'radar'} onClick={() => onSelect('radar', '2025年3月｜上海｜销售额')}>
+            <div style={{ width: 90, height: 16, borderRadius: 6, background: token.colorFillTertiary, marginBottom: 16 }} />
+            <div style={{ flex: 1, borderRadius: 12, background: token.colorFillQuaternary, display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ width: '86%', aspectRatio: '1 / 1', maxWidth: 240, borderRadius: '50%', border: `1px dashed ${token.colorSplit}`, position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: '14%', borderRadius: '50%', border: `1px dashed ${token.colorSplit}` }} />
+                <div style={{ position: 'absolute', inset: '28%', borderRadius: '50%', border: `1px dashed ${token.colorSplit}` }} />
+                <svg width="100%" height="100%" viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0, opacity: 0.18 }}>
+                  <polygon points="50,8 82,28 92,58 66,92 20,76 8,40" fill={token.colorPrimary} />
+                </svg>
+              </div>
             </div>
-            <div style={{ flex: 1, minHeight: 0 }}>
-              <EChart option={radarOption} style={{ height: '100%' }} />
-            </div>
-          </Card>
+          </CardPlaceholder>
         </div>
 
         <div style={{ gridColumn: 'span 6', height: '100%' }}>
-          <Card k="chart-bar" context="品类对比｜2025年3月｜上海" active={selectedKey === 'chart-bar'}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-              {headerLeft(<BarChart3 size={16} />, '品类对比')}
+          <CardPlaceholder clickable active={selectedKey === 'donut'} onClick={() => onSelect('donut', '2025年3月｜上海｜销售额')}>
+            <div style={{ width: 100, height: 16, borderRadius: 6, background: token.colorFillTertiary, marginBottom: 16 }} />
+            <div style={{ flex: 1, borderRadius: 12, background: token.colorFillQuaternary, display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+              <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style={{ opacity: 0.22, maxWidth: 220, maxHeight: 220 }}>
+                <circle cx="50" cy="50" r="40" fill="none" stroke={token.colorSplit} strokeWidth="18" strokeDasharray="60 200" strokeDashoffset="0" />
+                <circle cx="50" cy="50" r="40" fill="none" stroke={token.colorSplit} strokeWidth="18" strokeDasharray="80 200" strokeDashoffset="-70" />
+                <circle cx="50" cy="50" r="40" fill="none" stroke={token.colorSplit} strokeWidth="18" strokeDasharray="40 200" strokeDashoffset="-160" />
+              </svg>
             </div>
-            <div style={{ flex: 1, minHeight: 0 }}>
-              <EChart option={barOption} style={{ height: '100%' }} />
-            </div>
-          </Card>
+          </CardPlaceholder>
         </div>
         <div style={{ gridColumn: 'span 6', height: '100%' }}>
-          <Card k="chart-bubble" context="观点分布｜2025年3月｜上海" active={selectedKey === 'chart-bubble'}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-              {headerLeft(<ChartScatter size={16} />, '观点分布')}
+          <CardPlaceholder clickable active={selectedKey === 'list'} onClick={() => onSelect('list', '2025年3月｜上海｜销售额')}>
+            <div style={{ width: 80, height: 16, borderRadius: 6, background: token.colorFillTertiary, marginBottom: 16 }} />
+            <div style={{ flex: 1, borderRadius: 12, background: token.colorFillQuaternary, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 6, background: token.colorFillSecondary, display: 'grid', placeItems: 'center', fontSize: 10, color: token.colorTextSecondary }}>
+                    {i}
+                  </div>
+                  <div style={{ width: '28%', height: 12, borderRadius: 6, background: token.colorFillTertiary }} />
+                  <div style={{ flex: 1, height: 10, borderRadius: 8, background: token.colorFillTertiary, overflow: 'hidden' }}>
+                    <div style={{ width: `${92 - i * 9}%`, height: '100%', borderRadius: 8, background: token.colorFillSecondary }} />
+                  </div>
+                </div>
+              ))}
             </div>
-            <div style={{ flex: 1, minHeight: 0 }}>
-              <EChart option={bubbleOption} style={{ height: '100%' }} />
-            </div>
-          </Card>
+          </CardPlaceholder>
         </div>
       </div>
     </div>
@@ -1343,23 +1108,6 @@ export default function DashboardChatWorkspacePage() {
   const panelAccent = previewPalette?.colors?.[0] ?? (panelTheme === 'obsidian' ? token.colorPrimary : panelTheme ? THEME_ACCENT[panelTheme] : token.colorPrimary)
   const panelTint = previewPalette?.colors?.[0] ?? (panelTheme ? THEME_ACCENT[panelTheme] : null)
 
-  const workspaceUi = useMemo((): WorkspaceUi | null => {
-    if (!panelTheme) return null
-    const tint = panelTint ?? THEME_ACCENT[panelTheme]
-    const accent2 = previewPalette?.colors?.[1] ?? '#26D9FF'
-    return {
-      colorBgContainer: rgba(tint, panelTheme === 'tech' ? 0.10 : 0.09),
-      colorSplit: 'rgba(255,255,255,0.10)',
-      colorPrimary: panelAccent,
-      colorAccent2: accent2,
-      colorText: 'rgba(255, 255, 255, 0.92)',
-      colorTextSecondary: 'rgba(255, 255, 255, 0.72)',
-      colorFillSecondary: 'rgba(255, 255, 255, 0.10)',
-      colorFillTertiary: 'rgba(255, 255, 255, 0.06)',
-      colorFillQuaternary: 'rgba(255, 255, 255, 0.04)',
-    }
-  }, [panelAccent, panelTheme, panelTint, previewPalette])
-
   const chatTheme = useMemo(() => {
     if (!panelTheme) {
       return {
@@ -1407,7 +1155,7 @@ export default function DashboardChatWorkspacePage() {
     }
   }, [panelTheme, panelTint, token])
 
-  const debugStudioBg = panelTheme === 'obsidian' ? '#0B0E14' : '#03060c'
+  const debugStudioBg = panelTheme === 'obsidian' ? token.colorBgLayout : '#03060c'
 
   const debugStudioGap = useMemo(() => {
     const layout: any = (studioPayload as any)?.layout
@@ -1421,7 +1169,7 @@ export default function DashboardChatWorkspacePage() {
   const sessionActionsClass = 'sessionActions'
 
   const actionButtonBoxStyle = {
-    background: panelTheme ? 'rgba(255,255,255,0.06)' : token.colorFillTertiary,
+    background: token.colorFillTertiary,
     borderRadius: 10,
     height: 28,
     width: 28,
@@ -1475,19 +1223,8 @@ export default function DashboardChatWorkspacePage() {
   const pendingMessagesRef = useRef<ChatMessage[] | null>(null)
 
   const [panelWidth, setPanelWidth] = useState(420)
-  const [layoutWidth, setLayoutWidth] = useState(0)
-  const leftSafeWidth = 720
-  const rightMinWidth = 420
-  const rightMaxWidth = 960
-  const dividerWidth = 10
-  const layoutPaddingX = debugStudio ? 0 : 10
-  const layoutGap = debugStudio ? 0 : 2
-  const dockedMaxWidth = useMemo(() => {
-    if (!layoutWidth) return rightMaxWidth
-    const available = layoutWidth - layoutPaddingX * 2 - dividerWidth - layoutGap * 2 - leftSafeWidth
-    return Math.min(rightMaxWidth, Math.max(rightMinWidth, Math.floor(available)))
-  }, [dividerWidth, layoutGap, layoutPaddingX, layoutWidth, leftSafeWidth, rightMaxWidth, rightMinWidth])
-  const isOverlay = panelWidth > dockedMaxWidth
+  const overlayThreshold = 720
+  const isOverlay = !debugStudio && panelWidth > overlayThreshold
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const layoutRef = useRef<HTMLDivElement | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
@@ -1909,40 +1646,38 @@ export default function DashboardChatWorkspacePage() {
   }, [])
 
   useEffect(() => {
-    const el = layoutRef.current
-    if (!el) return
-    const compute = () => setLayoutWidth(Math.floor(el.getBoundingClientRect().width))
-    compute()
-    const ro = new ResizeObserver(compute)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-
-  useEffect(() => {
     if (!isOverlay) {
       setLeftLockedWidth(null)
       return
     }
-    if (!layoutWidth) return
-    const locked = Math.max(leftSafeWidth, Math.floor(layoutWidth - layoutPaddingX * 2 - dividerWidth - layoutGap * 2 - dockedMaxWidth))
-    setLeftLockedWidth(locked)
-  }, [dockedMaxWidth, dividerWidth, isOverlay, layoutGap, layoutPaddingX, layoutWidth, leftSafeWidth])
+    const el = layoutRef.current
+    if (!el) return
+    const compute = () => {
+      const w = el.getBoundingClientRect().width
+      const locked = Math.max(360, Math.floor(w - 20 - 2 - 10 - overlayThreshold))
+      setLeftLockedWidth(locked)
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [isOverlay])
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!dragRef.current) return
       const dx = dragRef.current.startX - e.clientX
       const layoutW = layoutRef.current?.getBoundingClientRect().width
-      const maxW = Math.min(rightMaxWidth, Math.max(520, (layoutW ?? 1200) - 24))
-      const next = Math.min(maxW, Math.max(rightMinWidth, dragRef.current.startWidth + dx))
+      const maxW = Math.min(960, Math.max(520, (layoutW ?? 1200) - 24))
+      const next = Math.min(maxW, Math.max(420, dragRef.current.startWidth + dx))
       setPanelWidth(next)
     }
     const onPointerMove = (e: PointerEvent) => {
       if (!dragRef.current) return
       const dx = dragRef.current.startX - e.clientX
       const layoutW = layoutRef.current?.getBoundingClientRect().width
-      const maxW = Math.min(rightMaxWidth, Math.max(520, (layoutW ?? 1200) - 24))
-      const next = Math.min(maxW, Math.max(rightMinWidth, dragRef.current.startWidth + dx))
+      const maxW = Math.min(960, Math.max(520, (layoutW ?? 1200) - 24))
+      const next = Math.min(maxW, Math.max(420, dragRef.current.startWidth + dx))
       setPanelWidth(next)
     }
     const onUp = () => {
@@ -2047,15 +1782,15 @@ export default function DashboardChatWorkspacePage() {
         height: '100vh',
         minHeight: 720,
         padding: debugStudio ? 0 : 10,
-        background: panelTheme ? debugStudioBg : token.colorBgLayout,
+        background: debugStudio ? debugStudioBg : token.colorBgLayout,
         position: 'relative',
       }}
     >
       <div
         style={{
           flex: isOverlay ? 'none' : 1,
-          width: isOverlay ? (leftLockedWidth ?? undefined) : undefined,
-          minWidth: isOverlay ? 0 : leftSafeWidth,
+          width: isOverlay ? leftLockedWidth ?? undefined : undefined,
+          minWidth: 0,
           minHeight: 0,
           height: debugStudio ? '100%' : undefined,
           overflow: 'hidden',
@@ -2105,7 +1840,6 @@ export default function DashboardChatWorkspacePage() {
               broadcastGlobalSelection({ uid: `dashboard_${key}`, scope: selectionScopeRef.current, kind: 'dashboard', next: null })
               runPresetAnalysis(context)
             }}
-            ui={workspaceUi || undefined}
           />
         )}
       </div>
@@ -2124,7 +1858,7 @@ export default function DashboardChatWorkspacePage() {
           if (line) line.style.background = 'rgba(0,0,0,0.42)'
         }}
         style={{
-          width: dividerWidth,
+          width: 10,
           flex: 'none',
           position: isOverlay ? 'absolute' : 'relative',
           right: isOverlay ? panelWidth + 7 : undefined,
@@ -2254,15 +1988,13 @@ export default function DashboardChatWorkspacePage() {
                 }}
               />
             </Tooltip>
-            <Tooltip title="刷新会话">
+            <Tooltip title="历史会话">
               <Button
                 type="text"
                 className="iconOnly"
-                icon={<ReloadOutlined />}
+                icon={<HistoryOutlined />}
                 onClick={() => {
-                  const sid = activeSession?.id
-                  if (sid) setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, messages: [] } : s)))
-                  resetConversationState()
+                  setSessionDrawerOpen(true)
                 }}
               />
             </Tooltip>
@@ -2345,18 +2077,7 @@ export default function DashboardChatWorkspacePage() {
                           >
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: isTextOnly ? 0 : 8 }}>
                                 {!isTextOnly ? (
-                                  <Typography.Text
-                                    style={{
-                                      flex: '1 1 auto',
-                                      minWidth: 0,
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                      fontSize: 'var(--font-size-base)',
-                                      lineHeight: 'var(--line-height-base)',
-                                      fontWeight: 650,
-                                    }}
-                                  >
+                                  <Typography.Text style={{ maxWidth: '55%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)', fontWeight: 650 }}>
                                     {activeQuestion}
                                   </Typography.Text>
                                 ) : (
@@ -2364,7 +2085,7 @@ export default function DashboardChatWorkspacePage() {
                                 )}
 
                                 {!isTextOnly ? (
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', position: 'relative', left: -30 }}>
                                   <div
                                     style={{
                                       display: 'inline-flex',
@@ -2521,7 +2242,7 @@ export default function DashboardChatWorkspacePage() {
                                       height: chartType === 'funnel' ? 240 : 320,
                                       overflow: 'hidden',
                                       padding: 0,
-                                      borderRadius: 4,
+                                      borderRadius: 10,
                                       background: 'var(--chatbi-chart-bg)',
                                     }}
                                   >
@@ -2536,7 +2257,7 @@ export default function DashboardChatWorkspacePage() {
                                     height: 320,
                                     overflow: 'hidden',
                                     padding: 0,
-                                    borderRadius: 4,
+                                    borderRadius: 10,
                                     background: 'var(--chatbi-chart-bg)',
                                   }}
                                 >

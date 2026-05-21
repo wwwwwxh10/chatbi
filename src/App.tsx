@@ -45,7 +45,8 @@ export default function App() {
   const navigate = useNavigate()
 
   const [collapsed, setCollapsed] = useState(true)
-  const isChatWorkspace = location.pathname.startsWith('/dashboard/chat-workspace')
+  const isChatWorkspace =
+    location.pathname.startsWith('/dashboard/chat-workspace') || location.pathname.startsWith('/dashboard/chat-workspace-studio-demo')
   const isLogin = location.pathname === '/login'
   const isStudio = location.pathname.startsWith('/dashboard/studio')
   const isDashboardModule = location.pathname.startsWith('/dashboard') && !location.pathname.startsWith('/dashboard/chat') && !isChatWorkspace
@@ -290,6 +291,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/dashboard/chat" element={<DashboardChatPage />} />
             <Route path="/dashboard/chat-workspace" element={<DashboardChatWorkspacePage />} />
+            <Route path="/dashboard/chat-workspace-studio-demo" element={<DashboardChatWorkspacePage />} />
             <Route path="/chat/:conversationId" element={<ChatConversationPage />} />
             <Route path="/dashboard/studio/new" element={<DashboardStudioPageV2 mode="new" />} />
             <Route path="/dashboard/studio/:id/preview" element={<DashboardStudioPageV2 mode="preview" />} />

@@ -79,7 +79,6 @@ export function EChart({
   const optRef = useRef<EChartsOption>(option)
   const internalSelectedRef = useRef<{ seriesIndex: number; dataIndex: number } | null>(null)
   const selectedHoverRef = useRef<ChartHover | null>(null)
-  const clickHandledRef = useRef(false)
   const uidRef = useRef(`echart_${Math.random().toString(36).slice(2)}`)
   const pulseRef = useRef<{
     timer: number | null
@@ -99,22 +98,8 @@ export function EChart({
     const s = o.series
     const normalize = (it: any) => {
       if (!it || typeof it !== 'object') return it
-      const out: any = { ...it }
-      const t = String(out.type ?? '')
-      if (t === 'scatter' || t === 'effectScatter') {
-        const em = out.emphasis && typeof out.emphasis === 'object' ? { ...(out.emphasis as any) } : {}
-        if (em.focus == null) em.focus = 'self'
-        if (em.blurScope == null) em.blurScope = 'coordinateSystem'
-        if (em.scale == null) em.scale = true
-        if (em.scaleSize == null) em.scaleSize = 6
-        out.emphasis = em
-        const bl = out.blur && typeof out.blur === 'object' ? { ...(out.blur as any) } : {}
-        const bi = bl.itemStyle && typeof bl.itemStyle === 'object' ? { ...(bl.itemStyle as any) } : {}
-        if (bi.opacity == null) bi.opacity = 0.22
-        bl.itemStyle = bi
-        out.blur = bl
-      }
-      return out
+      if (it.selectedMode != null) return it
+      return { ...it, selectedMode: 'single' }
     }
     if (Array.isArray(s)) return { ...o, series: s.map(normalize) }
     if (s && typeof s === 'object') return { ...o, series: normalize(s) }
@@ -127,12 +112,6 @@ export function EChart({
     const xAxis: any = (optRef.current as any)?.xAxis
     const data = Array.isArray(xAxis) ? xAxis[0]?.data : xAxis?.data
     return Array.isArray(data) ? data[idx] : idx
-  }
-
-  const getAxisXData = () => {
-    const xAxis: any = (optRef.current as any)?.xAxis
-    const data = Array.isArray(xAxis) ? xAxis[0]?.data : xAxis?.data
-    return Array.isArray(data) ? data : null
   }
 
   const getSeriesColor = (series: any, seriesIndex: number) => {
@@ -165,7 +144,7 @@ export function EChart({
       const raw = data.getRawValue(dataIndex)
       const nm = data.getName(dataIndex)
       if (Array.isArray(raw) && raw.length >= 2) return [raw[0], raw[1]]
-      if (typeof raw === 'number' || typeof raw === 'string') return [getAxisX(dataIndex), raw]
+      if (typeof raw === 'number' || typeof raw === 'string') return [dataIndex, raw]
       if (nm != null) return [String(nm), raw]
       return null
     } catch {
@@ -211,14 +190,13 @@ export function EChart({
               symbolSize,
               data: [{ value: coord }],
               itemStyle: { color: c, borderWidth: 2, borderColor: '#fff', shadowBlur, shadowColor: c, opacity: 0.92 },
-              rippleEffect: { scale: rippleScale, brushType: 'stroke', period: 2.4, number: 2 },
+              rippleEffect: { scale: rippleScale, brushType: 'stroke', period: 3.2, number: 2 },
               tooltip: { show: false },
             },
           ],
         },
         { notMerge: false, lazyUpdate: true },
       )
-      pulseRef.current.on = true
     } catch {}
   }
 
@@ -262,36 +240,32 @@ export function EChart({
               symbolSize,
               data: [{ value: rawCoord }],
               itemStyle: { color: c, borderWidth: 2, borderColor: '#fff', shadowBlur, shadowColor: c, opacity: 0.92 },
-              rippleEffect: { scale: rippleScale, brushType: 'stroke', period: 2.4, number: 2 },
+              rippleEffect: { scale: rippleScale, brushType: 'stroke', period: 3.2, number: 2 },
               tooltip: { show: false },
             },
           ],
         },
         { notMerge: false, lazyUpdate: true },
       )
-      pulseRef.current.on = true
     } catch {}
   }
 
   const applyLineSymbolVisibility = (on: boolean) => {
     const inst = instanceRef.current
     if (!inst) return
+    if (!on) return
     const baseSeries = Array.isArray((optRef.current as any)?.series) ? ((optRef.current as any).series as any[]) : []
     const patches: any[] = new Array(baseSeries.length).fill(0).map(() => ({}))
     for (let i = 0; i < baseSeries.length; i += 1) {
       const s = baseSeries[i]
       if (!s || typeof s !== 'object') continue
       if (String(s.type) !== 'line') continue
-      if (on) {
-        const symbol = (s as any).symbol
-        const symbolSize = (s as any).symbolSize
-        patches[i] = {
-          showSymbol: true,
-          symbol: symbol === 'none' ? 'circle' : symbol,
-          symbolSize: typeof symbolSize === 'number' && symbolSize > 0 ? symbolSize : 6,
-        }
-      } else {
-        patches[i] = { showSymbol: false }
+      const symbol = (s as any).symbol
+      const symbolSize = (s as any).symbolSize
+      patches[i] = {
+        showSymbol: true,
+        symbol: symbol === 'none' ? 'circle' : symbol,
+        symbolSize: typeof symbolSize === 'number' && symbolSize > 0 ? symbolSize : 6,
       }
     }
     if (!patches.some((p) => p && typeof p === 'object' && 'showSymbol' in p)) return
@@ -306,11 +280,10 @@ export function EChart({
       window.clearInterval(pulseRef.current.timer)
       pulseRef.current.timer = null
     }
-    const hadOverlay = pulseRef.current.on
     pulseRef.current.on = false
     pulseRef.current.target = null
     pulseRef.current.t0 = 0
-    if (inst && hadOverlay) {
+    if (inst) {
       try {
         inst.setOption(
           {
@@ -324,58 +297,6 @@ export function EChart({
     }
   }
 
-  const canUseSeriesDataIndex = (seriesIndex: number, dataIndex?: number) => {
-    const inst = instanceRef.current
-    if (!inst) return false
-    try {
-      const seriesModel = (inst as any).getModel()?.getSeriesByIndex?.(seriesIndex)
-      const data = seriesModel?.getData?.()
-      if (!data || typeof data.indexOfRawIndex !== 'function') return false
-      if (typeof dataIndex === 'number') {
-        const count = typeof data.count === 'function' ? data.count() : null
-        if (typeof count === 'number' && (dataIndex < 0 || dataIndex >= count)) return false
-      }
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const safeDispatch = (action: any) => {
-    const inst = instanceRef.current
-    if (!inst) return
-    try {
-      inst.dispatchAction(action)
-    } catch {}
-  }
-
-  const inferDataIndexFromPixel = (seriesIndex: number, offsetX?: number, offsetY?: number) => {
-    const inst = instanceRef.current
-    if (!inst) return null
-    if (typeof offsetX !== 'number' || typeof offsetY !== 'number') return null
-    try {
-      const converted = inst.convertFromPixel({ seriesIndex } as any, [offsetX, offsetY] as any)
-      if (!Array.isArray(converted) || converted.length < 1) return null
-      const x = converted[0]
-      let idx: number | null = null
-      if (typeof x === 'number' && Number.isFinite(x)) {
-        idx = Math.round(x)
-      } else {
-        const list = getAxisXData()
-        if (list) {
-          const key = String(x)
-          const found = list.findIndex((v) => String(v) === key)
-          if (found >= 0) idx = found
-        }
-      }
-      if (typeof idx !== 'number') return null
-      if (!canUseSeriesDataIndex(seriesIndex, idx)) return null
-      return idx
-    } catch {
-      return null
-    }
-  }
-
   const startPulse = (seriesIndex: number, dataIndex: number) => {
     if (pulseEnabledRef.current === false) return
     stopPulse()
@@ -386,13 +307,35 @@ export function EChart({
     const baseSeries = Array.isArray((optRef.current as any)?.series) ? ((optRef.current as any).series as any[]) : []
     const base = baseSeries[seriesIndex] ?? null
     const type = String(base?.type ?? '')
-    if (type !== 'line') return
+    if (type !== 'line' && type !== 'scatter' && type !== 'effectScatter') return
     const isLine = type === 'line'
-    const baseSymbolSize = isLine ? 16 : 18
-    const baseShadowBlur = isLine ? 26 : 26
-    const rippleScale = isLine ? 3.0 : 3.2
+    const baseSymbolSize = isLine ? 16 : 20
+    const baseShadowBlur = isLine ? 26 : 30
+    const rippleScale = isLine ? 3.0 : 3.4
     setPulseOverlayByIndex(seriesIndex, dataIndex, baseSymbolSize, baseShadowBlur, rippleScale)
-    safeDispatch({ type: 'highlight', seriesIndex, dataIndex } as any)
+    pulseRef.current.timer = window.setInterval(() => {
+      const current = instanceRef.current
+      const target = pulseRef.current.target
+      if (!current || !target) return
+      const t = performance.now()
+      const phase = ((t - pulseRef.current.t0) / 1600) * Math.PI * 2
+      const k = (Math.sin(phase) + 1) / 2
+      try {
+        const baseSeries0 = Array.isArray((optRef.current as any)?.series) ? ((optRef.current as any).series as any[]) : []
+        const base0 = baseSeries0[target.seriesIndex] ?? null
+        const type0 = String(base0?.type ?? '')
+        if (type0 !== 'line' && type0 !== 'scatter' && type0 !== 'effectScatter') return
+        const isLine0 = type0 === 'line'
+        const baseSymbolSize0 = isLine0 ? 16 : 20
+        const baseShadowBlur0 = isLine0 ? 26 : 30
+        const rippleScale0 = isLine0 ? 3.0 : 3.4
+        const symbolSize = Math.round(baseSymbolSize0 + k * 7)
+        const blur = Math.round(baseShadowBlur0 + k * 22)
+        setPulseOverlayByIndex(target.seriesIndex, target.dataIndex, symbolSize, blur, rippleScale0)
+        current.dispatchAction({ type: 'select', seriesIndex: target.seriesIndex, dataIndex: target.dataIndex } as any)
+        current.dispatchAction({ type: 'highlight', seriesIndex: target.seriesIndex, dataIndex: target.dataIndex } as any)
+      } catch {}
+    }, 60)
   }
 
   const broadcastSelection = (next: { seriesIndex: number; dataIndex: number } | null) => {
@@ -405,9 +348,9 @@ export function EChart({
     const cur = getCurrentSelected()
     if (!cur) return
     try {
-      safeDispatch({ type: 'downplay', seriesIndex: cur.seriesIndex, dataIndex: cur.dataIndex } as any)
+      inst.dispatchAction({ type: 'downplay', seriesIndex: cur.seriesIndex, dataIndex: cur.dataIndex } as any)
+      inst.dispatchAction({ type: 'unselect', seriesIndex: cur.seriesIndex, dataIndex: cur.dataIndex } as any)
     } catch {}
-    safeDispatch({ type: 'downplay' } as any)
     if (selectedPropRef.current === undefined) internalSelectedRef.current = null
     stopPulse()
     applyLineSymbolVisibility(false)
@@ -425,16 +368,18 @@ export function EChart({
     if (!inst) return
     broadcastSelection(next)
     const cur = getCurrentSelected()
-    safeDispatch({ type: 'downplay' } as any)
     if (cur) {
       try {
-        safeDispatch({ type: 'downplay', seriesIndex: cur.seriesIndex, dataIndex: cur.dataIndex } as any)
+        inst.dispatchAction({ type: 'downplay', seriesIndex: cur.seriesIndex, dataIndex: cur.dataIndex } as any)
+        inst.dispatchAction({ type: 'unselect', seriesIndex: cur.seriesIndex, dataIndex: cur.dataIndex } as any)
       } catch {}
     }
     if (selectedPropRef.current === undefined) internalSelectedRef.current = next
     applyLineSymbolVisibility(true)
     try {
-      safeDispatch({ type: 'highlight', seriesIndex: next.seriesIndex, dataIndex: next.dataIndex } as any)
+      inst.dispatchAction({ type: 'select', seriesIndex: next.seriesIndex, dataIndex: next.dataIndex } as any)
+      inst.dispatchAction({ type: 'highlight', seriesIndex: next.seriesIndex, dataIndex: next.dataIndex } as any)
+      inst.dispatchAction({ type: 'showTip', seriesIndex: next.seriesIndex, dataIndex: next.dataIndex } as any)
     } catch {}
     startPulse(next.seriesIndex, next.dataIndex)
     try {
@@ -487,18 +432,7 @@ export function EChart({
     })
     inst.on('click', (p: any) => {
       try {
-        clickHandledRef.current = true
-        window.setTimeout(() => {
-          clickHandledRef.current = false
-        }, 0)
-        const hv0 = pickHover(p)
-        const hv: ChartHover = (() => {
-          if (typeof hv0.seriesIndex !== 'number') return hv0
-          if (typeof hv0.dataIndex === 'number') return hv0
-          const inferred = inferDataIndexFromPixel(hv0.seriesIndex, hv0.offsetX, hv0.offsetY)
-          if (typeof inferred !== 'number') return hv0
-          return { ...hv0, dataIndex: inferred }
-        })()
+        const hv = pickHover(p)
         try {
           onClickRef.current?.(hv)
         } catch {}
@@ -510,24 +444,6 @@ export function EChart({
           else setSelection({ seriesIndex: hv.seriesIndex, dataIndex: hv.dataIndex }, hv)
           return
         }
-        if (typeof hv.seriesIndex !== 'number') {
-          const ox = hv.offsetX
-          const oy = hv.offsetY
-          const baseSeries = Array.isArray((optRef.current as any)?.series) ? ((optRef.current as any).series as any[]) : []
-          const firstLineIdx = baseSeries.findIndex((s) => String((s as any)?.type ?? '') === 'line')
-          if (firstLineIdx >= 0) {
-            const inferred = inferDataIndexFromPixel(firstLineIdx, ox, oy)
-            if (typeof inferred === 'number') {
-              const nextHv: ChartHover = { ...hv, seriesIndex: firstLineIdx, dataIndex: inferred }
-              selectedHoverRef.current = nextHv
-              const cur = getCurrentSelected()
-              const isSame = !!cur && cur.seriesIndex === firstLineIdx && cur.dataIndex === inferred
-              if (isSame) clearSelection(nextHv)
-              else setSelection({ seriesIndex: firstLineIdx, dataIndex: inferred }, nextHv)
-              return
-            }
-          }
-        }
         clearSelection(hv)
       } catch {
         try {
@@ -535,34 +451,6 @@ export function EChart({
         } catch {}
       }
     })
-
-    const zr = inst.getZr()
-    const handleZrClick = (ev: any) => {
-      if (clickHandledRef.current) return
-      const ox = typeof ev?.offsetX === 'number' ? ev.offsetX : undefined
-      const oy = typeof ev?.offsetY === 'number' ? ev.offsetY : undefined
-      if (typeof ox !== 'number' || typeof oy !== 'number') {
-        clearSelection({} as any)
-        return
-      }
-      const baseSeries = Array.isArray((optRef.current as any)?.series) ? ((optRef.current as any).series as any[]) : []
-      const firstLineIdx = baseSeries.findIndex((s) => String((s as any)?.type ?? '') === 'line')
-      if (firstLineIdx < 0) {
-        clearSelection({} as any)
-        return
-      }
-      const inferred = inferDataIndexFromPixel(firstLineIdx, ox, oy)
-      if (typeof inferred !== 'number') {
-        clearSelection({} as any)
-        return
-      }
-      const cur = getCurrentSelected()
-      const isSame = !!cur && cur.seriesIndex === firstLineIdx && cur.dataIndex === inferred
-      const hv: ChartHover = { seriesIndex: firstLineIdx, dataIndex: inferred, offsetX: ox, offsetY: oy }
-      if (isSame) clearSelection(hv)
-      else setSelection({ seriesIndex: firstLineIdx, dataIndex: inferred }, hv)
-    }
-    zr.on('click', handleZrClick as any)
 
     const ro = new ResizeObserver(() => {
       tries = 0
@@ -615,9 +503,6 @@ export function EChart({
       ro.disconnect()
       window.removeEventListener('click', handleWindowClick, true)
       window.removeEventListener(GLOBAL_SELECTION_EVENT, handleExternalSelection as any)
-      try {
-        zr.off('click', handleZrClick as any)
-      } catch {}
       inst.dispose()
       instanceRef.current = null
     }
@@ -643,7 +528,8 @@ export function EChart({
       stopPulse()
       applyLineSymbolVisibility(false)
       try {
-        safeDispatch({ type: 'downplay' } as any)
+        inst.dispatchAction({ type: 'downplay' } as any)
+        inst.dispatchAction({ type: 'unselect' } as any)
       } catch {}
       try {
         inst.setOption(optRef.current, { notMerge: true, lazyUpdate: true })
@@ -654,36 +540,12 @@ export function EChart({
       seriesIndex: selected.seriesIndex,
       dataIndex: selected.dataIndex,
     }
-    safeDispatch({ type: 'highlight', seriesIndex: selected.seriesIndex, dataIndex: selected.dataIndex } as any)
+    inst.dispatchAction({ type: 'select', seriesIndex: selected.seriesIndex, dataIndex: selected.dataIndex } as any)
+    inst.dispatchAction({ type: 'highlight', seriesIndex: selected.seriesIndex, dataIndex: selected.dataIndex } as any)
     applyLineSymbolVisibility(true)
+    inst.dispatchAction({ type: 'showTip', seriesIndex: selected.seriesIndex, dataIndex: selected.dataIndex } as any)
     startPulse(selected.seriesIndex, selected.dataIndex)
   }, [pulseEnabled, selected])
 
-  return (
-    <div
-      ref={ref}
-      onClick={(e: any) => {
-        e.stopPropagation()
-        if (clickHandledRef.current) return
-        const el = ref.current
-        if (!el) return
-        const rect = el.getBoundingClientRect()
-        const ox = e.clientX - rect.left
-        const oy = e.clientY - rect.top
-        const baseSeries = Array.isArray((optRef.current as any)?.series) ? ((optRef.current as any).series as any[]) : []
-        for (let si = 0; si < baseSeries.length; si += 1) {
-          const inferred = inferDataIndexFromPixel(si, ox, oy)
-          if (typeof inferred !== 'number') continue
-          const cur = getCurrentSelected()
-          const isSame = !!cur && cur.seriesIndex === si && cur.dataIndex === inferred
-          const hv: ChartHover = { seriesIndex: si, dataIndex: inferred, offsetX: ox, offsetY: oy }
-          if (isSame) clearSelection(hv)
-          else setSelection({ seriesIndex: si, dataIndex: inferred }, hv)
-          return
-        }
-        clearSelection({} as any)
-      }}
-      style={{ width: '100%', height: '100%', minHeight: 220, ...style }}
-    />
-  )
+  return <div ref={ref} style={{ width: '100%', height: '100%', minHeight: 220, ...style }} />
 }
