@@ -767,6 +767,35 @@ export default function KnowledgeBasePage() {
   const editorOpen = createOpen || !!editing
   const isViewMode = editorMode === 'view' && !createOpen && !!editing
 
+  const regexPattern = Form.useWatch('pattern', form)
+  const regexReplacement = Form.useWatch('replacement', form)
+  const regexExampleIn = Form.useWatch('exampleIn', form)
+
+  const regexPreview = useMemo(() => {
+    const rawPattern = String(regexPattern ?? '')
+    const rawReplacement = String(regexReplacement ?? '')
+    const input = String(regexExampleIn ?? '')
+
+    if (!input) return { out: '', error: '' }
+
+    const buildRegExp = () => {
+      const raw = rawPattern.trim()
+      if (!raw) return null
+      const m = /^\/(.+)\/([gimsuy]*)$/.exec(raw)
+      if (m) return new RegExp(m[1], m[2] || 'g')
+      return new RegExp(raw, 'g')
+    }
+
+    try {
+      const re = buildRegExp()
+      const out = re ? input.replace(re, rawReplacement) : input
+      return { out, error: '' }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      return { out: '', error: msg }
+    }
+  }, [regexExampleIn, regexPattern, regexReplacement])
+
   const intro = useMemo(() => {
     const title = tabLabel(t, tab)
     const descKey = `intro.kb.${tab}.desc`
@@ -803,7 +832,7 @@ export default function KnowledgeBasePage() {
     const template = (() => {
       if (tab === 'terms') return [{ term: 'ARPU', synonyms: ['用户产值', '每用户收入'] }]
       if (tab === 'metrics') return [{ name: '离网率', formula: '离网率 = 离网用户数 / 在网用户数' }]
-      if (tab === 'regex') return [{ name: 'employee_id', pattern: '^([a-zA-Z])(\\d{5})$' }]
+      if (tab === 'regex') return [{ name: 'demo', pattern: '^abc(\\d+)$', replacement: 'ABC$1', exampleIn: 'abc123', exampleOut: 'ABC123' }]
       if (tab === 'logic-tree') return [{ name: '营销活动复盘', scenario: '适用于活动效果复盘与异常归因。', steps: '1. 明确目标\n2. 指标口径\n3. 拆解维度\n4. 验证路径\n5. 结论输出' }]
       return [{ question: '如何按渠道统计 GMV？', sql: 'SELECT channel, SUM(amount) AS gmv\nFROM orders\nGROUP BY channel;' }]
     })()
@@ -845,7 +874,7 @@ export default function KnowledgeBasePage() {
     if (!editing) {
       if (tab === 'terms') form.setFieldsValue({ term: '', synonyms: [], desc: '' })
       if (tab === 'metrics') form.setFieldsValue({ name: '', formula: '' })
-      if (tab === 'regex') form.setFieldsValue({ name: '', pattern: '' })
+      if (tab === 'regex') form.setFieldsValue({ name: '', pattern: '^abc(\\d+)$', replacement: 'ABC$1', exampleIn: 'abc123' })
       if (tab === 'logic-tree') form.setFieldsValue({ name: '', scenario: '', steps: '' })
       if (tab === 'sql-examples') form.setFieldsValue({ question: '', sql: '' })
       return
@@ -853,7 +882,8 @@ export default function KnowledgeBasePage() {
 
     if (editing.category === 'terms') form.setFieldsValue({ term: editing.term, synonyms: editing.synonyms, desc: editing.desc })
     if (editing.category === 'metrics') form.setFieldsValue({ name: editing.name, formula: editing.formula })
-    if (editing.category === 'regex') form.setFieldsValue({ name: editing.name, pattern: editing.pattern })
+    if (editing.category === 'regex')
+      form.setFieldsValue({ name: editing.name, pattern: editing.pattern, replacement: editing.replacement, exampleIn: editing.exampleIn })
     if (editing.category === 'logic-tree') form.setFieldsValue({ name: editing.name, scenario: editing.scenario, steps: editing.steps })
     if (editing.category === 'sql-examples') form.setFieldsValue({ question: editing.question, sql: editing.sql })
   }, [editorOpen, editing, form, tab])
