@@ -1058,6 +1058,16 @@ html[data-mode='dark'] .studioPaletteSwatch {
   height: 0;
 }
 
+.studioScrollbarHidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.studioScrollbarHidden::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .studioThemeRoot .ant-input,
 .studioThemeRoot .ant-input-affix-wrapper,
 .studioThemeRoot .ant-input-number,

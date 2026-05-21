@@ -35,7 +35,7 @@ export function buildRadarOption(): EChartsOption {
         symbol: 'none',
         symbolSize: 0,
         areaStyle: { opacity: 0.18 },
-        lineStyle: { width: 1.5 },
+        lineStyle: { width: 2 },
         data: [
           { value: [84, 78, 86, 80, 76], name: '当前版本' },
           { value: [70, 72, 74, 66, 68], name: '上个版本' },

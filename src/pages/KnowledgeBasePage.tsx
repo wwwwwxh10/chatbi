@@ -195,23 +195,35 @@ const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
 }
 
 const LogicTreeMini = ({ isDark, accent }: { isDark: boolean; accent: string }) => {
-  const baseOpacity = isDark ? 0.14 : 0.10
-  const dashOpacity = isDark ? 0.34 : 0.24
+  const baseOpacity = isDark ? 0.20 : 0.14
+  const dashOpacity = isDark ? 0.52 : 0.38
   const pillFill = isDark ? 'rgba(255,255,255,0.016)' : 'rgba(15,23,42,0.022)'
   const pillSheen = isDark ? 'rgba(255,255,255,0.020)' : 'rgba(255,255,255,0.26)'
-  const nodeBase = isDark ? 'rgba(255,255,255,0.055)' : 'rgba(15,23,42,0.05)'
-  const iconOn = isDark ? 'rgba(226,232,240,0.82)' : 'rgba(15,23,42,0.70)'
+  const nodeBase = isDark ? 'rgba(255,255,255,0.040)' : 'rgba(15,23,42,0.04)'
+  const iconOn = isDark ? 'rgba(226,232,240,0.86)' : 'rgba(15,23,42,0.72)'
   return (
     <svg viewBox="0 0 280 104" width="100%" height="88" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="kbLtNodeBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={accent} stopOpacity={isDark ? 0.18 : 0.22} />
+          <stop offset="100%" stopColor={accent} stopOpacity={isDark ? 0.10 : 0.14} />
+        </linearGradient>
+        <filter id="kbLtNodeGlow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="6" stdDeviation="8" floodColor={accent} floodOpacity={isDark ? 0.18 : 0.14} />
+        </filter>
+      </defs>
+
       <rect x="62" y="10" width="156" height="30" rx="15" fill={pillFill} />
       <rect x="62" y="10" width="156" height="15" rx="15" fill={pillSheen} opacity={0.65} />
 
-      <path d="M140 40 C140 56, 90 56, 78 72" stroke={accent} strokeOpacity={baseOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" />
-      <path d="M140 40 V72" stroke={accent} strokeOpacity={baseOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" />
-      <path d="M140 40 C140 56, 190 56, 202 72" stroke={accent} strokeOpacity={baseOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <circle cx="140" cy="40" r="3.1" fill={accent} opacity={0.92} />
+
+      <path d="M140 40 C140 56, 90 56, 78 68" stroke={accent} strokeOpacity={baseOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <path d="M140 40 V68" stroke={accent} strokeOpacity={baseOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <path d="M140 40 C140 56, 190 56, 202 68" stroke={accent} strokeOpacity={baseOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" />
 
       <path
-        d="M140 40 C140 56, 90 56, 78 72"
+        d="M140 40 C140 56, 90 56, 78 68"
         stroke={accent}
         strokeOpacity={dashOpacity}
         strokeWidth="1.6"
@@ -221,11 +233,11 @@ const LogicTreeMini = ({ isDark, accent }: { isDark: boolean; accent: string }) 
       >
         <animate attributeName="stroke-dashoffset" values="0;-18" dur="1.8s" repeatCount="indefinite" />
       </path>
-      <path d="M140 40 V72" stroke={accent} strokeOpacity={dashOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeDasharray="2.4 6.2">
+      <path d="M140 40 V68" stroke={accent} strokeOpacity={dashOpacity} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeDasharray="2.4 6.2">
         <animate attributeName="stroke-dashoffset" values="0;-18" dur="1.8s" repeatCount="indefinite" />
       </path>
       <path
-        d="M140 40 C140 56, 190 56, 202 72"
+        d="M140 40 C140 56, 190 56, 202 68"
         stroke={accent}
         strokeOpacity={dashOpacity}
         strokeWidth="1.6"
@@ -236,25 +248,28 @@ const LogicTreeMini = ({ isDark, accent }: { isDark: boolean; accent: string }) 
         <animate attributeName="stroke-dashoffset" values="0;-18" dur="1.8s" repeatCount="indefinite" />
       </path>
 
-      <rect x="54" y="70" width="36" height="36" rx="10" fill={nodeBase} />
-      <path d="M62 84l6-6 6 6 6-6" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" opacity="0.70" />
-      <path d="M62 92h18" fill="none" stroke={iconOn} strokeWidth="1.7" strokeLinecap="round" opacity="0.52" />
-      <path d="M62 98h10" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" opacity="0.38" />
+      <rect x="54" y="66" width="36" height="36" rx="10" fill={nodeBase} />
+      <rect x="54" y="66" width="36" height="36" rx="10" fill="url(#kbLtNodeBg)" stroke={accent} strokeOpacity={isDark ? 0.16 : 0.14} filter="url(#kbLtNodeGlow)" />
+      <path d="M62 80l6-6 6 6 6-6" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" opacity="0.70" />
+      <path d="M62 88h18" fill="none" stroke={iconOn} strokeWidth="1.7" strokeLinecap="round" opacity="0.52" />
+      <path d="M62 94h10" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" opacity="0.38" />
 
-      <rect x="122" y="70" width="36" height="36" rx="10" fill={nodeBase} />
-      <rect x="130" y="80" width="20" height="6" rx="3" fill={iconOn} opacity="0.18" />
-      <rect x="130" y="90" width="14" height="6" rx="3" fill={iconOn} opacity="0.14" />
-      <circle cx="126.5" cy="83" r="2" fill={accent} opacity="0.58" />
-      <circle cx="126.5" cy="93" r="2" fill={accent} opacity="0.40" />
-      <path d="M130 98h12" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" opacity="0.34" />
+      <rect x="122" y="66" width="36" height="36" rx="10" fill={nodeBase} />
+      <rect x="122" y="66" width="36" height="36" rx="10" fill="url(#kbLtNodeBg)" stroke={accent} strokeOpacity={isDark ? 0.16 : 0.14} filter="url(#kbLtNodeGlow)" />
+      <rect x="130" y="76" width="20" height="6" rx="3" fill={iconOn} opacity="0.18" />
+      <rect x="130" y="86" width="14" height="6" rx="3" fill={iconOn} opacity="0.14" />
+      <circle cx="126.5" cy="79" r="2" fill={accent} opacity="0.58" />
+      <circle cx="126.5" cy="89" r="2" fill={accent} opacity="0.40" />
+      <path d="M130 94h12" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" opacity="0.34" />
 
-      <rect x="190" y="70" width="36" height="36" rx="10" fill={nodeBase} />
-      <circle cx="201" cy="86" r="2.1" fill={iconOn} opacity="0.62" />
-      <circle cx="209" cy="90" r="2.1" fill={iconOn} opacity="0.48" />
-      <circle cx="217" cy="94" r="2.1" fill={iconOn} opacity="0.62" />
-      <path d="M201 86 H209" stroke={iconOn} strokeWidth="1.7" strokeLinecap="round" opacity="0.28" />
-      <path d="M209 90 H217" stroke={iconOn} strokeWidth="1.7" strokeLinecap="round" opacity="0.22" />
-      <path d="M202 98h14" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" opacity="0.34" />
+      <rect x="190" y="66" width="36" height="36" rx="10" fill={nodeBase} />
+      <rect x="190" y="66" width="36" height="36" rx="10" fill="url(#kbLtNodeBg)" stroke={accent} strokeOpacity={isDark ? 0.16 : 0.14} filter="url(#kbLtNodeGlow)" />
+      <circle cx="201" cy="82" r="2.1" fill={iconOn} opacity="0.62" />
+      <circle cx="209" cy="86" r="2.1" fill={iconOn} opacity="0.48" />
+      <circle cx="217" cy="90" r="2.1" fill={iconOn} opacity="0.62" />
+      <path d="M201 82 H209" stroke={iconOn} strokeWidth="1.7" strokeLinecap="round" opacity="0.28" />
+      <path d="M209 86 H217" stroke={iconOn} strokeWidth="1.7" strokeLinecap="round" opacity="0.22" />
+      <path d="M202 94h14" fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round" opacity="0.34" />
     </svg>
   )
 }

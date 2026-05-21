@@ -732,7 +732,7 @@ export function buildRadarOption(title: string, themeColors: string[]): EChartsO
           {
             value: [78, 85, 60, 72, 88],
             name: isEn() ? 'Current' : '当前',
-            lineStyle: { width: 1, color: themeColors[0] },
+            lineStyle: { width: 2, color: themeColors[0] },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                 { offset: 0, color: withAlpha(themeColors[0], 0.4) },
@@ -744,7 +744,7 @@ export function buildRadarOption(title: string, themeColors: string[]): EChartsO
           {
             value: [65, 70, 85, 55, 75],
             name: isEn() ? 'Benchmark' : '对标',
-            lineStyle: { width: 1, color: themeColors[1] ?? themeColors[0] },
+            lineStyle: { width: 2, color: themeColors[1] ?? themeColors[0] },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                 { offset: 0, color: withAlpha(themeColors[1] ?? themeColors[0], 0.4) },

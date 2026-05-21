@@ -1275,12 +1275,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     return (
       <div
         style={{
-          height: '100%',
+          height: 74,
           width: '100%',
-          maxWidth: '100%',
-          maxHeight: '100%',
           boxSizing: 'border-box',
-          borderRadius: 10,
+          borderRadius: 8,
           border: `1px dashed ${token.colorSplit}`,
           display: 'grid',
           placeItems: 'center',
@@ -1295,6 +1293,23 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   }
 
   const canvasRef = useRef<HTMLDivElement | null>(null)
+  const rightPanelBodyRef = useRef<HTMLDivElement | null>(null)
+  const shouldScrollToFreeRef = useRef(false)
+
+  const scrollRightPanelToBottom = useCallback((behavior: ScrollBehavior) => {
+    const el = rightPanelBodyRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior })
+  }, [])
+
+  useEffect(() => {
+    if (!shouldScrollToFreeRef.current) return
+    if (layout.mode !== 'free') return
+    shouldScrollToFreeRef.current = false
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => scrollRightPanelToBottom('smooth'))
+    })
+  }, [layout.mode, scrollRightPanelToBottom])
 
   const templatePositions = useMemo(() => {
     if (layout.mode !== 'template') return null
@@ -2266,8 +2281,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             <Typography.Text strong>页面配置</Typography.Text>
           </div>
           <div
-            className="studioColBody"
-            style={{ padding: 6, overflowX: 'hidden', overflowY: 'hidden', display: 'flex', flexDirection: 'column', gap: 6 }}
+            className="studioColBody studioScrollbarHidden"
+            data-page-config-seal="start"
+            ref={rightPanelBodyRef}
+            style={{ padding: 12, overflowX: 'hidden', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}
           >
             {(() => {
               const RequiredLabel = ({ label }: { label: string }) => (
@@ -2278,14 +2295,14 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               )
 
               return (
-                <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div>
                     <RequiredLabel label="名称" />
                     <div style={{ height: 4 }} />
                     <Input value={title} disabled={readOnly} onChange={(e) => setTitle(e.target.value)} placeholder="例如：核心运营指标" />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
                       <RequiredLabel label="语言" />
                       <div style={{ height: 4 }} />
@@ -2504,10 +2521,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   />
                 </div>
 
-                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <div>
                   <RequiredLabel label="页面布局" />
                   <div style={{ height: 4 }} />
-                  <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, gridAutoRows: '1fr' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     {(
                       [
                         { key: 'main-sub' as const, title: '主次布局', desc: '主次分明/主体突出', icon: <LayoutWireframe kind="main-sub" /> },
@@ -2515,7 +2532,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         { key: 'sidebar' as const, title: '侧栏布局', desc: '主辅分区/侧边辅助', icon: <LayoutWireframe kind="sidebar" /> },
                         { key: 'matrix-10' as const, title: '矩阵布局', desc: '10宫格/分析主图', icon: <LayoutWireframe kind="matrix-10" /> },
                         { key: 'analysis-7' as const, title: '分析布局', desc: '左右分析/中间主区', icon: <LayoutWireframe kind="analysis-7" /> },
-                        { key: 'free' as const, title: '自定义栅格', desc: '自由定义列数与间距', icon: <CustomGridPreview /> },
+                        { key: 'free' as const, title: '自定义栅格', desc: '自由定义卡片布局', icon: <CustomGridPreview /> },
                       ] as const
                     ).map((it) => {
                       const selected = layout.mode === 'free' ? it.key === 'free' : it.key !== 'free' && layout.template === it.key
@@ -2524,7 +2541,15 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                           key={it.key}
                           onClick={() => {
                             if (readOnly) return
-                            if (it.key === 'free') applyLayout({ mode: 'free', cols: 12, rows: 8, gap: 16, cards: [] })
+                            if (it.key === 'free') {
+                              shouldScrollToFreeRef.current = true
+                              applyLayout({ mode: 'free', cols: 12, rows: 8, gap: 16, cards: [] })
+                              setTimeout(() => {
+                                requestAnimationFrame(() => {
+                                  requestAnimationFrame(() => scrollRightPanelToBottom('smooth'))
+                                })
+                              }, 0)
+                            }
                             else applyLayout({ mode: 'template', template: it.key as any })
                           }}
                           style={{
@@ -2532,32 +2557,31 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             border: `1px solid ${selected ? accent : 'var(--studio-field-border)'}`,
                             background: 'var(--studio-panel-card-bg)',
                             cursor: readOnly ? 'default' : 'pointer',
-                            padding: 4,
+                            padding: 6,
                             opacity: readOnly ? 0.9 : 1,
-                            height: '100%',
                             display: 'flex',
                             flexDirection: 'column',
                           }}
                         >
                           <div
                             style={{
-                              height: 90,
-                              padding: 4,
+                              height: 82,
+                              padding: '6px 6px 2px',
                               boxSizing: 'border-box',
                               display: 'flex',
                               alignItems: 'flex-start',
-                              justifyContent: 'center',
+                              justifyContent: 'stretch',
                               width: '100%',
                             }}
                           >
-                            {it.icon}
+                            <div style={{ width: '100%' }}>{it.icon}</div>
                           </div>
-                          <div style={{ height: 2 }} />
-                          <div style={{ paddingInline: 0 }}>
+                          <div style={{ height: 0 }} />
+                          <div style={{ paddingInline: 6 }}>
                             <Typography.Text strong style={{ display: 'block', lineHeight: 1.2, fontSize: 13, textAlign: 'left' }}>
                               {it.title}
                             </Typography.Text>
-                            <Typography.Text type="secondary" style={{ display: 'block', fontSize: 11, lineHeight: 1.2, marginTop: 1, textAlign: 'left' }}>
+                            <Typography.Text type="secondary" style={{ display: 'block', fontSize: 11, lineHeight: 1.2, marginTop: 0, textAlign: 'left' }}>
                               {it.desc}
                             </Typography.Text>
                           </div>
@@ -2572,7 +2596,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             })()}
 
             {layout.mode === 'free' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                 <div>
                   <Space size={4}>
                     <Typography.Text type="secondary" style={{ fontSize: 11 }}>
@@ -2632,6 +2656,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 </div>
               </div>
             ) : null}
+            <span data-page-config-seal="end" style={{ display: 'none' }} />
           </div>
         </div>
 

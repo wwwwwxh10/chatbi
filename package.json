@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "check:page-config-seal": "node scripts/check-page-config-seal.mjs",
+    "update:page-config-seal": "node scripts/check-page-config-seal.mjs --write",
+    "dev": "npm run check:page-config-seal && vite",
+    "build": "npm run check:page-config-seal && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
