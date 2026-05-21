@@ -42,6 +42,7 @@ import { EChart } from '../components/EChart'
 import { FlipCounter } from '../components/MetricCards'
 import { useAppStore } from '../store/appStore'
 import { createDashboardId, touchUpdatedAt, useDashboardsStore } from '../store/dashboardsStore'
+import { broadcastGlobalSelection, GLOBAL_SELECTION_EVENT } from '../utils/globalSelection'
 import { StudioJsonEditor } from './StudioJsonEditor'
 import {
   defaultConfig,
@@ -384,6 +385,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
+  const selectionScopeRef = useRef(`studio_${Math.random().toString(36).slice(2)}`)
   const [dragFromIdx, setDragFromIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
   const [draggingKind, setDraggingKind] = useState<WidgetKind | null>(null)
@@ -409,6 +411,17 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setEditorError(editingSlot.error)
     setEditorFullscreen(false)
   }, [editingSlotId])
+
+  useEffect(() => {
+    const handle = (e: any) => {
+      const d = e?.detail
+      if (!d) return
+      if (d.scope && d.scope === selectionScopeRef.current) return
+      setSelectedSlotId(null)
+    }
+    window.addEventListener(GLOBAL_SELECTION_EVENT, handle as any)
+    return () => window.removeEventListener(GLOBAL_SELECTION_EVENT, handle as any)
+  }, [])
 
   const applyLayout = (nextLayout: StudioLayout, opts?: { fillFromUnplaced?: boolean }) => {
     const fillFromUnplaced = opts?.fillFromUnplaced !== false
@@ -990,7 +1003,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, paddingTop: slot.kind === 'funnel' ? 0 : 10 }}>
-          <EChart option={opt as any} legendSingleLine />
+          <EChart option={opt as any} legendSingleLine selectionScope={selectionScopeRef.current} />
         </div>
       </div>
     ) : (
@@ -1100,8 +1113,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   }) => {
     const themeSurfaceBg: Record<StudioAppearance['theme'], string> = {
       obsidian: token.colorBgContainer,
-      tech: 'linear-gradient(135deg, rgba(18, 44, 96, 0.62), rgba(10, 16, 28, 0.86))',
-      cyber: 'linear-gradient(135deg, rgba(20, 30, 50, 0.60), rgba(10, 15, 25, 0.80))',
+      tech: 'rgba(10, 16, 28, 0.86)',
+      cyber: 'rgba(10, 15, 25, 0.82)',
     }
     const items = [
       {
@@ -1960,9 +1973,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     appearance.theme === 'obsidian'
                       ? token.colorBgContainer
                       : appearance.theme === 'tech'
-                        ? 'linear-gradient(135deg, rgba(18, 44, 96, 0.62), rgba(10, 16, 28, 0.86))'
+                        ? 'rgba(10, 16, 28, 0.86)'
                         : appearance.theme === 'cyber'
-                          ? 'linear-gradient(135deg, rgba(20, 30, 50, 0.60), rgba(10, 15, 25, 0.80))'
+                          ? 'rgba(10, 15, 25, 0.82)'
                           : 'rgba(10, 14, 24, 0.76)'
                   return (
                     <div
@@ -1989,9 +2002,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                               : appearance.theme === 'obsidian'
                                 ? token.colorBgContainer
                                 : appearance.theme === 'tech'
-                                  ? 'linear-gradient(135deg, rgba(18, 44, 96, 0.45), rgba(10, 16, 28, 0.84))'
+                                  ? 'rgba(10, 16, 28, 0.72)'
                                   : appearance.theme === 'cyber'
-                                    ? 'linear-gradient(135deg, rgba(20, 30, 50, 0.60), rgba(10, 15, 25, 0.80))'
+                                    ? 'rgba(10, 15, 25, 0.72)'
                                     : panelBg,
                         position: 'relative',
                         zIndex: layout.mode === 'free' ? 2 : 1,
@@ -2002,7 +2015,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       }}
                       onClick={() => {
                         if (!slot.kind) return
-                        setSelectedSlotId((prev) => (prev === slot.id ? null : slot.id))
+                        const next = selectedSlotId === slot.id ? null : slot.id
+                        setSelectedSlotId(next)
+                        broadcastGlobalSelection({ uid: `studio_slot_${slot.id}`, scope: selectionScopeRef.current, kind: 'card', next: null })
                       }}
                       draggable={false}
                       onDragEnter={() => {

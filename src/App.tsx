@@ -32,6 +32,7 @@ import { AppLogoWordmark } from './components/logo/AppLogoWordmark'
 import { useAuthStore } from './store/authStore'
 import { useSystemStore } from './store/systemStore'
 import { AppLogoMark } from './components/logo/AppLogoMark'
+import { AppErrorBoundary, GlobalErrorOverlay } from './components/GlobalErrorOverlay'
 
 type PageMeta = {
   title: string
@@ -181,7 +182,9 @@ export default function App() {
   )
 
   return (
-    <Layout className={isChatWorkspace ? 'appRoot chatWorkspace' : 'appRoot'}>
+    <AppErrorBoundary>
+      <GlobalErrorOverlay>
+        <Layout className={isChatWorkspace ? 'appRoot chatWorkspace' : 'appRoot'}>
       {isChatWorkspace || isLogin || isStudio ? null : (
         <Layout.Header className="appHeader" style={{ height: 56, paddingInline: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
@@ -436,6 +439,8 @@ export default function App() {
           </Form.Item>
         </Form>
       </Modal>
-    </Layout>
+        </Layout>
+      </GlobalErrorOverlay>
+    </AppErrorBoundary>
   )
 }

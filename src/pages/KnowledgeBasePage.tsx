@@ -23,7 +23,7 @@ import { buildSeed, nowId, readTab, setQuery } from './knowledgeBase/kbModel'
 import type { KnowledgeItem, KnowledgeTabKey, LogicTreeItem, MetricItem, RegexItem, SqlExampleItem, TermItem } from './knowledgeBase/kbModel'
 import { useTranslation } from 'react-i18next'
 import { PageIntro } from '../components/PageIntro'
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
+import { ArrowRightOutlined, DeleteOutlined, EditOutlined, InfoCircleFilled, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import { UploadPanel } from '../components/UploadPanel'
 import * as XLSX from 'xlsx'
 import { BookOpen, Code2, GitBranch, Sigma } from 'lucide-react'
@@ -169,7 +169,7 @@ const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
             lineHeight: 1.35,
           }}
         >
-          <div style={{ color: 'rgba(148,163,184,0.55)', textAlign: 'right', paddingRight: 0, userSelect: 'none', marginLeft: -15 }}>
+          <div style={{ color: 'rgba(148,163,184,0.55)', textAlign: 'right', paddingRight: 0, userSelect: 'none', marginLeft: -40 }}>
             {shown.map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
@@ -188,6 +188,87 @@ const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
               </div>
             ) : null}
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const SqlEditorWindow = ({
+  value,
+  onChange,
+  disabled,
+  isDark,
+  placeholder,
+}: {
+  value?: string
+  onChange?: (e: any) => void
+  disabled?: boolean
+  isDark: boolean
+  placeholder?: string
+}) => {
+  const v = String(value ?? '')
+  const lineCount = useMemo(() => {
+    const normalized = v.replace(/\r\n?/g, '\n')
+    const raw = normalized.split('\n')
+    if (raw.length === 1 && raw[0] === '') return 1
+    return Math.max(1, raw.length)
+  }, [v])
+  const bg = isDark ? 'rgba(8, 13, 23, 0.88)' : 'rgba(2, 6, 23, 0.92)'
+
+  return (
+    <div
+      style={{
+        height: 220,
+        borderRadius: 10,
+        background: bg,
+        overflow: 'hidden',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+        position: 'relative',
+      }}
+    >
+      <div
+        style={{
+          height: '100%',
+          display: 'grid',
+          gridTemplateColumns: '30px 1px minmax(0, 1fr)',
+          gap: 8,
+          padding: 12,
+          fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+          fontSize: 12,
+          lineHeight: 1.6,
+        }}
+      >
+        <div style={{ color: 'rgba(148,163,184,0.55)', textAlign: 'right', userSelect: 'none', marginLeft: -15 }}>
+          {new Array(Math.min(lineCount, 20)).fill(0).map((_, i) => (
+            <div key={i}>{i + 1}</div>
+          ))}
+          {lineCount > 20 ? <div style={{ opacity: 0.45 }}>…</div> : null}
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.10)', height: '100%' }} />
+        <div className="kbCodeScroll" style={{ minWidth: 0, overflow: 'auto', scrollbarWidth: 'none' as any, msOverflowStyle: 'none' as any }}>
+          <textarea
+            value={v}
+            onChange={onChange}
+            disabled={disabled}
+            placeholder={placeholder}
+            style={{
+              width: '100%',
+              height: '100%',
+              minHeight: 180,
+              border: 'none',
+              outline: 'none',
+              resize: 'none',
+              padding: 0,
+              margin: 0,
+              background: 'transparent',
+              color: 'rgba(226,232,240,0.92)',
+              fontFamily: 'inherit',
+              fontSize: 'inherit',
+              lineHeight: 'inherit',
+              whiteSpace: 'pre',
+            }}
+          />
         </div>
       </div>
     </div>
@@ -806,8 +887,8 @@ export default function KnowledgeBasePage() {
   const createLabel = useMemo(() => {
     if (tab === 'terms') return t('actions.newTerm')
     if (tab === 'metrics') return t('actions.newMetric')
-    if (tab === 'regex') return t('actions.newRegex')
-    if (tab === 'logic-tree') return t('actions.newLogicTree')
+    if (tab === 'regex') return '新建策略'
+    if (tab === 'logic-tree') return '新建分析思路'
     return t('actions.newSqlExample')
   }, [t, tab])
 
@@ -874,7 +955,7 @@ export default function KnowledgeBasePage() {
     if (!editing) {
       if (tab === 'terms') form.setFieldsValue({ term: '', synonyms: [], desc: '' })
       if (tab === 'metrics') form.setFieldsValue({ name: '', formula: '' })
-      if (tab === 'regex') form.setFieldsValue({ name: '', pattern: '^abc(\\d+)$', replacement: 'ABC$1', exampleIn: 'abc123' })
+      if (tab === 'regex') form.setFieldsValue({ name: '', pattern: '', replacement: '', exampleIn: '' })
       if (tab === 'logic-tree') form.setFieldsValue({ name: '', scenario: '', steps: '' })
       if (tab === 'sql-examples') form.setFieldsValue({ question: '', sql: '' })
       return
@@ -1105,15 +1186,37 @@ export default function KnowledgeBasePage() {
     if (tab === 'regex') {
       const name = String((v as any).name ?? '').trim()
       const pattern = String((v as any).pattern ?? '').trim()
+      const replacement = String((v as any).replacement ?? '')
+      const exampleIn = String((v as any).exampleIn ?? '')
       if (!name || !pattern) return
+
+      const buildRegExp = () => {
+        const raw = pattern.trim()
+        const m = /^\/(.+)\/([gimsuy]*)$/.exec(raw)
+        if (m) return new RegExp(m[1], m[2] || 'g')
+        return new RegExp(raw, 'g')
+      }
+
+      const exampleOut = (() => {
+        if (!exampleIn) return ''
+        try {
+          return exampleIn.replace(buildRegExp(), replacement)
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e)
+          void message.error(`正则规则错误：${msg}`)
+          return null
+        }
+      })()
+      if (exampleOut == null) return
+
       const next: KnowledgeItem = {
         id: editing?.id ?? nowId(),
         category: 'regex',
         name,
         pattern,
-        replacement: editing?.category === 'regex' ? editing.replacement : '',
-        exampleIn: editing?.category === 'regex' ? editing.exampleIn : '',
-        exampleOut: editing?.category === 'regex' ? editing.exampleOut : '',
+        replacement,
+        exampleIn,
+        exampleOut,
         updatedAt,
         referenceCount: preservedReferenceCount,
       }
@@ -1267,7 +1370,7 @@ export default function KnowledgeBasePage() {
           setImportFiles([])
         }}
         destroyOnHidden
-        width={860}
+        width={520}
         centered
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1292,7 +1395,7 @@ export default function KnowledgeBasePage() {
         title={
           <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>
             {(() => {
-              const obj = tab === 'terms' ? '术语' : tab === 'metrics' ? '指标' : tab === 'regex' ? '规则' : tab === 'logic-tree' ? '分析逻辑树' : 'SQL 示例库'
+              const obj = tab === 'terms' ? '术语' : tab === 'metrics' ? '指标' : tab === 'regex' ? '策略' : tab === 'logic-tree' ? '分析思路' : 'SQL 示例库'
               const action = isViewMode ? '预览' : editing ? '编辑' : '新建'
               return `${action}${obj}`
             })()}
@@ -1308,7 +1411,7 @@ export default function KnowledgeBasePage() {
           void onSave()
         }}
         destroyOnHidden
-        width={860}
+        width={520}
         centered
       >
         <Form form={form} layout="vertical">
@@ -1339,12 +1442,121 @@ export default function KnowledgeBasePage() {
 
           {tab === 'regex' ? (
             <>
-              <Form.Item name="name" label="字段" rules={[{ required: true, message: t('validation.required') }]}>
-                <Input disabled={isViewMode} placeholder="例如：employee_id" />
+              <Form.Item name="name" label="策略名称" rules={[{ required: true, message: t('validation.required') }]}>
+                <Input disabled={isViewMode} placeholder="例如：通用手机号格式化汇总" />
               </Form.Item>
-              <Form.Item name="pattern" label="正则规则" rules={[{ required: true, message: t('validation.required') }]}>
-                <Input disabled={isViewMode} placeholder="例如：^([a-zA-Z])(\\d{5})$" />
-              </Form.Item>
+
+              <Row gutter={14}>
+                <Col span={12}>
+                  <Form.Item
+                    name="pattern"
+                    label={
+                      <Popover
+                        placement="topLeft"
+                        content={
+                          <div style={{ width: 360, padding: 6 }}>
+                            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 10 }}>如何汇总多种格式？</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, lineHeight: 1.65 }}>
+                              <div>
+                                  使用 <Tag>( )</Tag> 圈住保留内容（对应 $1、$2…）
+                              </div>
+                              <div>
+                                  使用 <Tag>(?: )</Tag> 匹配但不保留内容
+                              </div>
+                              <div>
+                                  使用 <Tag>|</Tag> 表示 “或” 逻辑（匹配多种格式）
+                              </div>
+                              <div>
+                                  使用 <Tag>^</Tag> 和 <Tag>$</Tag> 标记开头与结尾
+                              </div>
+                            </div>
+                          </div>
+                        }
+                        trigger="hover"
+                        overlayInnerStyle={{ padding: 12 }}
+                      >
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'default' }}>
+                          匹配规则
+                          <InfoCircleFilled style={{ color: token.colorTextTertiary, fontSize: 14 }} />
+                        </span>
+                      </Popover>
+                    }
+                    rules={[{ required: true, message: t('validation.required') }]}
+                  >
+                    <Input disabled={isViewMode} placeholder="例如：^(\\d{11})$|^(\\d{3})-(\\d{4})-(\\d{4})$" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="replacement" label="转化逻辑">
+                    <Input disabled={isViewMode} placeholder="例如：$1$2$3$4" />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <div
+                style={{
+                  border: `1px dashed ${token.colorBorderSecondary}`,
+                  borderRadius: 16,
+                  padding: 14,
+                  marginTop: 6,
+                  background: token.colorFillQuaternary,
+                }}
+              >
+                <Row gutter={10} style={{ marginBottom: 6 }}>
+                  <Col span={10}>
+                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>
+                      输入示例数据
+                    </Typography.Text>
+                  </Col>
+                  <Col span={4} />
+                  <Col span={10}>
+                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>
+                      最终转换结果
+                    </Typography.Text>
+                  </Col>
+                </Row>
+
+                <Row align="middle" gutter={10}>
+                  <Col span={10}>
+                    <Form.Item name="exampleIn" noStyle>
+                      <Input disabled={isViewMode} placeholder="例如：138-0013-8000" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ArrowRightOutlined style={{ fontSize: 20, color: token.colorTextTertiary }} />
+                  </Col>
+                  <Col span={10}>
+                    <div
+                      style={{
+                        minHeight: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: 30,
+                        fontWeight: 800,
+                        color: token.colorPrimary,
+                        letterSpacing: 0.3,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {regexPreview.out || '13800138000'}
+                    </div>
+                  </Col>
+                </Row>
+
+                <div style={{ marginTop: 8 }}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.7 }}>
+                    提示：尝试在左侧输入多种表达方式，均可被正确转换
+                  </Typography.Text>
+                </div>
+              </div>
+
+              {regexPreview.error ? (
+                <Typography.Text type="danger" style={{ display: 'block', marginTop: 10, fontSize: 12 }}>
+                  {regexPreview.error}
+                </Typography.Text>
+              ) : null}
             </>
           ) : null}
 
@@ -1370,13 +1582,13 @@ export default function KnowledgeBasePage() {
                 <Input.TextArea disabled={isViewMode} rows={3} placeholder="描述业务问题，系统将据此优先匹配示例 SQL" />
               </Form.Item>
               <Form.Item name="sql" label="示例 SQL" rules={[{ required: true, message: t('validation.required') }]}>
-                <Input.TextArea disabled={isViewMode} rows={8} placeholder="写下示例 SQL（高频/标准写法）" />
+                <SqlEditorWindow isDark={isDark} disabled={isViewMode} placeholder="写下示例 SQL（高频/标准写法）" />
               </Form.Item>
             </>
           ) : null}
         </Form>
         {modalHint ? (
-          <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.7 }}>
+          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 16, fontSize: 12, lineHeight: 1.7 }}>
             说明：{modalHint}
           </Typography.Text>
         ) : null}
