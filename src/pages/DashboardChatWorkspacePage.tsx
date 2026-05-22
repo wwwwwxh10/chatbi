@@ -787,6 +787,7 @@ function StudioDebugDashboardCanvas({
           <EChart
             option={renderOpt as any}
             selectionScope={selectionScope}
+            datumSelectable={kind !== 'sankey'}
             selected={
               selectedDatum &&
               selectedDatum.slotIdx === idx &&
@@ -906,8 +907,10 @@ function StudioDebugDashboardCanvas({
                   className={`studioSlot${kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}`}
                   role={kind ? 'button' : undefined}
                   tabIndex={kind ? 0 : undefined}
-                  onClick={() => {
+                  onClick={(e) => {
                     if (!kind) return
+                    const t: any = e?.target
+                    if (t?.closest?.('[data-echart-root="1"]')) return
                     const parsed = (() => {
                       try {
                         return raw?.configText ? JSON.parse(raw.configText) : null
@@ -1893,10 +1896,9 @@ export default function DashboardChatWorkspacePage() {
             onDatumSelect={(next, context) => {
               if (!next) {
                 setStudioSelectedDatum(null)
-                setStudioSelectedCardIdx(null)
                 return
               }
-              setStudioSelectedCardIdx(next.slotIdx)
+              setStudioSelectedCardIdx(null)
               setStudioSelectedDatum(next)
               runPresetAnalysis(context)
             }}
@@ -2319,7 +2321,7 @@ export default function DashboardChatWorkspacePage() {
                                       background: 'var(--chatbi-chart-bg)',
                                     }}
                                   >
-                                    <EChart key={chartType} option={chartOption} />
+                                    <EChart key={chartType} option={chartOption} datumSelectable={false} />
                                   </div>
                                 )
                               ) : (

@@ -74,7 +74,7 @@ export function enhanceDashboardChartOption(
       ? {
           show: true,
           trigger: isAxis ? 'axis' : 'item',
-          triggerOn: 'mousemove|click',
+          triggerOn: 'mousemove',
           enterable: true,
           confine: true,
           backgroundColor: 'rgba(0, 0, 0, 0.82)',
@@ -144,7 +144,7 @@ export function enhanceDashboardChartOption(
     emphasis.itemStyle = emphasisItemStyle
     emphasis.scale = true
     emphasis.scaleSize = isLineKind ? 22 : POINT_KINDS.has(kind) ? 20 : BLOCK_KINDS.has(kind) ? 18 : 18
-    emphasis.focus = isLineKind || series.type === 'sankey' ? 'none' : 'self'
+    emphasis.focus = series.type === 'sankey' ? 'none' : 'self'
     emphasis.blurScope = emphasis.focus === 'self' ? 'global' : undefined
     if (!hasDynamicSymbolSize && baseSymbolSize != null) emphasis.symbolSize = Math.max(baseSymbolSize + (isLineKind ? 12 : 18), baseSymbolSize)
     series.emphasis = emphasis
@@ -181,7 +181,7 @@ export function enhanceDashboardChartOption(
     select.itemStyle = selectItemStyle
     select.scale = true
     select.scaleSize = isLineKind ? 18 : POINT_KINDS.has(kind) ? 18 : BLOCK_KINDS.has(kind) ? 14 : 14
-    select.focus = isLineKind || series.type === 'sankey' ? 'none' : 'self'
+    select.focus = series.type === 'sankey' ? 'none' : 'self'
     select.blurScope = select.focus === 'self' ? 'global' : undefined
     if (!hasDynamicSymbolSize && baseSymbolSize != null) select.symbolSize = Math.max(baseSymbolSize + (isLineKind ? 14 : 20), baseSymbolSize)
     series.select = select
