@@ -1030,6 +1030,59 @@ function rgba(hex: string, alpha: number) {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
 }
 
+function colorToRgb(input: string) {
+  const s = String(input || '').trim()
+  if (!s) return null
+  if (s.startsWith('#')) return hexToRgb(s)
+  const m = /^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)$/i.exec(s)
+  if (!m) return null
+  const r = Number(m[1])
+  const g = Number(m[2])
+  const b = Number(m[3])
+  if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) return null
+  return { r, g, b }
+}
+
+function colorToRgba(input: string) {
+  const s = String(input || '').trim()
+  if (!s) return null
+  if (s.startsWith('#')) {
+    const rgb = hexToRgb(s)
+    return rgb ? { ...rgb, a: 1 } : null
+  }
+  const m = /^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)$/i.exec(s)
+  if (!m) return null
+  const r = Number(m[1])
+  const g = Number(m[2])
+  const b = Number(m[3])
+  const a = m[4] == null ? 1 : Number(m[4])
+  if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b) || !Number.isFinite(a)) return null
+  return { r, g, b, a }
+}
+
+function mixColor(a: string, b: string, t: number) {
+  const ra = colorToRgb(a)
+  const rb = colorToRgb(b)
+  if (!ra || !rb) return a
+  const k = Number.isFinite(t) ? Math.max(0, Math.min(1, t)) : 0.5
+  const r = Math.round(ra.r + (rb.r - ra.r) * k)
+  const g = Math.round(ra.g + (rb.g - ra.g) * k)
+  const bb = Math.round(ra.b + (rb.b - ra.b) * k)
+  return `rgb(${r}, ${g}, ${bb})`
+}
+
+function mixRgba(a: string, b: string, t: number) {
+  const ra = colorToRgba(a)
+  const rb = colorToRgba(b)
+  if (!ra || !rb) return a
+  const k = Number.isFinite(t) ? Math.max(0, Math.min(1, t)) : 0.5
+  const r = Math.round(ra.r + (rb.r - ra.r) * k)
+  const g = Math.round(ra.g + (rb.g - ra.g) * k)
+  const bb = Math.round(ra.b + (rb.b - ra.b) * k)
+  const aa = +(ra.a + (rb.a - ra.a) * k).toFixed(3)
+  return `rgba(${r}, ${g}, ${bb}, ${aa})`
+}
+
 export default function DashboardChatWorkspacePage() {
   const { token } = theme.useToken()
   const selectionScopeRef = useRef(`workspace_${Math.random().toString(36).slice(2)}`)
@@ -1150,20 +1203,24 @@ export default function DashboardChatWorkspacePage() {
 
     const themeBase =
       panelTheme === 'obsidian'
-        ? { chatBg: 'rgba(10, 14, 22, 0.97)', panelBorder: 'rgba(255,255,255,0.10)' }
+        ? { chatBg: 'rgba(12, 15, 24, 0.97)', panelBorder: 'rgba(255,255,255,0.10)' }
         : panelTheme === 'tech'
           ? { chatBg: 'rgba(5, 14, 30, 0.97)', panelBorder: 'rgba(255,255,255,0.10)' }
           : { chatBg: 'rgba(6, 10, 20, 0.97)', panelBorder: 'rgba(255,255,255,0.10)' }
 
     const tint = panelTint ?? THEME_ACCENT[panelTheme]
-    const llmBg = rgba(tint, panelTheme === 'tech' ? 0.10 : 0.09)
-    const inputBg = rgba(tint, panelTheme === 'tech' ? 0.12 : 0.11)
-    const inputFocusBg = rgba(tint, panelTheme === 'tech' ? 0.16 : 0.14)
+    const llmBg =
+      panelTheme === 'obsidian'
+        ? mixRgba('rgba(255, 255, 255, 0.06)', rgba(tint, 0.09), 0.5)
+        : rgba(tint, panelTheme === 'tech' ? 0.10 : 0.09)
+    const chatBg = panelTheme === 'obsidian' ? mixColor(token.colorBgLayout, token.colorBgContainer, 0.5) : themeBase.chatBg
+    const inputBg = panelTheme === 'obsidian' ? llmBg : rgba(tint, panelTheme === 'tech' ? 0.12 : 0.11)
+    const inputFocusBg = panelTheme === 'obsidian' ? llmBg : rgba(tint, panelTheme === 'tech' ? 0.16 : 0.14)
     const chartBg =
       panelTheme === 'cyber' ? 'rgba(0, 0, 0, 0.28)' : panelTheme === 'tech' ? 'rgba(0, 0, 0, 0.26)' : 'rgba(0, 0, 0, 0.22)'
 
     return {
-      chatBg: themeBase.chatBg,
+      chatBg,
       panelBorder: themeBase.panelBorder,
       chartBg,
       inputBg,
@@ -1801,10 +1858,10 @@ export default function DashboardChatWorkspacePage() {
       style={{
         display: 'flex',
         alignItems: 'stretch',
-        gap: debugStudio ? 0 : 2,
+        gap: 2,
         height: '100vh',
         minHeight: 720,
-        padding: debugStudio ? 0 : 10,
+        padding: 10,
         background: debugStudio ? debugStudioBg : token.colorBgLayout,
         position: 'relative',
       }}
@@ -2024,7 +2081,11 @@ export default function DashboardChatWorkspacePage() {
           </Space>
         </div>
 
-        <div ref={chatScrollRef} style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column' }}>
+        <div
+          ref={chatScrollRef}
+          className="chatbiScrollbarHidden"
+          style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column' }}
+        >
           {!activeSession?.messages?.length && !activeResult ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '10%' }}>
               <div style={{ textAlign: 'center', maxWidth: 360 }}>
@@ -2100,7 +2161,18 @@ export default function DashboardChatWorkspacePage() {
                           >
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: isTextOnly ? 0 : 8 }}>
                                 {!isTextOnly ? (
-                                  <Typography.Text style={{ maxWidth: '55%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)', fontWeight: 650 }}>
+                                  <Typography.Text
+                                    style={{
+                                      flex: 1,
+                                      minWidth: 0,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      fontSize: 'var(--font-size-base)',
+                                      lineHeight: 'var(--line-height-base)',
+                                      fontWeight: 650,
+                                    }}
+                                  >
                                     {activeQuestion}
                                   </Typography.Text>
                                 ) : (
@@ -2108,7 +2180,7 @@ export default function DashboardChatWorkspacePage() {
                                 )}
 
                                 {!isTextOnly ? (
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', position: 'relative', left: -30 }}>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', flex: 'none' }}>
                                   <div
                                     style={{
                                       display: 'inline-flex',

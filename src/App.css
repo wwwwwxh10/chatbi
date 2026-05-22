@@ -492,6 +492,16 @@ body {
   height: 0;
 }
 
+.chatbiScrollbarHidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chatbiScrollbarHidden::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 html[data-mode='dark'] .appHeaderIconButton:hover {
   background: rgba(43, 92, 246, 0.12);
 }
