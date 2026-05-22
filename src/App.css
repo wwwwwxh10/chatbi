@@ -614,32 +614,6 @@ html[data-mode='dark'] .dashboardChartCard:hover {
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
 }
 
-.dashboardWidgetTitle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0.2px;
-}
-
-.dashboardWidgetTitleIcon {
-  width: 18px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  opacity: 0.9;
-  flex: 0 0 auto;
-}
-
-.dashboardWidgetTitleText {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .dashboardInspirationGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -824,7 +798,7 @@ html[data-mode='dark'] .ant-menu-submenu-popup .ant-menu-item-selected {
 }
 
 .studioSlotEmpty.studioSlotCanDrop:hover,
-.studioSlotEmpty.studioSlotDragOver {
+.studioSlotEmpty.studioSlotCanDrop.studioSlotDragOver {
   transform: translateY(-2px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
   border-color: rgba(43, 92, 246, 0.55) !important;
@@ -832,7 +806,7 @@ html[data-mode='dark'] .ant-menu-submenu-popup .ant-menu-item-selected {
 }
 
 html[data-mode='dark'] .studioSlotEmpty.studioSlotCanDrop:hover,
-html[data-mode='dark'] .studioSlotEmpty.studioSlotDragOver {
+html[data-mode='dark'] .studioSlotEmpty.studioSlotCanDrop.studioSlotDragOver {
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
   border-color: rgba(51, 112, 255, 0.55) !important;
   border-width: 2px !important;
@@ -854,7 +828,7 @@ html[data-mode='light'] .studioSlotEmpty .studioSlotAdd {
 }
 
 .studioSlotEmpty.studioSlotCanDrop:hover .studioSlotAdd,
-.studioSlotEmpty.studioSlotDragOver .studioSlotAdd {
+.studioSlotEmpty.studioSlotCanDrop.studioSlotDragOver .studioSlotAdd {
   background: rgba(43, 92, 246, 0.10);
   border-width: 2px;
   border-color: rgba(43, 92, 246, 0.35);
@@ -864,7 +838,7 @@ html[data-mode='light'] .studioSlotEmpty .studioSlotAdd {
 }
 
 html[data-mode='dark'] .studioSlotEmpty.studioSlotCanDrop:hover .studioSlotAdd,
-html[data-mode='dark'] .studioSlotEmpty.studioSlotDragOver .studioSlotAdd {
+html[data-mode='dark'] .studioSlotEmpty.studioSlotCanDrop.studioSlotDragOver .studioSlotAdd {
   background: rgba(51, 112, 255, 0.12);
   border-width: 2px;
   border-color: rgba(51, 112, 255, 0.35);
@@ -879,7 +853,7 @@ html[data-mode='dark'] .studioSlotEmpty.studioSlotDragOver .studioSlotAdd {
 }
 
 .studioSlotEmpty.studioSlotCanDrop:hover .studioSlotHint,
-.studioSlotEmpty.studioSlotDragOver .studioSlotHint {
+.studioSlotEmpty.studioSlotCanDrop.studioSlotDragOver .studioSlotHint {
   opacity: 1;
   color: var(--ant-color-primary) !important;
   text-shadow: 0 0 18px rgba(43, 92, 246, 0.22);
@@ -1206,24 +1180,28 @@ html[data-mode='light'] .kpiUnit {
   justify-content: center;
   gap: 6px;
   flex-wrap: nowrap;
+  width: 100%;
+  box-sizing: border-box;
+  padding-inline: 10px;
   overflow: hidden;
-  transform: translateY(-6px);
+  transform: translateY(-4px);
 }
 
 .flipDigit {
-  width: 26px;
-  height: 38px;
+  width: 30px;
+  height: 44px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.10);
   color: rgba(245, 248, 255, 0.92);
   font-weight: 900;
-  font-size: 22px;
+  font-size: 30px;
   line-height: 1;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: "JetBrains Mono", "IBM Plex Mono", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
   animation: flipJump 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
   will-change: transform;

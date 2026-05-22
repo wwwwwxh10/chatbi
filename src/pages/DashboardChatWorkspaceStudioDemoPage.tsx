@@ -1164,8 +1164,10 @@ function StudioDebugDashboardCanvas({
                   className={`studioSlot${kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}`}
                   role={kind ? 'button' : undefined}
                   tabIndex={kind ? 0 : undefined}
-                  onClick={() => {
+                  onClick={(e) => {
                     if (!kind) return
+                    const t: any = e?.target
+                    if (t?.closest?.('[data-echart-root="1"]')) return
                     const parsed = (() => {
                       try {
                         return raw?.configText ? JSON.parse(raw.configText) : null
@@ -1458,6 +1460,7 @@ export default function DashboardChatWorkspaceStudioDemoPage() {
   const pendingDoneRef = useRef<MessageResult | null>(null)
   const finishTimerRef = useRef<number | null>(null)
   const pendingMessagesRef = useRef<ChatMessage[] | null>(null)
+  const presetAnalysisUidRef = useRef('')
 
   const [panelWidth, setPanelWidth] = useState(420)
   const [layoutWidth, setLayoutWidth] = useState(0)
@@ -1799,9 +1802,18 @@ export default function DashboardChatWorkspaceStudioDemoPage() {
   }
 
   const runPresetAnalysis = (context: string) => {
-    if (sending) return
     const ctx = String(context ?? '').trim()
     if (!ctx) return
+
+    if (timerRef.current) window.clearTimeout(timerRef.current)
+    timerRef.current = null
+    if (finishTimerRef.current) window.clearTimeout(finishTimerRef.current)
+    finishTimerRef.current = null
+    pendingDoneRef.current = null
+    pendingMessagesRef.current = null
+
+    const presetUid = nowId()
+    presetAnalysisUidRef.current = presetUid
 
     let sid = activeSessionId
     if (!sid) {
@@ -1832,6 +1844,7 @@ export default function DashboardChatWorkspaceStudioDemoPage() {
 
     const startedAt = Date.now()
     window.setTimeout(() => {
+      if (presetAnalysisUidRef.current !== presetUid) return
       const took = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
       const doneResult: MessageResult = {
         status: 'done',
@@ -1846,6 +1859,7 @@ export default function DashboardChatWorkspaceStudioDemoPage() {
         pendingDoneRef.current = doneResult
         pendingMessagesRef.current = [...(activeSession?.messages ?? []), botMsg]
         finishTimerRef.current = window.setTimeout(() => {
+          if (presetAnalysisUidRef.current !== presetUid) return
           setRunningVisible(false)
           const pendingMsgList = pendingMessagesRef.current
           pendingMessagesRef.current = null
@@ -2037,6 +2051,16 @@ export default function DashboardChatWorkspaceStudioDemoPage() {
       }}
     >
       <div
+        data-selection-canvas="1"
+        onPointerDownCapture={(e) => {
+          const t: any = e?.target
+          if (t?.closest?.('.dashboardChartCard')) return
+          if (t?.closest?.('[data-echart-root="1"]')) return
+          setStudioSelectedCardIdx(null)
+          setStudioSelectedDatum(null)
+          setSelectedDashboardKey('')
+          broadcastGlobalSelection({ uid: `canvas_blank_${Date.now()}`, scope: selectionScopeRef.current, kind: 'dashboard', next: null })
+        }}
         style={{
           flex: isOverlay ? 'none' : 1,
           width: isOverlay ? (leftLockedWidth ?? undefined) : undefined,
@@ -2071,6 +2095,7 @@ export default function DashboardChatWorkspaceStudioDemoPage() {
                 setStudioSelectedDatum(null)
                 return
               }
+              setStudioSelectedCardIdx(null)
               setStudioSelectedDatum(next)
               runPresetAnalysis(context)
             }}

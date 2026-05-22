@@ -31,6 +31,7 @@ import {
 import * as XLSX from 'xlsx'
 import type { EChartsOption } from 'echarts'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Activity, AreaChart, BarChart3, ChartScatter, CircleDot, CopyPlus, Donut, Droplets, Filter, Flower2, Layers, LineChart, Network, PieChart, Radar, Sigma, Workflow } from 'lucide-react'
 import { EChart } from '../components/EChart'
 import { VirtualAvatar } from '../components/VirtualAvatar'
@@ -687,34 +688,28 @@ function StudioDebugDashboardCanvas({
       const unit = String(parsed?.unit ?? '个')
       const c0 = themeColors[0] ?? accent
       return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div className="studioSlotHeader" style={{ padding: '16px 16px 10px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <Space size={6} style={{ minWidth: 0 }}>
-                <span
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 8,
-                    background: 'transparent',
-                    display: 'grid',
-                    placeItems: 'center',
-                    color: accent,
-                    flex: '0 0 22px',
-                  }}
-                >
-                  <Workflow size={14} />
-                </span>
-                <Typography.Text
-                  type="secondary"
-                  style={{ fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                >
-                  {chartTitle}
-                </Typography.Text>
-              </Space>
-            </div>
+        <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <Space size={6}>
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: accent,
+                }}
+              >
+                <Workflow size={14} />
+              </span>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {chartTitle}
+              </Typography.Text>
+            </Space>
           </div>
-          <div style={{ padding: '0 16px 16px 16px', flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10 }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10 }}>
             <div style={{ position: 'relative', height: 6, display: 'flex', alignItems: 'center' }}>
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${pct}%`, background: c0, borderRadius: 3, boxShadow: `0 0 10px ${c0}66` }} />
@@ -736,62 +731,57 @@ function StudioDebugDashboardCanvas({
     const finalOpt = opt ? enhanceSelectableOption(kind, opt) : null
     const renderOpt = finalOpt
     return opt ? (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <div className="studioSlotHeader" style={{ padding: '12px 12px 8px 12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <Space size={4} style={{ minWidth: 0 }}>
-              <span
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 8,
-                  background: 'transparent',
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: accent,
-                  flex: '0 0 22px',
-                }}
-              >
-                {(() => {
-                  const Icon =
-                    kind === 'line'
-                      ? LineChart
-                      : kind === 'line-area'
-                        ? AreaChart
-                        : kind === 'line-curve'
-                          ? LineChart
-                          : kind === 'bar' || kind === 'bar-h' || kind === 'bar-grouped' || kind === 'bar-stacked' || kind === 'bar-gradient' || kind === 'waterfall'
-                            ? BarChart3
-                            : kind === 'pie'
-                              ? PieChart
-                              : kind === 'donut'
-                                ? Donut
-                                : kind === 'rose'
-                                  ? Flower2
-                                  : kind === 'scatter'
-                                    ? ChartScatter
-                                    : kind === 'bubble'
-                                      ? Droplets
-                                      : kind === 'funnel'
-                                        ? Filter
-                                        : kind === 'radar'
-                                          ? Radar
-                                          : kind === 'heatmap' || kind === 'treemap'
-                                            ? Layers
-                                            : kind === 'sankey' || kind === 'graph'
-                                              ? Network
-                                              : Activity
-                  return <Icon size={14} />
-                })()}
-              </span>
-              <Typography.Text
-                type="secondary"
-                style={{ fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              >
-                {chartTitle}
-              </Typography.Text>
-            </Space>
-          </div>
+      <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <Space size={6} style={{ minWidth: 0 }}>
+            <span
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 8,
+                background: 'transparent',
+                display: 'grid',
+                placeItems: 'center',
+                color: accent,
+                flex: '0 0 22px',
+              }}
+            >
+              {(() => {
+                const Icon =
+                  kind === 'line'
+                    ? LineChart
+                    : kind === 'line-area'
+                      ? AreaChart
+                      : kind === 'line-curve'
+                        ? LineChart
+                        : kind === 'bar' || kind === 'bar-h' || kind === 'bar-grouped' || kind === 'bar-stacked' || kind === 'bar-gradient' || kind === 'waterfall'
+                          ? BarChart3
+                          : kind === 'pie'
+                            ? PieChart
+                            : kind === 'donut'
+                              ? Donut
+                              : kind === 'rose'
+                                ? Flower2
+                                : kind === 'scatter'
+                                  ? ChartScatter
+                                  : kind === 'bubble'
+                                    ? Droplets
+                                    : kind === 'funnel'
+                                      ? Filter
+                                      : kind === 'radar'
+                                        ? Radar
+                                        : kind === 'heatmap' || kind === 'treemap'
+                                          ? Layers
+                                          : kind === 'sankey' || kind === 'graph'
+                                            ? Network
+                                            : Activity
+                return <Icon size={14} />
+              })()}
+            </span>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {chartTitle}
+            </Typography.Text>
+          </Space>
         </div>
         <div style={{ flex: 1, minHeight: 0, paddingTop: kind === 'funnel' ? 0 : 10 }}>
           <EChart
@@ -1043,27 +1033,29 @@ function rgba(hex: string, alpha: number) {
 export default function DashboardChatWorkspacePage() {
   const { token } = theme.useToken()
   const selectionScopeRef = useRef(`workspace_${Math.random().toString(36).slice(2)}`)
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const dashboards = useDashboardsStore((s) => s.items)
 
   const debugStudio = useMemo(() => {
     if (typeof window === 'undefined') return false
-    const qs = new URLSearchParams(window.location.search)
+    const qs = new URLSearchParams(location.search)
     const byDebug = qs.get('debug') === 'studio'
     const byTemplate = qs.has('template')
     const byCustomDashboard = String(qs.get('dashboardId') ?? '').trim().startsWith('custom-')
-    const byPath = window.location.pathname.endsWith('/dashboard/chat-workspace-studio-demo')
+    const byPath = location.pathname.endsWith('/dashboard/chat-workspace-studio-demo')
     return byDebug || byTemplate || byCustomDashboard || byPath
-  }, [])
+  }, [location.pathname, location.search])
 
   const dashboardId = useMemo(() => {
     if (typeof window === 'undefined') return ''
-    return String(new URLSearchParams(window.location.search).get('dashboardId') ?? '').trim()
-  }, [])
+    return String(new URLSearchParams(location.search).get('dashboardId') ?? '').trim()
+  }, [location.search])
 
   const qsAppearance = useMemo((): StudioAppearance | null => {
     if (typeof window === 'undefined') return null
-    const qs = new URLSearchParams(window.location.search)
+    const qs = new URLSearchParams(location.search)
     const rawTheme = String(qs.get('theme') ?? '').trim()
     const rawPalette = String(qs.get('chartPalette') ?? '').trim()
     if (!rawTheme && !rawPalette) return null
@@ -1071,7 +1063,7 @@ export default function DashboardChatWorkspacePage() {
     const normalizedPalette = rawPalette === 'tech' ? 'deepsea' : rawPalette
     const chartPalette = (normalizedPalette as any) in CHART_PALETTES ? (normalizedPalette as any) : 'cyber'
     return { language: 'zh-CN', timeZone: 'Asia/Shanghai', theme, chartPalette }
-  }, [])
+  }, [location.search])
 
   const dashboardAppearance = useMemo(() => {
     if (!dashboardId) return null
@@ -1117,7 +1109,21 @@ export default function DashboardChatWorkspacePage() {
     }
   }, [debugStudio])
 
-  const panelAppearance = debugStudio ? studioPayload?.appearance : qsAppearance ?? dashboardAppearance
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const qs = new URLSearchParams(location.search)
+    const isStudio = qs.get('debug') === 'studio'
+    const shouldStudio =
+      qs.has('template') ||
+      String(qs.get('dashboardId') ?? '').trim().startsWith('custom-') ||
+      location.pathname.endsWith('/dashboard/chat-workspace-studio-demo')
+    if (!shouldStudio || isStudio) return
+    qs.set('debug', 'studio')
+    const nextSearch = qs.toString()
+    navigate({ pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : '' }, { replace: true })
+  }, [location.pathname, location.search, navigate])
+
+  const panelAppearance = debugStudio ? studioPayload?.appearance ?? qsAppearance ?? dashboardAppearance : qsAppearance ?? dashboardAppearance
   const panelTheme = panelAppearance?.theme === 'obsidian' || panelAppearance?.theme === 'cyber' || panelAppearance?.theme === 'tech' ? panelAppearance.theme : null
   const panelPalette = panelAppearance?.chartPalette
   const previewPalette = panelPalette ? CHART_PALETTES[panelPalette] : null
@@ -1218,6 +1224,7 @@ export default function DashboardChatWorkspacePage() {
     const handle = (e: any) => {
       const d = e?.detail
       if (!d) return
+      if (!d.scope) return
       if (d.scope && d.scope === selectionScopeRef.current) return
       setStudioSelectedCardIdx(null)
       setStudioSelectedDatum(null)
@@ -1835,8 +1842,10 @@ export default function DashboardChatWorkspacePage() {
             onDatumSelect={(next, context) => {
               if (!next) {
                 setStudioSelectedDatum(null)
+                setStudioSelectedCardIdx(null)
                 return
               }
+              setStudioSelectedCardIdx(next.slotIdx)
               setStudioSelectedDatum(next)
               runPresetAnalysis(context)
             }}

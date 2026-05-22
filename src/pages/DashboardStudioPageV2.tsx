@@ -42,7 +42,6 @@ import { EChart } from '../components/EChart'
 import { FlipCounter } from '../components/MetricCards'
 import { useAppStore } from '../store/appStore'
 import { createDashboardId, touchUpdatedAt, useDashboardsStore } from '../store/dashboardsStore'
-import { broadcastGlobalSelection, GLOBAL_SELECTION_EVENT } from '../utils/globalSelection'
 import { StudioJsonEditor } from './StudioJsonEditor'
 import {
   defaultConfig,
@@ -122,6 +121,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     theme: 'obsidian',
     chartPalette: 'cyber',
   })
+  const appearanceRef = useRef(appearance)
+  appearanceRef.current = appearance
   const [layout, setLayout] = useState<StudioLayout>({ mode: 'template', template: 'main-sub' })
 
   const specs = useMemo(() => layoutSpecs(layout), [layout])
@@ -164,7 +165,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       description: description.trim(),
       tables,
       layout,
-      appearance,
+      appearance: appearanceRef.current,
       slots: slots.map((s) => ({
         kind: s.kind,
         configText: s.configText,
@@ -182,7 +183,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!debugLiveRef.current) return
     const payload = {
       title: title.trim() || '未命名仪表盘',
       description: description.trim(),
@@ -385,7 +385,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
-  const selectionScopeRef = useRef(`studio_${Math.random().toString(36).slice(2)}`)
   const [dragFromIdx, setDragFromIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
   const [draggingKind, setDraggingKind] = useState<WidgetKind | null>(null)
@@ -411,17 +410,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setEditorError(editingSlot.error)
     setEditorFullscreen(false)
   }, [editingSlotId])
-
-  useEffect(() => {
-    const handle = (e: any) => {
-      const d = e?.detail
-      if (!d) return
-      if (d.scope && d.scope === selectionScopeRef.current) return
-      setSelectedSlotId(null)
-    }
-    window.addEventListener(GLOBAL_SELECTION_EVENT, handle as any)
-    return () => window.removeEventListener(GLOBAL_SELECTION_EVENT, handle as any)
-  }, [])
 
   const applyLayout = (nextLayout: StudioLayout, opts?: { fillFromUnplaced?: boolean }) => {
     const fillFromUnplaced = opts?.fillFromUnplaced !== false
@@ -577,7 +565,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   useEffect(() => {
     if (readOnly || previewMode) return
-    if (dragFromIdx == null) return
+    if (dragFromIdx == null && dragFromUnplacedIdx == null) return
     const onDragOver = (e: globalThis.DragEvent) => {
       e.preventDefault()
       scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
@@ -586,17 +574,17 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     return () => {
       window.removeEventListener('dragover', onDragOver)
     }
-  }, [dragFromIdx, previewMode, readOnly])
+  }, [dragFromIdx, dragFromUnplacedIdx, previewMode, readOnly])
 
   useEffect(() => {
     if (readOnly || previewMode) return
-    if (dragFromIdx == null) return
+    if (dragFromIdx == null && dragFromUnplacedIdx == null) return
     const prev = document.body.style.cursor
     document.body.style.cursor = 'default'
     return () => {
       document.body.style.cursor = prev
     }
-  }, [dragFromIdx, previewMode, readOnly])
+  }, [dragFromIdx, dragFromUnplacedIdx, previewMode, readOnly])
 
   const canSave = useMemo(() => {
     if (readOnly) return false
@@ -832,10 +820,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       const v = String(parsed?.value ?? '15.6k')
       const unit = String(parsed?.unit ?? '个')
       return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div
             className="studioSlotHeader"
-            style={{ padding: '16px 16px 10px 16px' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
             draggable={!readOnly && !previewMode}
             onMouseMove={(e) => {
               if (readOnly || previewMode) return
@@ -847,7 +835,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             onDragEnd={onSlotDragEnd}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <Space size={6} style={{ minWidth: 0 }}>
+              <Space size={6}>
                 <span
                   style={{
                     width: 22,
@@ -857,21 +845,17 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     display: 'grid',
                     placeItems: 'center',
                     color: accent,
-                    flex: '0 0 22px',
                   }}
                 >
                   <Workflow size={14} />
                 </span>
-                <Typography.Text
-                  type="secondary"
-                  style={{ fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                >
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   {chartTitle}
                 </Typography.Text>
               </Space>
             </div>
           </div>
-          <div style={{ padding: '0 16px 16px 16px', flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10 }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10, paddingTop: 12 }}>
             <div style={{ position: 'relative', height: 6, display: 'flex', alignItems: 'center' }}>
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${pct}%`, background: c0, borderRadius: 3, boxShadow: `0 0 10px ${c0}66` }} />
@@ -912,24 +896,26 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             onDragStart={(e) => onSlotDragStart(idx, e)}
             onDragEnd={onSlotDragEnd}
           >
-            <Space size={4}>
-              <span
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 8,
-                  background: 'transparent',
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: accent,
-                }}
-              >
-                <Zap size={14} />
-              </span>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {name}
-              </Typography.Text>
-            </Space>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <Space size={6}>
+                <span
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 8,
+                    background: 'transparent',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: accent,
+                  }}
+                >
+                  <Zap size={14} />
+                </span>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {name}
+                </Typography.Text>
+              </Space>
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 0.2 }}>{kpiValue(fmt)}</div>
@@ -947,10 +933,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
     const opt = optionForSlot(slot)
     return opt ? (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div
           className="studioSlotHeader"
-          style={{ padding: '12px 12px 8px 12px' }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
           draggable={!readOnly && !previewMode}
           onMouseMove={(e) => {
             if (readOnly || previewMode) return
@@ -962,7 +948,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           onDragEnd={onSlotDragEnd}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <Space size={4} style={{ minWidth: 0 }}>
+            <Space size={6} style={{ minWidth: 0 }}>
               <span
                 style={{
                   width: 22,
@@ -1014,17 +1000,14 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   return <Icon size={14} />
                 })()}
               </span>
-              <Typography.Text
-                type="secondary"
-                style={{ fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              >
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {chartTitle}
               </Typography.Text>
             </Space>
           </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, paddingTop: slot.kind === 'funnel' ? 0 : 10 }}>
-          <EChart option={opt as any} legendSingleLine selectionScope={selectionScopeRef.current} />
+          <EChart option={opt as any} legendSingleLine />
         </div>
       </div>
     ) : (
@@ -1979,8 +1962,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   const isSelected = selectedSlotId === slot.id
                   const isDragFrom = dragFromIdx === idx
                   const isDragOver = dragOverIdx === idx
-                  const isMoveOver =
-                    isDragOver && ((dragFromIdx != null && dragFromIdx !== idx) || (dragFromUnplacedIdx != null && Boolean(slot.kind)))
+                  const isMoveOver = isDragOver && (dragFromIdx != null ? dragFromIdx !== idx : dragFromUnplacedIdx != null)
                   const pos = (layout.mode === 'free' ? layout.cards : templatePositions)?.[idx]
                   const colSpan = pos ? pos.colSpan : Math.max(1, Math.min(12, spec.colSpan))
                   const rowSpan = pos ? pos.rowSpan : Math.max(1, spec.rowSpan)
@@ -2002,7 +1984,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   return (
                     <div
                       key={slot.id}
-                      className={`studioSlot${slot.kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}${!slot.kind && !readOnly && !previewMode ? ' studioSlotCanDrop' : ''}${isDragFrom ? ' studioSlotDragging' : ''}${isDragOver ? ' studioSlotDragOver' : ''}${isMoveOver ? ' studioSlotMoveOver' : ''}`}
+                      className={`studioSlot${slot.kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}${!slot.kind && !readOnly && !previewMode && layout.mode !== 'free' ? ' studioSlotCanDrop' : ''}${isDragFrom ? ' studioSlotDragging' : ''}${isDragOver ? ' studioSlotDragOver' : ''}${isMoveOver ? ' studioSlotMoveOver' : ''}`}
                       style={{
                         ['--studio-accent' as any]: accent,
                         gridColumn: pos ? `${pos.colStart} / span ${colSpan}` : `span ${colSpan}`,
@@ -2037,9 +2019,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       }}
                       onClick={() => {
                         if (!slot.kind) return
-                        const next = selectedSlotId === slot.id ? null : slot.id
-                        setSelectedSlotId(next)
-                        broadcastGlobalSelection({ uid: `studio_slot_${slot.id}`, scope: selectionScopeRef.current, kind: 'card', next: null })
+                        setSelectedSlotId((prev) => (prev === slot.id ? null : slot.id))
                       }}
                       draggable={false}
                       onDragEnter={() => {
@@ -2061,11 +2041,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         e.dataTransfer.dropEffect = isMove || isUnplaced ? 'move' : 'copy'
                         if (dragFromIdx != null && dragFromIdx === idx) return
                         if (isMove || isAdd || isUnplaced) setDragOverIdx((prev) => (prev === idx ? prev : idx))
-                        if (isMove || (isUnplaced && slot.kind)) {
-                          scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
-                        } else if (isUnplaced) {
-                          scheduleMoveTip(null)
-                        }
+                        if (isMove || isUnplaced) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
                       }}
                       onDragOverCapture={(e) => {
                         if (readOnly || previewMode) return
@@ -2074,7 +2050,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         setDragOverIdx((prev) => (prev === idx ? prev : idx))
                         const isMove = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-slot-index'))
                         const isUnplaced = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-unplaced-index'))
-                        if (isMove || (isUnplaced && slot.kind)) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+                        if (isMove || isUnplaced) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
                       }}
                       onDrop={(e) => {
                         if (readOnly || previewMode) return
@@ -2520,13 +2496,15 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   <ThemeStyleCardPicker
                     value={appearance.theme}
                     disabled={readOnly}
-                    onChange={(v) =>
-                      setAppearance((p) => ({
-                        ...p,
+                    onChange={(v) => {
+                      const next: StudioAppearance = {
+                        ...appearanceRef.current,
                         theme: v,
                         chartPalette: v === 'tech' ? 'deepsea' : v === 'obsidian' ? 'obsidian' : 'cyber',
-                      }))
-                    }
+                      }
+                      appearanceRef.current = next
+                      setAppearance(next)
+                    }}
                   />
                 </div>
 
@@ -2711,12 +2689,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               transform: 'translate(-50%, -100%)',
               zIndex: 9999,
               pointerEvents: 'none',
-              display:
-                dragFromIdx != null ||
-                (dragFromUnplacedIdx != null && dragOverIdx != null && Boolean(slots[dragOverIdx]?.kind)) ||
-                (draggingKind == null && moveTip.text)
-                  ? 'block'
-                  : 'none',
+              display: dragFromIdx != null || dragFromUnplacedIdx != null || (draggingKind == null && moveTip.text) ? 'block' : 'none',
             }}
           >
             <div
@@ -2742,10 +2715,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       ? 'Drag to reorder'
                       : '拖拽可移动换位'
                   : dragFromUnplacedIdx != null
-                    ? appearance.language === 'en-US'
-                      ? 'Drop here'
-                      : '移入此位置'
-                  : moveTip.text}
+                    ? dragOverIdx != null
+                      ? appearance.language === 'en-US'
+                        ? 'Drop here'
+                        : '移入此位置'
+                      : ''
+                    : moveTip.text}
               </div>
             </div>
           </div>

@@ -35,7 +35,7 @@ export type RegexItem = KnowledgeItemMeta & {
   category: 'regex'
   name: string
   pattern: string
-  replacement: string
+  conversionStrategy: string
   exampleIn: string
   exampleOut: string
 }
@@ -212,7 +212,7 @@ export function buildSeed(): KnowledgeItem[] {
       category: 'regex',
       name: 'employee_id',
       pattern: '^([a-zA-Z])(\\d{5})$',
-      replacement: '$1$2',
+      conversionStrategy: '$1.upper + $2',
       exampleIn: 'a12345',
       exampleOut: 'A12345',
       updatedAt: '2026-04-24 15:12',
@@ -223,7 +223,7 @@ export function buildSeed(): KnowledgeItem[] {
       category: 'regex',
       name: 'msisdn_normalize',
       pattern: '[^0-9]',
-      replacement: '',
+      conversionStrategy: "return (ctx.input || '').replace(ctx.re, '')",
       exampleIn: '+86 138-0013-8000',
       exampleOut: '8613800138000',
       updatedAt: '2026-04-23 14:20',
@@ -234,7 +234,7 @@ export function buildSeed(): KnowledgeItem[] {
       category: 'regex',
       name: 'date_yyyy_mm_dd',
       pattern: '^(\\d{4})/(\\d{2})/(\\d{2})$',
-      replacement: '$1-$2-$3',
+      conversionStrategy: "return (ctx.input || '').replace(ctx.re, '$1-$2-$3')",
       exampleIn: '2026/04/27',
       exampleOut: '2026-04-27',
       updatedAt: '2026-04-22 17:40',

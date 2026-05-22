@@ -378,6 +378,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
     const qs = new URLSearchParams()
     if (template) qs.set('template', template)
     if (dashboardId) qs.set('dashboardId', dashboardId)
+    if (template || String(dashboardId ?? '').trim().startsWith('custom-')) qs.set('debug', 'studio')
     window.open(`/dashboard/chat-workspace?${qs.toString()}`, '_blank', 'noopener,noreferrer')
   }
 

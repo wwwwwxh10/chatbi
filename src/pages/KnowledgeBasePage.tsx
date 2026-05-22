@@ -680,9 +680,7 @@ const RegexCard = ({
   isDark: boolean
   token: any
 }) => {
-  const blue = token.colorPrimary
   const innerBg = isDark ? 'rgba(8, 13, 23, 0.58)' : token.colorFillTertiary
-  const dashed = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(15,23,42,0.12)'
 
   return (
     <BaseCard
@@ -694,41 +692,42 @@ const RegexCard = ({
       onDelete={onDelete}
       onView={onView}
       menu={menu}
-      cardHeight={152}
+      cardHeight={168}
       titleRows={1}
       contentPaddingTop={8}
+      bodyPaddingBottom={12}
       isDark={isDark}
       token={token}
     >
-      <div style={{ borderRadius: 4, background: innerBg, border: 'none', padding: 8 }}>
-        <Typography.Paragraph
-          ellipsis={{ rows: 1 }}
-          style={{ margin: 0, minHeight: 18, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.4, color: blue, fontWeight: 750 }}
-        >
-          /{String(item.pattern ?? '').replace(/^\^|\$$/g, '')}/
-        </Typography.Paragraph>
+      <div style={{ borderRadius: 4, background: innerBg, border: 'none', padding: 12, overflow: 'hidden', marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ width: 72, fontSize: 12, color: token.colorTextSecondary, whiteSpace: 'nowrap' }}>正则表达</div>
+          <Typography.Text ellipsis={{ tooltip: false }} style={{ flex: 1, minWidth: 0, fontSize: 13, color: token.colorPrimary }}>
+            /{String(item.pattern ?? '').replace(/^\^|\$$/g, '')}/
+          </Typography.Text>
+        </div>
 
-        <div style={{ marginTop: 4, borderTop: `1px dashed ${dashed}` }} />
+        <div style={{ height: 8 }} />
 
-        <div style={{ marginTop: 6, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 3px minmax(0, 1fr)', alignItems: 'stretch', gap: 10 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 2 }}>输入样例</div>
-            <Typography.Paragraph
-              ellipsis={{ rows: 1 }}
-              style={{ margin: 0, minHeight: 18, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.4, color: token.colorTextSecondary }}
-            >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ width: 72, fontSize: 12, color: token.colorTextSecondary, whiteSpace: 'nowrap' }}>转换逻辑</div>
+          <Typography.Text ellipsis={{ tooltip: false }} style={{ flex: 1, minWidth: 0, fontSize: 13, color: token.colorPrimary }}>
+            {String(item.conversionStrategy ?? '').trim() || '-'}
+          </Typography.Text>
+        </div>
+
+        <div style={{ height: 8 }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ width: 72, fontSize: 12, color: token.colorTextSecondary, whiteSpace: 'nowrap' }}>样例预览</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+            <Typography.Text ellipsis={{ tooltip: false }} style={{ flex: 1, minWidth: 0, fontSize: 13, color: token.colorTextSecondary }}>
               {item.exampleIn || '-'}
-            </Typography.Paragraph>
-          </div>
-          <div style={{ width: 3, borderRadius: 999, background: blue, opacity: 0.75 }} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 2 }}>标准输出</div>
-            <Typography.Paragraph
-              ellipsis={{ rows: 1 }}
-              style={{ margin: 0, minHeight: 18, fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', fontSize: 12, lineHeight: 1.4, color: blue, fontWeight: 750 }}
-            >
+            </Typography.Text>
+            <ArrowRightOutlined style={{ fontSize: 14, color: token.colorTextQuaternary, opacity: 0.55, flex: 'none' }} />
+            <Typography.Text ellipsis={{ tooltip: false }} style={{ flex: 1, minWidth: 0, fontSize: 13, color: token.colorPrimary }}>
               {item.exampleOut || '-'}
-            </Typography.Paragraph>
+            </Typography.Text>
           </div>
         </div>
       </div>
@@ -849,13 +848,13 @@ export default function KnowledgeBasePage() {
   const isViewMode = editorMode === 'view' && !createOpen && !!editing
 
   const regexPattern = Form.useWatch('pattern', form)
-  const regexReplacement = Form.useWatch('replacement', form)
+  const regexConversionStrategy = Form.useWatch('conversionStrategy', form)
   const regexExampleIn = Form.useWatch('exampleIn', form)
 
-  const regexPreview = useMemo(() => {
-    const rawPattern = String(regexPattern ?? '')
-    const rawReplacement = String(regexReplacement ?? '')
-    const input = String(regexExampleIn ?? '')
+  const computeRegexOut = (args: { pattern: string; conversionStrategy: string; input: string }) => {
+    const rawPattern = String(args.pattern ?? '')
+    const conversionStrategy = String(args.conversionStrategy ?? '')
+    const input = String(args.input ?? '')
 
     if (!input) return { out: '', error: '' }
 
@@ -867,15 +866,77 @@ export default function KnowledgeBasePage() {
       return new RegExp(raw, 'g')
     }
 
+    const applyStrategy = (re: RegExp | null) => {
+      const code = conversionStrategy.trim()
+      if (!code) return input
+
+      const reNoG = re ? new RegExp(re.source, re.flags.replace(/g/g, '')) : null
+      const match = reNoG ? reNoG.exec(input) : null
+      const ctx = {
+        input,
+        out: match?.[0] ?? input,
+        match,
+        groups: (match as any)?.groups ?? null,
+        re,
+        reNoG,
+        pattern: rawPattern,
+      }
+
+      const isJs = /\breturn\b/.test(code) || /\bctx\./.test(code) || /=>/.test(code) || /\bfunction\b/.test(code) || /;/.test(code)
+      if (isJs) {
+        const body = /\breturn\b/.test(code) ? code : `return (${code});`
+        const fn = new Function('ctx', body) as (ctx: any) => unknown
+        const next = fn(ctx)
+        return String(next ?? '')
+      }
+
+      const pieces = code.split('+').map((x) => x.trim()).filter(Boolean)
+      const canDsl = pieces.every((p) => /^\$(\d+)(?:\.(upper|lower))?$/.test(p) || /^(['"]).*\1$/.test(p) || /^[^$]+$/.test(p))
+      if (pieces.length > 0 && canDsl) {
+        const get = (idx: number) => {
+          const v = match?.[idx]
+          return v == null ? '' : String(v)
+        }
+        const out = pieces
+          .map((p) => {
+            const m = /^\$(\d+)(?:\.(upper|lower))?$/.exec(p)
+            if (m) {
+              const v = get(Number(m[1]))
+              const op = m[2]
+              if (op === 'upper') return v.toUpperCase()
+              if (op === 'lower') return v.toLowerCase()
+              return v
+            }
+            const q = /^(['"])(.*)\1$/.exec(p)
+            if (q) return q[2]
+            return p
+          })
+          .join('')
+        return out || input
+      }
+
+      const reg = re ?? null
+      if (!reg) return input
+      return input.replace(reg, code)
+    }
+
     try {
       const re = buildRegExp()
-      const out = re ? input.replace(re, rawReplacement) : input
+      const out = applyStrategy(re)
       return { out, error: '' }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       return { out: '', error: msg }
     }
-  }, [regexExampleIn, regexPattern, regexReplacement])
+  }
+
+  const regexPreview = useMemo(() => {
+    return computeRegexOut({
+      pattern: String(regexPattern ?? ''),
+      conversionStrategy: String(regexConversionStrategy ?? ''),
+      input: String(regexExampleIn ?? ''),
+    })
+  }, [regexConversionStrategy, regexExampleIn, regexPattern])
 
   const intro = useMemo(() => {
     const title = tabLabel(t, tab)
@@ -913,7 +974,8 @@ export default function KnowledgeBasePage() {
     const template = (() => {
       if (tab === 'terms') return [{ term: 'ARPU', synonyms: ['用户产值', '每用户收入'] }]
       if (tab === 'metrics') return [{ name: '离网率', formula: '离网率 = 离网用户数 / 在网用户数' }]
-      if (tab === 'regex') return [{ name: 'demo', pattern: '^abc(\\d+)$', replacement: 'ABC$1', exampleIn: 'abc123', exampleOut: 'ABC123' }]
+      if (tab === 'regex')
+        return [{ name: 'demo', pattern: '^abc(\\d+)$', conversionStrategy: '$1.upper + $2', exampleIn: 'abc123', exampleOut: 'ABC123' }]
       if (tab === 'logic-tree') return [{ name: '营销活动复盘', scenario: '适用于活动效果复盘与异常归因。', steps: '1. 明确目标\n2. 指标口径\n3. 拆解维度\n4. 验证路径\n5. 结论输出' }]
       return [{ question: '如何按渠道统计 GMV？', sql: 'SELECT channel, SUM(amount) AS gmv\nFROM orders\nGROUP BY channel;' }]
     })()
@@ -955,7 +1017,7 @@ export default function KnowledgeBasePage() {
     if (!editing) {
       if (tab === 'terms') form.setFieldsValue({ term: '', synonyms: [], desc: '' })
       if (tab === 'metrics') form.setFieldsValue({ name: '', formula: '' })
-      if (tab === 'regex') form.setFieldsValue({ name: '', pattern: '', replacement: '', exampleIn: '' })
+      if (tab === 'regex') form.setFieldsValue({ name: '', pattern: '', conversionStrategy: '', exampleIn: '' })
       if (tab === 'logic-tree') form.setFieldsValue({ name: '', scenario: '', steps: '' })
       if (tab === 'sql-examples') form.setFieldsValue({ question: '', sql: '' })
       return
@@ -964,7 +1026,12 @@ export default function KnowledgeBasePage() {
     if (editing.category === 'terms') form.setFieldsValue({ term: editing.term, synonyms: editing.synonyms, desc: editing.desc })
     if (editing.category === 'metrics') form.setFieldsValue({ name: editing.name, formula: editing.formula })
     if (editing.category === 'regex')
-      form.setFieldsValue({ name: editing.name, pattern: editing.pattern, replacement: editing.replacement, exampleIn: editing.exampleIn })
+      form.setFieldsValue({
+        name: editing.name,
+        pattern: editing.pattern,
+        conversionStrategy: editing.conversionStrategy,
+        exampleIn: editing.exampleIn,
+      })
     if (editing.category === 'logic-tree') form.setFieldsValue({ name: editing.name, scenario: editing.scenario, steps: editing.steps })
     if (editing.category === 'sql-examples') form.setFieldsValue({ question: editing.question, sql: editing.sql })
   }, [editorOpen, editing, form, tab])
@@ -978,7 +1045,7 @@ export default function KnowledgeBasePage() {
         const parts: string[] = []
         if (it.category === 'terms') parts.push(it.term, ...it.synonyms, it.desc)
         if (it.category === 'metrics') parts.push(it.name, it.definition, it.layer, it.formula)
-        if (it.category === 'regex') parts.push(it.name, it.pattern, it.replacement, it.exampleIn, it.exampleOut)
+        if (it.category === 'regex') parts.push(it.name, it.pattern, it.conversionStrategy, it.exampleIn, it.exampleOut)
         if (it.category === 'logic-tree') parts.push(it.name, it.scenario, it.steps)
         if (it.category === 'sql-examples') parts.push(it.question, it.sql)
         return parts.join(' ').toLowerCase().includes(kw)
@@ -1023,12 +1090,16 @@ export default function KnowledgeBasePage() {
         if (tab === 'regex') {
           const name = String(x?.name ?? '').trim()
           const pattern = String(x?.pattern ?? '').trim()
-          const replacement = String(x?.replacement ?? '').trim()
+          const conversionStrategy = String(x?.conversionStrategy ?? x?.replacement ?? x?.strategy ?? '').trim()
           const exampleIn = String(x?.exampleIn ?? '').trim()
-          const exampleOut = String(x?.exampleOut ?? '').trim()
+          let exampleOut = String(x?.exampleOut ?? '').trim()
           const referenceCount = Number(x?.referenceCount ?? x?.references ?? 0) || 0
           if (!name || !pattern) return null
-          return { id: nowId(), category: 'regex', name, pattern, replacement, exampleIn, exampleOut, updatedAt, referenceCount }
+          if (!exampleOut && exampleIn) {
+            const computed = computeRegexOut({ pattern, conversionStrategy, input: exampleIn })
+            if (!computed.error) exampleOut = computed.out
+          }
+          return { id: nowId(), category: 'regex', name, pattern, conversionStrategy, exampleIn, exampleOut, updatedAt, referenceCount }
         }
         if (tab === 'logic-tree') {
           const name = String(x?.name ?? '').trim()
@@ -1090,10 +1161,10 @@ export default function KnowledgeBasePage() {
         if (tab === 'regex') {
           const name = pick(row, ['name', '名称'])
           const pattern = pick(row, ['pattern', '正则', '表达式'])
-          const replacement = pick(row, ['replacement', '替换'])
+          const conversionStrategy = pick(row, ['conversionStrategy', '转换策略', '转化策略', '转化逻辑', '替换', 'strategy', 'replacement'])
           const exampleIn = pick(row, ['exampleIn', '示例输入'])
           const exampleOut = pick(row, ['exampleOut', '示例输出'])
-          return { name, pattern, replacement, exampleIn, exampleOut }
+          return { name, pattern, conversionStrategy, exampleIn, exampleOut }
         }
         if (tab === 'logic-tree') {
           const name = pick(row, ['name', '名称'])
@@ -1186,37 +1257,24 @@ export default function KnowledgeBasePage() {
     if (tab === 'regex') {
       const name = String((v as any).name ?? '').trim()
       const pattern = String((v as any).pattern ?? '').trim()
-      const replacement = String((v as any).replacement ?? '')
+      const conversionStrategy = String((v as any).conversionStrategy ?? '').trim()
       const exampleIn = String((v as any).exampleIn ?? '')
-      if (!name || !pattern) return
+      if (!name || !pattern || !conversionStrategy) return
 
-      const buildRegExp = () => {
-        const raw = pattern.trim()
-        const m = /^\/(.+)\/([gimsuy]*)$/.exec(raw)
-        if (m) return new RegExp(m[1], m[2] || 'g')
-        return new RegExp(raw, 'g')
+      const computed = computeRegexOut({ pattern, conversionStrategy, input: exampleIn })
+      if (computed.error) {
+        void message.error(`转换策略错误：${computed.error}`)
+        return
       }
-
-      const exampleOut = (() => {
-        if (!exampleIn) return ''
-        try {
-          return exampleIn.replace(buildRegExp(), replacement)
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e)
-          void message.error(`正则规则错误：${msg}`)
-          return null
-        }
-      })()
-      if (exampleOut == null) return
 
       const next: KnowledgeItem = {
         id: editing?.id ?? nowId(),
         category: 'regex',
         name,
         pattern,
-        replacement,
+        conversionStrategy,
         exampleIn,
-        exampleOut,
+        exampleOut: computed.out,
         updatedAt,
         referenceCount: preservedReferenceCount,
       }
@@ -1487,8 +1545,12 @@ export default function KnowledgeBasePage() {
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item name="replacement" label="转化逻辑">
-                    <Input disabled={isViewMode} placeholder="例如：$1$2$3$4" />
+                  <Form.Item name="conversionStrategy" label="转换策略" rules={[{ required: true, message: t('validation.required') }]}>
+                    <Input
+                      disabled={isViewMode}
+                      placeholder="例如：$1.upper + $2"
+                      style={{ fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace' }}
+                    />
                   </Form.Item>
                 </Col>
               </Row>
@@ -1496,7 +1558,7 @@ export default function KnowledgeBasePage() {
               <div
                 style={{
                   border: `1px dashed ${token.colorBorderSecondary}`,
-                  borderRadius: 16,
+                  borderRadius: 4,
                   padding: 14,
                   marginTop: 6,
                   background: token.colorFillQuaternary,
@@ -1525,22 +1587,30 @@ export default function KnowledgeBasePage() {
                   <Col span={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <ArrowRightOutlined style={{ fontSize: 20, color: token.colorTextTertiary }} />
                   </Col>
-                  <Col span={10}>
+                  <Col span={10} style={{ minWidth: 0 }}>
                     <div
                       style={{
                         minHeight: 40,
                         display: 'flex',
                         alignItems: 'center',
-                        fontSize: 30,
-                        fontWeight: 800,
-                        color: token.colorPrimary,
-                        letterSpacing: 0.3,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        minWidth: 0,
+                        width: '100%',
                       }}
                     >
-                      {regexPreview.out || '13800138000'}
+                      <Typography.Text
+                        ellipsis={{ tooltip: false }}
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          maxWidth: '100%',
+                          fontSize: 30,
+                          fontWeight: 400,
+                          color: token.colorPrimary,
+                          letterSpacing: 0.3,
+                        }}
+                      >
+                        {regexPreview.out || '13800138000'}
+                      </Typography.Text>
                     </div>
                   </Col>
                 </Row>
