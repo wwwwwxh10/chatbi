@@ -889,7 +889,7 @@ function StudioDebugDashboardCanvas({
               height: '100%',
               gridTemplateRows: gridRows,
               gap,
-              padding: gap,
+              padding: 0,
               background: canvasBg,
               alignItems: 'stretch',
               minHeight: 0,
@@ -1858,10 +1858,10 @@ export default function DashboardChatWorkspacePage() {
       style={{
         display: 'flex',
         alignItems: 'stretch',
-        gap: 2,
+        gap: 0,
         height: '100vh',
         minHeight: 720,
-        padding: 10,
+        padding: 12,
         background: debugStudio ? debugStudioBg : token.colorBgLayout,
         position: 'relative',
       }}
@@ -1938,7 +1938,7 @@ export default function DashboardChatWorkspacePage() {
           if (line) line.style.background = 'rgba(0,0,0,0.42)'
         }}
         style={{
-          width: 10,
+          width: 18,
           flex: 'none',
           position: isOverlay ? 'absolute' : 'relative',
           right: isOverlay ? panelWidth + 7 : undefined,
@@ -1951,11 +1951,8 @@ export default function DashboardChatWorkspacePage() {
           userSelect: 'none',
           overflow: 'visible',
           alignSelf: 'stretch',
-          zIndex: isOverlay ? 31 : undefined,
+          zIndex: 40,
           pointerEvents: 'auto',
-          marginTop: debugStudio ? debugStudioGap : undefined,
-          marginBottom: debugStudio ? debugStudioGap : undefined,
-          height: debugStudio ? `calc(100% - ${debugStudioGap * 2}px)` : undefined,
         }}
       >
         <div
@@ -1975,15 +1972,7 @@ export default function DashboardChatWorkspacePage() {
         <div
           data-divider-line
           style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 10,
-            borderRadius: 99,
-            background: 'rgba(0,0,0,0.42)',
-            overflow: 'hidden',
+            display: 'none',
           }}
         >
           <div
@@ -1998,7 +1987,7 @@ export default function DashboardChatWorkspacePage() {
 
         <div
           style={{
-            width: 10,
+            width: 12,
             height: 14,
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
@@ -2024,11 +2013,6 @@ export default function DashboardChatWorkspacePage() {
           display: 'flex',
           flexDirection: 'column',
           minHeight: 0,
-          height: debugStudio ? `calc(100% - ${debugStudioGap * 2}px)` : undefined,
-          maxHeight: debugStudio ? `calc(100% - ${debugStudioGap * 2}px)` : undefined,
-          alignSelf: debugStudio ? 'stretch' : undefined,
-          marginTop: debugStudio ? debugStudioGap : undefined,
-          marginBottom: debugStudio ? debugStudioGap : undefined,
           fontSize: 'var(--font-size-base)',
           lineHeight: 'var(--line-height-base)',
           position: isOverlay ? 'absolute' : 'relative',
