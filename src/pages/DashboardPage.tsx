@@ -26,7 +26,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
  
 import { PageIntro } from '../components/PageIntro'
-import { confirmDelete } from '../components/confirmDelete'
 import { useAppStore } from '../store/appStore'
 import { touchUpdatedAt, useDashboardsStore } from '../store/dashboardsStore'
 import {
@@ -589,7 +588,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
 
   const [deleteDashboardTarget, setDeleteDashboardTarget] = useState<{ id: string; title: string } | null>(null)
   const [deleteBlockedTarget, setDeleteBlockedTarget] = useState<{ title: string } | null>(null)
-  const [publishTarget, setPublishTarget] = useState<{ id: string; nextPublished: boolean } | null>(null)
+  const [publishTarget, setPublishTarget] = useState<{ id: string; title: string; nextPublished: boolean } | null>(null)
 
   const parseLayoutFromConfig = (configText: string) => {
     try {
@@ -1013,7 +1012,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                             return
                           }
                           if (key === 'publish') {
-                            setPublishTarget({ id: r.id, nextPublished: !r.published })
+                            setPublishTarget({ id: r.id, title: r.title, nextPublished: !r.published })
                             return
                           }
                           if (key === 'delete') {
@@ -3044,11 +3043,29 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
         getContainer={() => document.body}
         title={
           <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>
-            {publishTarget ? (publishTarget.nextPublished ? '发布仪表盘' : '下线仪表盘') : ''}
+            {publishTarget
+              ? publishTarget.nextPublished
+                ? locale === 'zh-CN'
+                  ? '发布仪表盘'
+                  : 'Publish dashboard'
+                : locale === 'zh-CN'
+                  ? '下线仪表盘'
+                  : 'Offline dashboard'
+              : ''}
           </div>
         }
-        okText={publishTarget?.nextPublished ? '发布' : '下线'}
-        cancelText="取消"
+        okText={
+          publishTarget
+            ? publishTarget.nextPublished
+              ? locale === 'zh-CN'
+                ? '发布'
+                : 'Publish'
+              : locale === 'zh-CN'
+                ? '下线'
+                : 'Offline'
+            : undefined
+        }
+        cancelText={locale === 'zh-CN' ? '取消' : 'Cancel'}
         okButtonProps={publishTarget?.nextPublished ? undefined : { danger: true }}
         onCancel={() => setPublishTarget(null)}
         onOk={() => {
@@ -3056,12 +3073,17 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
           const { id, nextPublished } = publishTarget
           setPublishTarget(null)
           setCustomDashboards((prev) => prev.map((x) => (x.id === id ? { ...x, published: nextPublished, updatedAt: nowText() } : x)))
+          void message.success(locale === 'zh-CN' ? (nextPublished ? '已发布' : '已下线') : nextPublished ? 'Published' : 'Offline')
         }}
       >
         <div style={{ paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: token.colorTextSecondary }}>
           {publishTarget?.nextPublished
-            ? '确认发布仪表盘？发布后数据将对外可见，并支持基于该仪表盘进行智能问数分析。'
-            : '确认下线仪表盘？下线后仪表盘将不可访问，用户无法继续分析该仪表盘数据。'}
+            ? locale === 'zh-CN'
+              ? `确认发布仪表盘“${publishTarget?.title ?? ''}”？发布后数据将对外可见，并支持基于该仪表盘进行智能问数分析。`
+              : `Publish dashboard "${publishTarget?.title ?? ''}"? It will be visible and can be used for analysis.`
+            : locale === 'zh-CN'
+              ? `确认下线仪表盘“${publishTarget?.title ?? ''}”？下线后仪表盘将不可访问，用户无法继续分析该仪表盘数据。`
+              : `Offline dashboard "${publishTarget?.title ?? ''}"? Users will no longer be able to access or analyze it.`}
         </div>
       </Modal>
 
@@ -3107,6 +3129,9 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
   const removeDashboard = useDashboardsStore((s) => s.removeItem)
 
   const [casesOpen, setCasesOpen] = useState(false)
+  const [publishTarget, setPublishTarget] = useState<{ id: string; title: string; nextPublished: boolean; scope?: 'studio' | 'custom' } | null>(null)
+  const [deleteDashboardTarget, setDeleteDashboardTarget] = useState<{ id: string; title: string } | null>(null)
+  const [deleteBlockedTarget, setDeleteBlockedTarget] = useState<{ title: string } | null>(null)
 
   const [tablePreviewOpen, setTablePreviewOpen] = useState(false)
   const [tablePreviewTables, setTablePreviewTables] = useState<string[]>([])
@@ -3390,29 +3415,19 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                               icon: r.published ? <CloudDownloadOutlined /> : <CloudUploadOutlined />,
                               label: r.published ? (locale === 'zh-CN' ? '下线' : 'Offline') : locale === 'zh-CN' ? '发布' : 'Publish',
                             },
-                            { key: 'delete', icon: <DeleteOutlined />, danger: true, label: locale === 'zh-CN' ? '删除' : 'Delete' },
+                            { key: 'delete', icon: <DeleteOutlined />, danger: true, disabled: r.published, label: locale === 'zh-CN' ? '删除' : 'Delete' },
                           ],
                           onClick: async ({ key }) => {
                             if (key === 'publish') {
-                              updateDashboard(String(r.id), { published: !r.published, updatedAt: touchUpdatedAt() })
-                              void message.success(locale === 'zh-CN' ? (r.published ? '已下线' : '已发布') : r.published ? 'Offline' : 'Published')
+                              setPublishTarget({ id: String(r.id), title: String(r.title), nextPublished: !r.published })
                               return
                             }
                             if (key === 'delete') {
                               if (r.published) {
-                                void message.error(locale === 'zh-CN' ? '请先下线再删除' : 'Please offline first')
+                                setDeleteBlockedTarget({ title: String(r.title) })
                                 return
                               }
-                              confirmDelete({
-                                title: locale === 'zh-CN' ? '删除仪表盘' : 'Delete dashboard',
-                                description:
-                                  locale === 'zh-CN'
-                                    ? `将删除仪表盘“${String(r.title)}”。删除后不可恢复。`
-                                    : `Delete dashboard "${String(r.title)}". This action cannot be undone.`,
-                                onOk: async () => {
-                                  removeDashboard(String(r.id))
-                                },
-                              })
+                              setDeleteDashboardTarget({ id: String(r.id), title: String(r.title) })
                             }
                           },
                         }}
@@ -3473,6 +3488,88 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
             </Col>
           ))}
         </Row>
+      </Modal>
+
+      <Modal
+        open={!!deleteBlockedTarget}
+        centered
+        width={360}
+        zIndex={20000}
+        getContainer={() => document.body}
+        title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>{locale === 'zh-CN' ? '暂不可删除' : 'Cannot delete'}</div>}
+        okText={locale === 'zh-CN' ? '知道了' : 'OK'}
+        cancelButtonProps={{ style: { display: 'none' } }}
+        onOk={() => setDeleteBlockedTarget(null)}
+        onCancel={() => setDeleteBlockedTarget(null)}
+      >
+        <div style={{ paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: token.colorTextSecondary }}>
+          {deleteBlockedTarget
+            ? locale === 'zh-CN'
+              ? `仪表盘“${deleteBlockedTarget.title}”当前已发布，请先下线后再删除。`
+              : `Dashboard "${deleteBlockedTarget.title}" is published. Unpublish it before deleting.`
+            : ''}
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!deleteDashboardTarget}
+        centered
+        width={360}
+        zIndex={20000}
+        getContainer={() => document.body}
+        title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>{locale === 'zh-CN' ? '删除仪表盘' : 'Delete dashboard'}</div>}
+        okText={locale === 'zh-CN' ? '删除' : 'Delete'}
+        cancelText={locale === 'zh-CN' ? '取消' : 'Cancel'}
+        okButtonProps={{ danger: true }}
+        onCancel={() => setDeleteDashboardTarget(null)}
+        onOk={() => {
+          if (!deleteDashboardTarget) return
+          const id = deleteDashboardTarget.id
+          setDeleteDashboardTarget(null)
+          removeDashboard(id)
+        }}
+      >
+        <div style={{ paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: token.colorTextSecondary }}>
+          {deleteDashboardTarget
+            ? locale === 'zh-CN'
+              ? `将删除仪表盘“${deleteDashboardTarget.title}”。删除后不可恢复。`
+              : `Delete dashboard "${deleteDashboardTarget.title}". This action cannot be undone.`
+            : ''}
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!publishTarget}
+        centered
+        width={420}
+        zIndex={20000}
+        getContainer={() => document.body}
+        title={
+          <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>
+            {publishTarget?.nextPublished ? (locale === 'zh-CN' ? '发布仪表盘' : 'Publish dashboard') : '下线仪表盘'}
+          </div>
+        }
+        okText={publishTarget?.nextPublished ? (locale === 'zh-CN' ? '发布' : 'Publish') : locale === 'zh-CN' ? '下线' : 'Offline'}
+        cancelText={locale === 'zh-CN' ? '取消' : 'Cancel'}
+        okButtonProps={publishTarget?.nextPublished ? undefined : { danger: true }}
+        onCancel={() => setPublishTarget(null)}
+        onOk={() => {
+          if (!publishTarget) return
+          const { id, nextPublished } = publishTarget
+          setPublishTarget(null)
+          updateDashboard(id, { published: nextPublished, updatedAt: touchUpdatedAt() })
+          void message.success(locale === 'zh-CN' ? (nextPublished ? '已发布' : '已下线') : nextPublished ? 'Published' : 'Offline')
+        }}
+      >
+        <div style={{ paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: token.colorTextSecondary }}>
+          {publishTarget?.nextPublished
+            ? locale === 'zh-CN'
+              ? `确认发布仪表盘“${publishTarget?.title ?? ''}”？发布后数据将对外可见，并支持基于该仪表盘进行智能问数分析。`
+              : `Publish dashboard "${publishTarget?.title ?? ''}"? It will be visible and can be used for analysis.`
+            : locale === 'zh-CN'
+              ? `确认下线仪表盘“${publishTarget?.title ?? ''}”？下线后仪表盘将不可访问，用户无法继续分析该仪表盘数据。`
+              : `Offline dashboard "${publishTarget?.title ?? ''}"? Users will no longer be able to access or analyze it.`}
+        </div>
       </Modal>
     </Space>
   )

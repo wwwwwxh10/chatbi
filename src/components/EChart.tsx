@@ -77,6 +77,8 @@ export function EChart({
   const ref = useRef<HTMLDivElement | null>(null)
   const instanceRef = useRef<echarts.EChartsType | null>(null)
   const optRef = useRef<EChartsOption>(option)
+  const rawOptRef = useRef<EChartsOption>(option)
+  const legendMeasureCtxRef = useRef<CanvasRenderingContext2D | null>(null)
   const clickHandledRef = useRef(false)
   const internalSelectedRef = useRef<{ seriesIndex: number; dataIndex: number } | null>(null)
   const selectedHoverRef = useRef<ChartHover | null>(null)
@@ -93,9 +95,8 @@ export function EChart({
   const PULSE_OVERLAY_SERIES_ID = '__echart_pulse_overlay__'
 
   const opt = useMemo(() => {
-    void legendSingleLine
     return option
-  }, [legendSingleLine, option])
+  }, [option])
 
   const ensureSelectedMode = (raw: EChartsOption) => {
     const o: any = raw ?? {}
@@ -109,6 +110,140 @@ export function EChart({
     if (Array.isArray(s)) return { ...o, series: sanitizeSeriesList(s).map((it, idx) => normalizeSeries(it, idx)) }
     if (s && typeof s === 'object') return { ...o, series: normalizeSeries(s, 0) }
     return o
+  }
+
+  const measureLegendTextWidth = (text: string, fontSize: number, fontFamily?: string, fontWeight?: string | number) => {
+    const canvas = document.createElement('canvas')
+    if (!legendMeasureCtxRef.current) legendMeasureCtxRef.current = canvas.getContext('2d')
+    const ctx = legendMeasureCtxRef.current
+    if (!ctx) return text.length * fontSize
+    const family = typeof fontFamily === 'string' && fontFamily.trim() ? fontFamily : 'sans-serif'
+    const weight = fontWeight != null ? String(fontWeight) : 'normal'
+    ctx.font = `${weight} ${fontSize}px ${family}`
+    return ctx.measureText(text).width
+  }
+
+  const pickLegendNames = (raw: any, legend: any) => {
+    const fromLegend = (() => {
+      const data = legend?.data
+      if (!Array.isArray(data)) return null
+      const list = data
+        .map((it: any) => (typeof it === 'string' ? it : typeof it?.name === 'string' ? it.name : null))
+        .filter((v: any) => typeof v === 'string' && v.trim())
+      return list.length ? list : null
+    })()
+    if (fromLegend) return fromLegend
+    const series = Array.isArray(raw?.series) ? raw.series : raw?.series ? [raw.series] : []
+    const list: string[] = []
+    for (const s of series) {
+      if (!s || typeof s !== 'object') continue
+      const t = String((s as any).type ?? '')
+      if (t === 'pie') {
+        const data = Array.isArray((s as any).data) ? (s as any).data : []
+        for (const it of data) {
+          const nm = typeof it === 'string' ? it : typeof it?.name === 'string' ? it.name : null
+          if (typeof nm === 'string' && nm.trim()) list.push(nm)
+        }
+        continue
+      }
+      const nm = typeof (s as any).name === 'string' ? (s as any).name : null
+      if (typeof nm === 'string' && nm.trim()) list.push(nm)
+    }
+    const uniq = Array.from(new Set(list))
+    return uniq.length ? uniq : []
+  }
+
+  const fitLegendSingleLine = (raw: EChartsOption, containerWidth: number) => {
+    const base: any = raw ?? {}
+    const legendsRaw = base.legend
+    const legends = Array.isArray(legendsRaw) ? legendsRaw.filter((it) => it && typeof it === 'object') : legendsRaw && typeof legendsRaw === 'object' ? [legendsRaw] : []
+    const enabled = legendSingleLine !== false || legends.some((it: any) => Boolean(it?.__autoHideOverflow))
+    if (!enabled) return raw
+    if (!Number.isFinite(containerWidth) || containerWidth <= 0) return raw
+    if (!legends.length) return raw
+
+    const parseLen = (v: any) => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v
+      if (typeof v === 'string') {
+        const s = v.trim()
+        if (!s) return null
+        if (s.endsWith('%')) {
+          const n = Number(s.slice(0, -1))
+          if (!Number.isFinite(n)) return null
+          return (containerWidth * n) / 100
+        }
+        const n = Number(s)
+        if (!Number.isFinite(n)) return null
+        return n
+      }
+      return null
+    }
+
+    const getPaddingLR = (p: any) => {
+      if (typeof p === 'number' && Number.isFinite(p)) return [p, p] as const
+      if (Array.isArray(p)) {
+        const a = p.map((x) => (typeof x === 'number' && Number.isFinite(x) ? x : 0))
+        if (a.length === 2) return [a[1], a[1]] as const
+        if (a.length === 3) return [a[1], a[1]] as const
+        if (a.length >= 4) return [a[3], a[1]] as const
+      }
+      return [0, 0] as const
+    }
+
+    const tryFitOne = (legend: any) => {
+      if (!legend || typeof legend !== 'object') return legend
+      if (legend.show === false) return legend
+      if (String(legend.orient ?? '') === 'vertical') return legend
+      const names = pickLegendNames(base, legend)
+      if (!names.length) return legend
+      const baseItemWidth = typeof legend.itemWidth === 'number' ? legend.itemWidth : 25
+      const iconTextGap = 5
+      const baseGap = typeof legend.itemGap === 'number' ? legend.itemGap : 16
+      const baseFontSize = typeof legend.textStyle?.fontSize === 'number' ? legend.textStyle.fontSize : 12
+      const family = legend.textStyle?.fontFamily
+      const weight = legend.textStyle?.fontWeight
+
+      const gaps = Array.from(new Set([baseGap, 16, 12, 10, 8, 6, 4, 2, 0].filter((n) => n <= baseGap).concat([baseGap]).filter((n) => n >= 0))).sort((a, b) => b - a)
+      const fonts = Array.from(new Set([baseFontSize, baseFontSize - 1, baseFontSize - 2, baseFontSize - 3].map((n) => Math.max(9, n))))
+      const itemWidths = Array.from(new Set([baseItemWidth, 20, 18, 16, 14].filter((n) => n <= baseItemWidth).filter((n) => n >= 10))).sort((a, b) => b - a)
+
+      const avail = (() => {
+        const w = parseLen(legend.width)
+        const left = parseLen(legend.left)
+        const right = parseLen(legend.right)
+        const [pl, pr] = getPaddingLR(legend.padding)
+        const baseAvail = typeof w === 'number' ? w : Math.max(0, containerWidth - (left ?? 0) - (right ?? 0) - 16)
+        return Math.max(0, Math.floor(baseAvail - pl - pr))
+      })()
+
+      const calcTotal = (fontSize: number, gap: number, itemWidth: number) => {
+        let sum = 0
+        for (const nm of names) sum += itemWidth + iconTextGap + measureLegendTextWidth(nm, fontSize, family, weight)
+        if (names.length > 1) sum += gap * (names.length - 1)
+        return sum + 10 + names.length * 2
+      }
+
+      for (const fontSize of fonts) {
+        for (const gap of gaps) {
+          for (const itemWidth of itemWidths) {
+            if (calcTotal(fontSize, gap, itemWidth) <= avail) {
+              return {
+                ...legend,
+                width: avail,
+                itemGap: gap,
+                itemWidth,
+                textStyle: { ...(legend.textStyle ?? {}), fontSize },
+              }
+            }
+          }
+        }
+      }
+      return { ...legend, show: false }
+    }
+
+    const nextLegends = legends.map(tryFitOne)
+    const next: any = { ...base, legend: Array.isArray(legendsRaw) ? nextLegends : nextLegends[0] }
+    return next
   }
 
   const getCurrentSelected = () => (selectedPropRef.current !== undefined ? selectedPropRef.current : internalSelectedRef.current)
@@ -676,6 +811,28 @@ export function EChart({
       try {
         inst.resize()
       } catch {}
+      const baseOpt = rawOptRef.current
+      const needsLegendFit = legendSingleLine !== false || (() => {
+        const lg: any = (baseOpt as any)?.legend
+        if (Array.isArray(lg)) return lg.some((it) => Boolean(it?.__autoHideOverflow))
+        return Boolean(lg?.__autoHideOverflow)
+      })()
+      if (needsLegendFit) {
+        if (optionApplyTimerRef.current != null) window.clearTimeout(optionApplyTimerRef.current)
+        optionApplyTimerRef.current = window.setTimeout(() => {
+          optionApplyTimerRef.current = null
+          const current = instanceRef.current
+          const el0 = ref.current
+          if (!current || current !== inst || !el0) return
+          const applied = fitLegendSingleLine(baseOpt, el0.clientWidth)
+          optRef.current = applied
+          try {
+            current.setOption(applied, { notMerge: true, lazyUpdate: false, silent: true } as any)
+          } catch {}
+          if (getCurrentSelected()) scheduleReapplySelection({ full: true })
+        }, 0)
+        return
+      }
       if (getCurrentSelected()) scheduleReapplySelection({ full: true })
     })
     ro.observe(el)
@@ -742,7 +899,10 @@ export function EChart({
   useEffect(() => {
     const inst = instanceRef.current
     if (!inst) return
-    const nextOpt = ensureSelectedMode(opt)
+    const baseOpt = ensureSelectedMode(opt)
+    rawOptRef.current = baseOpt
+    const el = ref.current
+    const nextOpt = el ? fitLegendSingleLine(baseOpt, el.clientWidth) : baseOpt
     optRef.current = nextOpt
     if (optionApplyTimerRef.current != null) window.clearTimeout(optionApplyTimerRef.current)
     optionApplyTimerRef.current = window.setTimeout(() => {
@@ -754,7 +914,7 @@ export function EChart({
       } catch {}
       if (getCurrentSelected()) scheduleReapplySelection({ full: true })
     }, 0)
-  }, [opt])
+  }, [legendSingleLine, opt])
 
   useEffect(() => {
     const inst = instanceRef.current

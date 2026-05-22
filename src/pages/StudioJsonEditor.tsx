@@ -62,7 +62,7 @@ export function StudioJsonEditor({
     })
   }
   const body = (
-    <div style={{ width: fullscreen ? 'calc(100vw - 92px)' : 640, maxWidth: '100%' }}>
+    <div style={{ width: '100%', maxWidth: fullscreen ? 'calc(100vw - 92px)' : 640, margin: '0 auto' }}>
       {!slot.kind ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {(
@@ -99,7 +99,7 @@ export function StudioJsonEditor({
           ))}
         </div>
       ) : (
-        <div style={{ border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'hidden', background: 'rgba(10, 14, 24, 0.90)' }}>
+        <div style={{ border: 'none', borderRadius: 4, overflow: 'hidden', background: 'rgba(8, 13, 23, 0.88)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '52px 1fr' }}>
             <div
               style={{
@@ -110,7 +110,7 @@ export function StudioJsonEditor({
                 lineHeight: '18px',
                 color: token.colorTextTertiary,
                 userSelect: 'none',
-                borderRight: `1px solid ${token.colorSplit}`,
+                borderRight: '1px solid rgba(255,255,255,0.10)',
               }}
             >
               {Array.from({ length: lines }).map((_, i) => {
@@ -209,7 +209,7 @@ export function StudioJsonEditor({
         <div
           style={{
             marginTop: 0,
-            borderRadius: '0 0 12px 12px',
+            borderRadius: '0 0 4px 4px',
             background: 'rgba(127, 29, 29, 0.72)',
             borderTop: '1px solid rgba(239, 68, 68, 0.35)',
             padding: '10px 12px',

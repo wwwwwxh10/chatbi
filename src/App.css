@@ -925,8 +925,8 @@ html[data-mode='dark'] .studioSlotMoveOver .studioSlotAdd {
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.studioSlotFilled:hover .studioSlotActions,
-.studioSlotFilled:focus-within .studioSlotActions {
+.studioSlot:hover .studioSlotActions,
+.studioSlot:focus-within .studioSlotActions {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -937,8 +937,8 @@ html[data-mode='dark'] .studioSlotMoveOver .studioSlotAdd {
   transition: opacity 160ms ease, background 160ms ease, color 160ms ease;
 }
 
-.studioSlotFilled:hover .studioSlotIconBtn,
-.studioSlotFilled:focus-within .studioSlotIconBtn {
+.studioSlot:hover .studioSlotIconBtn,
+.studioSlot:focus-within .studioSlotIconBtn {
   opacity: 0.82;
 }
 

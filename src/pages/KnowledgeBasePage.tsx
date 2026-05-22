@@ -133,60 +133,80 @@ function sqlHighlightNodes(line: string): ReactNode[] {
 
 const CARD_MIN_HEIGHT = 132
 
-const SqlCodeWindow = ({ sql, isDark }: { sql: string; isDark: boolean }) => {
+const SqlCodeWindow = ({
+  sql,
+  isDark,
+  height,
+  maxLines,
+  radius,
+  lineHeight,
+}: {
+  sql: string
+  isDark: boolean
+  height?: number
+  maxLines?: number | null
+  radius?: number
+  lineHeight?: number
+}) => {
   const lines = useMemo(() => {
     const normalized = String(sql ?? '').replace(/\r\n?/g, '\n')
     const raw = normalized.split('\n')
     while (raw.length && raw[raw.length - 1] === '') raw.pop()
     return raw
   }, [sql])
-  const shown = lines.slice(0, 6)
-  const hasMore = lines.length > 6
-  const weakLine = hasMore ? lines[6] : null
+  const ml = maxLines === undefined ? 6 : maxLines
+  const shown = ml == null ? lines : lines.slice(0, ml)
+  const hasMore = ml == null ? false : lines.length > ml
+  const weakLine = hasMore ? lines[ml as number] : null
   const bg = isDark ? 'rgba(8, 13, 23, 0.88)' : 'rgba(2, 6, 23, 0.92)'
+  const h = height ?? 140
+  const r = radius ?? 4
+  const lh = lineHeight ?? 1.35
 
   return (
-    <div style={{ height: 140, position: 'relative' }}>
+    <div style={{ height: h, position: 'relative' }}>
       <div
         style={{
-          height: 140,
-          borderRadius: 4,
+          height: h,
+          borderRadius: r,
           background: bg,
           overflow: 'hidden',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
           position: 'relative',
         }}
       >
-        <div
-          style={{
-            height: '100%',
-            display: 'grid',
-            gridTemplateColumns: '30px 1px minmax(0, 1fr)',
-            gap: 10,
-            padding: 12,
-            fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
-            fontSize: 12,
-            lineHeight: 1.35,
-          }}
-        >
-          <div style={{ color: 'rgba(148,163,184,0.55)', textAlign: 'right', paddingRight: 0, userSelect: 'none', marginLeft: -40 }}>
-            {shown.map((_, i) => (
-              <div key={i}>{i + 1}</div>
-            ))}
-            {weakLine != null ? <div style={{ opacity: 0.45 }}>7</div> : null}
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.10)', height: '100%' }} />
-          <div className="kbCodeScroll" style={{ minWidth: 0, overflow: 'auto', scrollbarWidth: 'none' as any, msOverflowStyle: 'none' as any }}>
-            {shown.map((ln, i) => (
-              <div key={i} style={{ whiteSpace: 'pre' }}>
-                {sqlHighlightNodes(ln)}
-              </div>
-            ))}
-            {weakLine != null ? (
-              <div style={{ whiteSpace: 'pre', opacity: 0.45 }}>
-                {sqlHighlightNodes(weakLine)}
-              </div>
-            ) : null}
+        <div className="kbCodeScroll" style={{ height: '100%', overflow: 'auto', scrollbarWidth: 'none' as any, msOverflowStyle: 'none' as any }}>
+          <div
+            style={{
+              minWidth: '100%',
+              display: 'grid',
+              gridTemplateColumns: '30px 1px minmax(0, 1fr)',
+              gap: 10,
+              padding: 12,
+              fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+              fontSize: 12,
+              lineHeight: lh,
+            }}
+          >
+            <div style={{ color: 'rgba(148,163,184,0.55)', textAlign: 'right', paddingRight: 0, userSelect: 'none', marginLeft: -40 }}>
+              {shown.map((_, i) => (
+                <div key={i}>{i + 1}</div>
+              ))}
+              {weakLine != null ? <div style={{ opacity: 0.45 }}>{shown.length + 1}</div> : null}
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.10)', height: '100%' }} />
+            <div style={{ minWidth: 0 }}>
+              {shown.map((ln, i) => (
+                <div key={i} style={{ whiteSpace: 'pre' }}>
+                  {sqlHighlightNodes(ln)}
+                </div>
+              ))}
+              {weakLine != null ? (
+                <div style={{ whiteSpace: 'pre', opacity: 0.45 }}>
+                  {sqlHighlightNodes(weakLine)}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -220,7 +240,7 @@ const SqlEditorWindow = ({
     <div
       style={{
         height: 220,
-        borderRadius: 10,
+        borderRadius: 4,
         background: bg,
         overflow: 'hidden',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
@@ -850,6 +870,7 @@ export default function KnowledgeBasePage() {
   const regexPattern = Form.useWatch('pattern', form)
   const regexConversionStrategy = Form.useWatch('conversionStrategy', form)
   const regexExampleIn = Form.useWatch('exampleIn', form)
+  const sqlText = Form.useWatch('sql', form)
 
   const computeRegexOut = (args: { pattern: string; conversionStrategy: string; input: string }) => {
     const rawPattern = String(args.pattern ?? '')
@@ -1652,7 +1673,11 @@ export default function KnowledgeBasePage() {
                 <Input.TextArea disabled={isViewMode} rows={3} placeholder="描述业务问题，系统将据此优先匹配示例 SQL" />
               </Form.Item>
               <Form.Item name="sql" label="示例 SQL" rules={[{ required: true, message: t('validation.required') }]}>
-                <SqlEditorWindow isDark={isDark} disabled={isViewMode} placeholder="写下示例 SQL（高频/标准写法）" />
+                {isViewMode ? (
+                  <SqlCodeWindow sql={String(sqlText ?? '')} isDark={isDark} height={220} maxLines={null} radius={4} lineHeight={1.6} />
+                ) : (
+                  <SqlEditorWindow isDark={isDark} disabled={false} placeholder="写下示例 SQL（高频/标准写法）" />
+                )}
               </Form.Item>
             </>
           ) : null}

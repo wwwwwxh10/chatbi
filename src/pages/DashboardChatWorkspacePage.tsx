@@ -1236,14 +1236,6 @@ export default function DashboardChatWorkspacePage() {
 
   const debugStudioBg = panelTheme === 'obsidian' ? token.colorBgLayout : '#03060c'
 
-  const debugStudioGap = useMemo(() => {
-    const layout: any = (studioPayload as any)?.layout
-    if (!debugStudio || !layout) return 0
-    const mode = String(layout.mode ?? '')
-    if (mode === 'free') return Math.max(8, Math.min(32, Number(layout.gap ?? 16)))
-    return 10
-  }, [debugStudio, studioPayload])
-
   const sessionRowClass = 'sessionRow'
   const sessionActionsClass = 'sessionActions'
 
@@ -1303,8 +1295,10 @@ export default function DashboardChatWorkspacePage() {
   const pendingMessagesRef = useRef<ChatMessage[] | null>(null)
 
   const [panelWidth, setPanelWidth] = useState(420)
+  const layoutPadding = 16
+  const dividerWidth = 12
   const overlayThreshold = 720
-  const isOverlay = !debugStudio && panelWidth > overlayThreshold
+  const isOverlay = panelWidth > overlayThreshold
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const layoutRef = useRef<HTMLDivElement | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
@@ -1734,7 +1728,7 @@ export default function DashboardChatWorkspacePage() {
     if (!el) return
     const compute = () => {
       const w = el.getBoundingClientRect().width
-      const locked = Math.max(360, Math.floor(w - 20 - 2 - 10 - overlayThreshold))
+      const locked = Math.max(360, Math.floor(w - layoutPadding * 2 - dividerWidth - overlayThreshold))
       setLeftLockedWidth(locked)
     }
     compute()
@@ -1861,7 +1855,7 @@ export default function DashboardChatWorkspacePage() {
         gap: 0,
         height: '100vh',
         minHeight: 720,
-        padding: 12,
+        padding: layoutPadding,
         background: debugStudio ? debugStudioBg : token.colorBgLayout,
         position: 'relative',
       }}
@@ -1938,12 +1932,12 @@ export default function DashboardChatWorkspacePage() {
           if (line) line.style.background = 'rgba(0,0,0,0.42)'
         }}
         style={{
-          width: 18,
+          width: dividerWidth,
           flex: 'none',
           position: isOverlay ? 'absolute' : 'relative',
-          right: isOverlay ? panelWidth + 7 : undefined,
-          top: isOverlay ? 12 : undefined,
-          bottom: isOverlay ? 12 : undefined,
+          right: isOverlay ? panelWidth + layoutPadding : undefined,
+          top: isOverlay ? 16 : undefined,
+          bottom: isOverlay ? 16 : undefined,
           cursor: 'col-resize',
           minHeight: 12,
           display: 'grid',
@@ -2016,9 +2010,9 @@ export default function DashboardChatWorkspacePage() {
           fontSize: 'var(--font-size-base)',
           lineHeight: 'var(--line-height-base)',
           position: isOverlay ? 'absolute' : 'relative',
-          right: isOverlay ? 12 : undefined,
-          top: isOverlay ? 12 : undefined,
-          bottom: isOverlay ? 12 : undefined,
+          right: isOverlay ? 16 : undefined,
+          top: isOverlay ? 16 : undefined,
+          bottom: isOverlay ? 16 : undefined,
           zIndex: isOverlay ? 30 : undefined,
           boxShadow: isOverlay ? '0 18px 48px rgba(0,0,0,0.22)' : undefined,
           ['--chatbi-chat-bg' as any]: chatTheme.chatBg,

@@ -516,6 +516,34 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     requestAnimationFrame(() => setDragOverIdx(null))
   }
 
+  const removeFreeCard = (idx: number) => {
+    if (readOnly || previewMode) return
+    if (layout.mode !== 'free') return
+    if (idx < 0 || idx >= layout.cards.length) return
+    const removed = slots[idx]
+    const nextCards = layout.cards.filter((_, i) => i !== idx)
+    const nextSlots = slots
+      .filter((_, i) => i !== idx)
+      .map((s, i) => ({
+        ...s,
+        id: `free-${i + 1}`,
+      }))
+    setEditingSlotId(null)
+    setSelectedSlotId(null)
+    setDragFromIdx(null)
+    setDragOverIdx(null)
+    setDraggingKind(null)
+    setDragFromUnplacedIdx(null)
+    scheduleMoveTip(null)
+    setLayout({ ...layout, cards: nextCards })
+    setSlots(nextSlots)
+    if (removed?.kind) {
+      const nextUnplaced = unplacedSlots.slice(0)
+      nextUnplaced.push({ ...removed, id: `unplaced-${Date.now()}-${Math.random().toString(36).slice(2)}` })
+      setUnplacedSlots(nextUnplaced)
+    }
+  }
+
   const onSlotDragStart = (idx: number, e: DragEvent<HTMLDivElement>) => {
     if (readOnly || previewMode) return
     if (!slots[idx]?.kind) return
@@ -565,7 +593,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   useEffect(() => {
     if (readOnly || previewMode) return
-    if (dragFromIdx == null && dragFromUnplacedIdx == null) return
+    if (dragFromIdx == null) return
     const onDragOver = (e: globalThis.DragEvent) => {
       e.preventDefault()
       scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
@@ -574,7 +602,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     return () => {
       window.removeEventListener('dragover', onDragOver)
     }
-  }, [dragFromIdx, dragFromUnplacedIdx, previewMode, readOnly])
+  }, [dragFromIdx, previewMode, readOnly])
 
   useEffect(() => {
     if (readOnly || previewMode) return
@@ -721,6 +749,167 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                           ? buildWaterOption(name, colors)
                                     : null
     return base
+  }
+
+  const fitOptionForFreeCard = (opt: any, idx: number) => {
+    if (layout.mode !== 'free') return opt
+    const pos = layout.cards?.[idx]
+    if (!pos) return opt
+    const colSpan = Math.max(1, Number(pos.colSpan || 1))
+    const rowSpan = Math.max(1, Number(pos.rowSpan || 1))
+    const area = colSpan * rowSpan
+    const compact = rowSpan <= 1 || area <= 6
+    const tiny = area <= 3
+    const next: any = { ...(opt ?? {}) }
+
+    if (next.legend && typeof next.legend === 'object') {
+      const legendShow = Boolean((next.legend as any).show)
+      const show = legendShow && !compact
+      next.legend = {
+        ...(next.legend as any),
+        show,
+        bottom: show ? (compact ? 4 : (next.legend as any).bottom ?? 8) : (next.legend as any).bottom,
+        itemGap: compact ? 12 : (next.legend as any).itemGap ?? 24,
+        textStyle: {
+          ...((next.legend as any).textStyle ?? {}),
+          fontSize: compact ? 11 : ((next.legend as any).textStyle?.fontSize ?? 12),
+        },
+      }
+    }
+
+    if (next.grid && typeof next.grid === 'object' && !Array.isArray(next.grid)) {
+      const legendShown = Boolean(next.legend && (next.legend as any).show)
+      const lr = tiny ? 8 : compact ? 10 : (next.grid as any).left ?? 30
+      const top = tiny ? 22 : compact ? 24 : (next.grid as any).top ?? 36
+      const bottom = tiny ? (legendShown ? 30 : 10) : compact ? (legendShown ? 30 : 12) : (next.grid as any).bottom
+      next.grid = {
+        ...(next.grid as any),
+        left: lr,
+        right: lr,
+        top,
+        bottom,
+        containLabel: true,
+      }
+    }
+
+    const patchAxis = (axis: any) => {
+      if (!axis || typeof axis !== 'object') return axis
+      const t = String(axis.type ?? '')
+      const isCategory = t === 'category'
+      const isValue = t === 'value' || t === 'log' || t === 'time'
+      const isEn = appearance.language === 'en-US'
+      const formatCompactNumber = (v: any) => {
+        const n = typeof v === 'number' ? v : Number(v)
+        if (!Number.isFinite(n)) return String(v ?? '')
+        const abs = Math.abs(n)
+        if (isEn) {
+          if (abs >= 1e9) return `${(n / 1e9).toFixed(1)}B`
+          if (abs >= 1e6) return `${(n / 1e6).toFixed(1)}M`
+          if (abs >= 1e3) return `${(n / 1e3).toFixed(1)}k`
+          return String(n)
+        }
+        if (abs >= 1e8) return `${(n / 1e8).toFixed(1)}亿`
+        if (abs >= 1e4) return `${(n / 1e4).toFixed(1)}万`
+        if (abs >= 1e3) return `${(n / 1e3).toFixed(1)}k`
+        return String(n)
+      }
+      const formatCompactText = (v: any) => {
+        const s = String(v ?? '')
+        if (!compact) return s
+        const maxLen = tiny ? 3 : 5
+        return s.length > maxLen ? `${s.slice(0, maxLen)}…` : s
+      }
+      return {
+        ...axis,
+        ...(compact && isValue ? { splitNumber: axis.splitNumber ?? 3 } : null),
+        axisLabel: {
+          ...(axis.axisLabel ?? {}),
+          show: axis.axisLabel?.show ?? true,
+          hideOverlap: compact ? true : axis.axisLabel?.hideOverlap,
+          rotate: isCategory && compact ? (tiny ? 45 : 30) : axis.axisLabel?.rotate,
+          interval: isCategory && compact ? 'auto' : axis.axisLabel?.interval,
+          fontSize: compact ? 11 : axis.axisLabel?.fontSize,
+          margin: compact ? 2 : axis.axisLabel?.margin,
+          formatter: compact
+            ? isCategory
+              ? (v: any) => formatCompactText(v)
+              : isValue
+                ? (v: any) => formatCompactNumber(v)
+                : axis.axisLabel?.formatter
+            : axis.axisLabel?.formatter,
+        },
+      }
+    }
+    if (Array.isArray(next.xAxis)) next.xAxis = next.xAxis.map(patchAxis)
+    else if (next.xAxis) next.xAxis = patchAxis(next.xAxis)
+    if (Array.isArray(next.yAxis)) next.yAxis = next.yAxis.map(patchAxis)
+    else if (next.yAxis) next.yAxis = patchAxis(next.yAxis)
+
+    const seriesList: any[] = Array.isArray(next.series) ? next.series : next.series ? [next.series] : []
+    if (seriesList.length) {
+      const type = String(seriesList[0]?.type ?? '')
+      if (type === 'pie') {
+        next.series = seriesList.map((s) => ({
+          ...s,
+          center: ['50%', compact ? '52%' : '45%'],
+          radius: (() => {
+            const r = Array.isArray(s.radius) ? s.radius : null
+            if (compact) {
+              if (r && r.length >= 2) return [r[0], '82%']
+              return ['0%', '82%']
+            }
+            return r ?? ['0%', '76%']
+          })(),
+          label: compact ? { ...(s.label ?? {}), show: false } : s.label,
+          labelLine: compact ? { ...(s.labelLine ?? {}), show: false } : s.labelLine,
+        }))
+      } else if (type === 'radar') {
+        if (next.radar && typeof next.radar === 'object') {
+          next.radar = { ...(next.radar as any), radius: compact ? '58%' : (next.radar as any).radius ?? '62%', center: ['50%', '56%'] }
+        }
+      } else if (type === 'funnel') {
+        next.series = seriesList.map((s) => ({
+          ...s,
+          left: compact ? 8 : s.left,
+          right: compact ? 8 : s.right,
+          top: compact ? 18 : s.top,
+          bottom: compact ? 8 : s.bottom,
+        }))
+      } else if (type === 'gauge') {
+        next.series = seriesList.map((s) => ({
+          ...s,
+          center: ['50%', compact ? '56%' : '58%'],
+          radius: s.radius ?? (compact ? '92%' : '96%'),
+        }))
+      } else if (type === 'liquidFill') {
+        next.series = seriesList.map((s) => ({
+          ...s,
+          radius: s.radius ?? (compact ? '82%' : '88%'),
+          center: ['50%', compact ? '56%' : '58%'],
+        }))
+      } else if (type === 'line') {
+        next.series = seriesList.map((s) => ({
+          ...s,
+          symbolSize: compact ? 6 : s.symbolSize,
+          lineStyle: { ...(s.lineStyle ?? {}), width: compact ? Math.min(2, Number(s.lineStyle?.width ?? 2) || 2) : s.lineStyle?.width },
+        }))
+      } else if (type === 'bar') {
+        next.series = seriesList.map((s) => ({
+          ...s,
+          barWidth: compact ? Math.min(14, Number(s.barWidth ?? 14) || 14) : s.barWidth,
+        }))
+      } else if (type === 'treemap' || type === 'sankey' || type === 'graph' || type === 'heatmap') {
+        next.series = seriesList.map((s) => ({
+          ...s,
+          left: compact ? 10 : s.left,
+          right: compact ? 10 : s.right,
+          top: compact ? 10 : s.top,
+          bottom: compact ? 10 : s.bottom,
+        }))
+      }
+    }
+
+    return next
   }
 
   const renderSlotBody = (slot: WidgetSlot, idx: number) => {
@@ -932,8 +1121,14 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
 
     const opt = optionForSlot(slot)
+    const fittedOpt = opt ? fitOptionForFreeCard(opt as any, idx) : null
+    const freePos = layout.mode === 'free' ? layout.cards?.[idx] : null
+    const freeArea = freePos ? Math.max(1, Number(freePos.colSpan || 1)) * Math.max(1, Number(freePos.rowSpan || 1)) : 0
+    const freeCompact = layout.mode === 'free' && freePos ? Math.max(1, Number(freePos.rowSpan || 1)) <= 1 || freeArea <= 6 : false
+    const freeTiny = layout.mode === 'free' && freePos ? freeArea <= 3 : false
+    const shellPadding = freeTiny ? 8 : freeCompact ? 10 : 16
     return opt ? (
-      <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ padding: shellPadding, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div
           className="studioSlotHeader"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
@@ -1006,8 +1201,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             </Space>
           </div>
         </div>
-        <div style={{ flex: 1, minHeight: 0, paddingTop: slot.kind === 'funnel' ? 0 : 10 }}>
-          <EChart option={opt as any} legendSingleLine />
+        <div style={{ flex: 1, minHeight: 0, paddingTop: slot.kind === 'funnel' ? 0 : freeTiny ? 2 : freeCompact ? 4 : 10 }}>
+          <EChart option={fittedOpt as any} legendSingleLine style={layout.mode === 'free' ? { minHeight: 0 } : undefined} />
         </div>
       </div>
     ) : (
@@ -1391,6 +1586,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   }, [layout])
 
   const gap = layout.mode === 'free' ? Math.max(8, Math.min(32, layout.gap)) : 14
+  const freeCols = layout.mode === 'free' ? Math.max(4, Math.min(24, Math.floor(layout.cols || 12))) : 12
   const freeRows = layout.mode === 'free' ? Math.max(2, Math.min(24, Math.floor(layout.rows || 8))) : 0
 
   const fieldBg =
@@ -1584,7 +1780,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+                  gridTemplateColumns: `repeat(${layout.mode === 'free' ? freeCols : 12}, minmax(0, 1fr))`,
                   height: layout.mode === 'template' || layout.mode === 'free' ? '100%' : undefined,
                   gridTemplateRows:
                     layout.mode === 'template'
@@ -1632,6 +1828,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                             </Tag>
                           </div>
                           <div style={{ padding: 8, maxHeight: 240, overflow: 'auto' }}>
+                            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', padding: '2px 4px 8px 4px' }}>
+                              拖到空槽位，或拖拽替换已有图表
+                            </Typography.Text>
                             {unplacedSlots
                               .map((s, i) => ({ s, i }))
                               .filter(({ s }) => Boolean(s.kind))
@@ -1654,6 +1853,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                     draggable={!readOnly && !previewMode}
                                     onDragStart={(e) => {
                                       setDragFromUnplacedIdx(i)
+                                      scheduleMoveTip(null)
+                                      setDragOverIdx(null)
                                       e.dataTransfer.setData('application/x-dashboard-unplaced-index', String(i))
                                       e.dataTransfer.effectAllowed = 'move'
                                       try {
@@ -1725,9 +1926,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                   </div>
                                 )
                               })}
-                            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', padding: '2px 4px 8px 4px' }}>
-                              拖到空槽位，或拖到已有卡片上进行替换
-                            </Typography.Text>
                           </div>
                         </div>
                       }
@@ -1765,10 +1963,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       position: 'absolute',
                       inset: 0,
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+                      gridTemplateColumns: `repeat(${freeCols}, minmax(0, 1fr))`,
                       gridTemplateRows: `repeat(${freeRows}, minmax(0, 1fr))`,
                       gap,
-                      zIndex: 30,
+                      zIndex: 1,
                       pointerEvents: 'auto',
                       padding: gap,
                       cursor: 'crosshair',
@@ -1787,7 +1985,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       const ch = Math.max(1, rect.height - pad * 2)
                       const lx = x - pad
                       const ly = y - pad
-                      const col = Math.min(12, Math.max(1, Math.floor((lx / cw) * 12) + 1))
+                      const col = Math.min(freeCols, Math.max(1, Math.floor((lx / cw) * freeCols) + 1))
                       const row = Math.min(freeRows, Math.max(1, Math.floor((ly / ch) * freeRows) + 1))
                       if (freeRafRef.current != null) cancelAnimationFrame(freeRafRef.current)
                       freeRafRef.current = requestAnimationFrame(() => {
@@ -1815,7 +2013,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       const ch = Math.max(1, rect.height - pad * 2)
                       const lx = x - pad
                       const ly = y - pad
-                      const c = Math.min(12, Math.max(1, Math.floor((lx / cw) * 12) + 1))
+                      const c = Math.min(freeCols, Math.max(1, Math.floor((lx / cw) * freeCols) + 1))
                       const r = Math.min(freeRows, Math.max(1, Math.floor((ly / ch) * freeRows) + 1))
 
                       if (!freeStartPoint) {
@@ -1940,7 +2138,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       })()
                     ) : null}
 
-                    {Array.from({ length: freeRows * 12 }).map((_, i) => (
+                    {Array.from({ length: freeRows * freeCols }).map((_, i) => (
                       <div
                         key={i}
                         style={{
@@ -1964,7 +2162,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   const isDragOver = dragOverIdx === idx
                   const isMoveOver = isDragOver && (dragFromIdx != null ? dragFromIdx !== idx : dragFromUnplacedIdx != null)
                   const pos = (layout.mode === 'free' ? layout.cards : templatePositions)?.[idx]
-                  const colSpan = pos ? pos.colSpan : Math.max(1, Math.min(12, spec.colSpan))
+                  const colSpan = pos ? pos.colSpan : Math.max(1, Math.min(freeCols, spec.colSpan))
                   const rowSpan = pos ? pos.rowSpan : Math.max(1, spec.rowSpan)
                   const borderColor = slot.kind
                     ? slot.error
@@ -1984,7 +2182,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   return (
                     <div
                       key={slot.id}
-                      className={`studioSlot${slot.kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}${!slot.kind && !readOnly && !previewMode && layout.mode !== 'free' ? ' studioSlotCanDrop' : ''}${isDragFrom ? ' studioSlotDragging' : ''}${isDragOver ? ' studioSlotDragOver' : ''}${isMoveOver ? ' studioSlotMoveOver' : ''}`}
+                      className={`studioSlot${slot.kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}${!slot.kind && !readOnly && !previewMode ? ' studioSlotCanDrop' : ''}${isDragFrom ? ' studioSlotDragging' : ''}${isDragOver ? ' studioSlotDragOver' : ''}${isMoveOver ? ' studioSlotMoveOver' : ''}`}
                       style={{
                         ['--studio-accent' as any]: accent,
                         gridColumn: pos ? `${pos.colStart} / span ${colSpan}` : `span ${colSpan}`,
@@ -2041,7 +2239,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         e.dataTransfer.dropEffect = isMove || isUnplaced ? 'move' : 'copy'
                         if (dragFromIdx != null && dragFromIdx === idx) return
                         if (isMove || isAdd || isUnplaced) setDragOverIdx((prev) => (prev === idx ? prev : idx))
-                        if (isMove || isUnplaced) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+                        if (isMove) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+                        if (isUnplaced && slot.kind) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
                       }}
                       onDragOverCapture={(e) => {
                         if (readOnly || previewMode) return
@@ -2050,7 +2249,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         setDragOverIdx((prev) => (prev === idx ? prev : idx))
                         const isMove = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-slot-index'))
                         const isUnplaced = Boolean(e.dataTransfer.types?.includes('application/x-dashboard-unplaced-index'))
-                        if (isMove || isUnplaced) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+                        if (isMove) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
+                        if (isUnplaced && slot.kind) scheduleMoveTip({ x: e.clientX, y: e.clientY, text: '' })
                       }}
                       onDrop={(e) => {
                         if (readOnly || previewMode) return
@@ -2133,6 +2333,24 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                 if (selectedSlotId === slot.id) setSelectedSlotId(null)
                               }}
                               aria-label="移除组件"
+                            />
+                          </Tooltip>
+                        </div>
+                      ) : layout.mode === 'free' && !readOnly && !previewMode ? (
+                        <div className="studioSlotActions" style={{ position: 'absolute', top: 8, right: 8, zIndex: 30, display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <Tooltip title="删除卡片">
+                            <Button
+                              type="text"
+                              size="small"
+                              className="studioSlotIconBtn"
+                              icon={<CloseOutlined />}
+                              draggable={false}
+                              onMouseDown={(ev) => ev.stopPropagation()}
+                              onClick={(ev) => {
+                                ev.stopPropagation()
+                                removeFreeCard(idx)
+                              }}
+                              aria-label="删除卡片"
                             />
                           </Tooltip>
                         </div>
@@ -2228,36 +2446,47 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           maskClosable
           footer={
             editingSlot && editingSlot.kind ? (
-              <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={() => {
-                    if (!editingSlot?.kind) return
-                    const k = editingSlot.kind
-                    const text = JSON.stringify(defaultConfig(k), null, 2)
-                    const v = validateWidget(k, text)
-                    setEditorDraft(text)
-                    setEditorError('error' in v ? v.error : null)
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                <div
+                  style={{
+                    width: '100%',
+                    maxWidth: editorFullscreen ? 'calc(100vw - 92px)' : 640,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 10,
                   }}
                 >
-                  重置
-                </Button>
-                <Space size={4}>
-                  <Button onClick={() => setEditingSlotId(null)}>取消</Button>
                   <Button
-                    type="primary"
-                    disabled={readOnly || previewMode || Boolean(editorError)}
+                    icon={<ReloadOutlined />}
                     onClick={() => {
                       if (!editingSlot?.kind) return
-                      const v = validateWidget(editingSlot.kind, editorDraft)
-                      const err: WidgetSlot['error'] = 'error' in v ? v.error : null
-                      setSlot(editingSlot.id, { configText: editorDraft, error: err })
-                      setEditingSlotId(null)
+                      const k = editingSlot.kind
+                      const text = JSON.stringify(defaultConfig(k), null, 2)
+                      const v = validateWidget(k, text)
+                      setEditorDraft(text)
+                      setEditorError('error' in v ? v.error : null)
                     }}
                   >
-                    保存
+                    重置
                   </Button>
-                </Space>
+                  <Space size={4}>
+                    <Button onClick={() => setEditingSlotId(null)}>取消</Button>
+                    <Button
+                      type="primary"
+                      disabled={readOnly || previewMode || Boolean(editorError)}
+                      onClick={() => {
+                        if (!editingSlot?.kind) return
+                        const v = validateWidget(editingSlot.kind, editorDraft)
+                        const err: WidgetSlot['error'] = 'error' in v ? v.error : null
+                        setSlot(editingSlot.id, { configText: editorDraft, error: err })
+                        setEditingSlotId(null)
+                      }}
+                    >
+                      保存
+                    </Button>
+                  </Space>
+                </div>
               </div>
             ) : null
           }
@@ -2689,7 +2918,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               transform: 'translate(-50%, -100%)',
               zIndex: 9999,
               pointerEvents: 'none',
-              display: dragFromIdx != null || dragFromUnplacedIdx != null || (draggingKind == null && moveTip.text) ? 'block' : 'none',
+              display:
+                dragFromIdx != null ||
+                (dragFromUnplacedIdx != null && dragOverIdx != null && Boolean(slots[dragOverIdx]?.kind)) ||
+                (draggingKind == null && moveTip.text)
+                  ? 'block'
+                  : 'none',
             }}
           >
             <div
@@ -2707,7 +2941,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               <ArrowLeftRight size={16} style={{ color: '#C9CBD3' }} />
               <div style={{ fontSize: 12, fontWeight: 700, color: accent, whiteSpace: 'nowrap', textAlign: 'center' }}>
                 {dragFromIdx != null
-                  ? dragOverIdx != null && slots[dragOverIdx]?.kind
+                  ? dragOverIdx != null
                     ? appearance.language === 'en-US'
                       ? 'Drop here'
                       : '移入此位置'
