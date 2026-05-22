@@ -361,9 +361,9 @@ function NeutralDashboardCanvas({
   )
 
   const headerLeft = (icon: ReactNode, title: string) => (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-      <span style={{ display: 'grid', placeItems: 'center', width: 18, height: 18, color: ui.colorTextSecondary, opacity: 0.9 }}>{icon}</span>
-      <span style={{ fontSize: 12, fontWeight: 650, color: ui.colorTextSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+    <div className="dashboardWidgetTitle" style={{ color: ui.colorTextSecondary }}>
+      <span className="dashboardWidgetTitleIcon">{icon}</span>
+      <span className="dashboardWidgetTitleText">{title}</span>
     </div>
   )
 
@@ -941,27 +941,33 @@ function StudioDebugDashboardCanvas({
       const c0 = themeColors[0] ?? accent
       return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div className="studioSlotHeader" style={{ padding: '10px 12px' }}>
+          <div className="studioSlotHeader" style={{ padding: '16px 16px 10px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <Space size={4}>
+              <Space size={6} style={{ minWidth: 0 }}>
                 <span
                   style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 10,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 8,
                     background: 'transparent',
                     display: 'grid',
                     placeItems: 'center',
                     color: accent,
+                    flex: '0 0 22px',
                   }}
                 >
-                  <Workflow size={16} />
+                  <Workflow size={14} />
                 </span>
-                <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, letterSpacing: 0.2 }}>{chartTitle}</Typography.Text>
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {chartTitle}
+                </Typography.Text>
               </Space>
             </div>
           </div>
-          <div style={{ padding: 12, flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10 }}>
+          <div style={{ padding: '0 16px 16px 16px', flex: 1, minHeight: 0, display: 'grid', alignContent: 'center', gap: 10 }}>
             <div style={{ position: 'relative', height: 6, display: 'flex', alignItems: 'center' }}>
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${pct}%`, background: c0, borderRadius: 3, boxShadow: `0 0 10px ${c0}66` }} />
@@ -2063,10 +2069,8 @@ export default function DashboardChatWorkspaceStudioDemoPage() {
             onDatumSelect={(next, context) => {
               if (!next) {
                 setStudioSelectedDatum(null)
-                setStudioSelectedCardIdx(null)
                 return
               }
-              setStudioSelectedCardIdx(next.slotIdx)
               setStudioSelectedDatum(next)
               runPresetAnalysis(context)
             }}
