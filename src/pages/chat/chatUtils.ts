@@ -197,9 +197,25 @@ export function buildMockResult(question: string): MessageResult {
 
       const chartLine: EChartsOption = {
         grid: { left: 16, right: 12, top: 40, bottom: 36, containLabel: true },
-        tooltip: { trigger: 'axis' },
+        tooltip: {
+          trigger: 'axis',
+          formatter: (params: any) => {
+            if (!Array.isArray(params) || params.length === 0) return ''
+            const header = params[0]?.axisValueLabel || params[0]?.name || ''
+            const lines = params
+              .map((p: any) => {
+                const marker = p?.marker || ''
+                const name = p?.seriesName || ''
+                const v = p?.value
+                const value = `${v}万`
+                return `${marker}${name ? `${name}：` : ''}${value}`
+              })
+              .join('<br/>')
+            return `${header}<br/>${lines}`
+          },
+        },
         xAxis: { type: 'category', data: rows.map((r) => String(r.小时)), axisLabel: { opacity: 0.8 }, axisLine: { lineStyle: { opacity: 0.35 } } },
-        yAxis: { type: 'value', name: '(万)', nameLocation: 'end', nameGap: 8, nameTextStyle: { color: 'rgba(233,236,242,0.40)', fontSize: 12, align: 'center' }, axisLabel: { opacity: 0.75 }, splitLine: { lineStyle: { opacity: 0.12 } } },
+        yAxis: { type: 'value', axisLabel: { opacity: 0.75 }, splitLine: { lineStyle: { opacity: 0.12 } } },
         series: [
           {
             type: 'line',
@@ -578,15 +594,27 @@ export function buildMockResult(question: string): MessageResult {
     animationDuration: 450,
     animationEasing: 'cubicOut',
     grid: grid as any,
-    tooltip: baseTooltip as any,
+    tooltip: {
+      ...(baseTooltip as any),
+      formatter: (params: any) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+        const header = params[0]?.axisValueLabel || params[0]?.name || ''
+        const lines = params
+          .map((p: any) => {
+            const marker = p?.marker || ''
+            const name = p?.seriesName || p?.name || ''
+            const v = Number(p?.value)
+            const value = Number.isFinite(v) ? `${formatCompact(v, div)}${unit}` : `${p?.value ?? ''}${unit}`
+            return `${marker}${name}：${value}`
+          })
+          .join('<br/>')
+        return `${header}<br/>${lines}`
+      },
+    } as any,
     xAxis: applyAxis({ type: 'category', data: dims, axisLabel: xLabel } as any),
     yAxis: applyAxis(
       {
         type: 'value',
-        name: unit ? `(${unit})` : undefined,
-        nameLocation: 'end',
-        nameGap: 8,
-        nameTextStyle: { color: 'rgba(233,236,242,0.40)', fontSize: 12, align: 'center' },
         axisLabel: yLabel,
         splitLine: { lineStyle: { opacity: 0.12 } },
       } as any,
@@ -615,15 +643,27 @@ export function buildMockResult(question: string): MessageResult {
   }
   const chartLine: EChartsOption = {
     grid: grid as any,
-    tooltip: baseTooltip as any,
+    tooltip: {
+      ...(baseTooltip as any),
+      formatter: (params: any) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+        const header = params[0]?.axisValueLabel || params[0]?.name || ''
+        const lines = params
+          .map((p: any) => {
+            const marker = p?.marker || ''
+            const name = p?.seriesName || p?.name || ''
+            const v = Number(p?.value)
+            const value = Number.isFinite(v) ? `${formatCompact(v, div)}${unit}` : `${p?.value ?? ''}${unit}`
+            return `${marker}${name}：${value}`
+          })
+          .join('<br/>')
+        return `${header}<br/>${lines}`
+      },
+    } as any,
     xAxis: applyAxis({ type: 'category', data: dims, axisLabel: xLabel } as any),
     yAxis: applyAxis(
       {
         type: 'value',
-        name: unit ? `(${unit})` : undefined,
-        nameLocation: 'end',
-        nameGap: 8,
-        nameTextStyle: { color: 'rgba(233,236,242,0.40)', fontSize: 12, align: 'center' },
         axisLabel: yLabel,
         splitLine: { lineStyle: { opacity: 0.12 } },
       } as any,
@@ -841,7 +881,7 @@ export function buildMockResult(question: string): MessageResult {
     table,
     metric: { label: '本周指标', value: formatNumber(metricVal) },
     chart: variants[pick] ?? chartLine,
-    chartVariants: variants,
+    chartVariants: { [pick]: variants[pick] ?? chartLine },
   }
 }
 

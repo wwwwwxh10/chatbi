@@ -1,15 +1,29 @@
 import type { EChartsOption } from 'echarts'
 import { commonTitle } from './common'
 
+function axisValue(v: unknown) {
+  if (Array.isArray(v)) return v[v.length - 1]
+  return v
+}
+
+function axisTooltipWithUnit(unit: string) {
+  return (params: unknown) => {
+    const list = Array.isArray(params) ? params : [params]
+    const axis = (list[0] as any)?.axisValueLabel ?? (list[0] as any)?.axisValue ?? ''
+    const lines = list.map((p: any) => `${p?.marker ?? ''}${p?.seriesName ?? ''}：${axisValue(p?.value) ?? '-'}${unit}`)
+    return axis ? `${axis}<br/>${lines.join('<br/>')}` : lines.join('<br/>')
+  }
+}
+
 export function buildBarOption(
   kind: 'vertical' | 'horizontal' | 'grouped' | 'stacked',
 ): EChartsOption {
   if (kind === 'horizontal') {
     return {
-      ...commonTitle('横向柱状图', 'Y：部门 · X：人数（人）'),
+      ...commonTitle('横向柱状图', 'Y：部门 · X：人数'),
       grid: { left: 24, right: 12, top: 56, bottom: 28, containLabel: true },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      xAxis: { type: 'value', name: '人数（人）' },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: axisTooltipWithUnit('人') },
+      xAxis: { type: 'value', name: '人数' },
       yAxis: {
         type: 'category',
         name: '部门',
@@ -22,12 +36,12 @@ export function buildBarOption(
 
   if (kind === 'grouped') {
     return {
-      ...commonTitle('分组柱状图', 'X：班级 · Y：成绩（分）'),
+      ...commonTitle('分组柱状图', 'X：班级 · Y：成绩'),
       grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: axisTooltipWithUnit('分') },
       legend: { top: 28 },
       xAxis: { type: 'category', name: '班级', data: ['一班', '二班', '三班', '四班'] },
-      yAxis: { type: 'value', name: '成绩（分）' },
+      yAxis: { type: 'value', name: '成绩' },
       series: [
         { name: '语文', type: 'bar', barWidth: 12, data: [78, 88, 81, 92] },
         { name: '数学', type: 'bar', barWidth: 12, data: [86, 79, 90, 85] },
@@ -38,12 +52,12 @@ export function buildBarOption(
 
   if (kind === 'stacked') {
     return {
-      ...commonTitle('堆积柱状图', 'X：月份 · Y：数量（个）'),
+      ...commonTitle('堆积柱状图', 'X：月份 · Y：数量'),
       grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: axisTooltipWithUnit('个') },
       legend: { top: 28 },
       xAxis: { type: 'category', name: '月份', data: ['1月', '2月', '3月', '4月', '5月'] },
-      yAxis: { type: 'value', name: '数量（个）' },
+      yAxis: { type: 'value', name: '数量' },
       series: [
         { name: '新建', type: 'bar', stack: 't', barWidth: 16, data: [120, 132, 101, 134, 90] },
         { name: '处理中', type: 'bar', stack: 't', barWidth: 16, data: [220, 182, 191, 234, 290] },
@@ -53,11 +67,11 @@ export function buildBarOption(
   }
 
   return {
-    ...commonTitle('柱状图', 'X：品类 · Y：销售额（万）'),
+    ...commonTitle('柱状图', 'X：品类 · Y：销售额'),
     grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: axisTooltipWithUnit('万') },
     xAxis: { type: 'category', name: '品类', data: ['A', 'B', 'C', 'D', 'E'] },
-    yAxis: { type: 'value', name: '销售额（万）' },
+    yAxis: { type: 'value', name: '销售额' },
     legend: { top: 28 },
     series: [{ name: '销售额', type: 'bar', barWidth: 16, data: [23, 45, 36, 18, 52] }],
   }

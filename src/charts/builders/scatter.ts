@@ -15,7 +15,7 @@ export function buildBubbleOption(): EChartsOption {
     { name: 'E', value: [40, 50, 26] },
   ]
   return {
-    ...commonTitle('气泡图 · 成本/收益/规模', 'X：成本 · Y：收益 · 大小：规模（万）'),
+    ...commonTitle('气泡图 · 成本/收益/规模', 'X：成本 · Y：收益 · 大小：规模'),
     grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
     tooltip: {
       trigger: 'item',
@@ -57,7 +57,7 @@ export function buildScatterOption(): EChartsOption {
     [5.1, 84],
   ]
   return {
-    ...commonTitle('散点图 · 学习时长与成绩', 'X：学习时长（h） · Y：成绩（分）'),
+    ...commonTitle('散点图 · 学习时长与成绩', 'X：学习时长 · Y：成绩'),
     grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
     tooltip: {
       trigger: 'item',
@@ -67,8 +67,8 @@ export function buildScatterOption(): EChartsOption {
         return `学习时长：${v[0] ?? '-'}h<br/>成绩：${v[1] ?? '-'}分`
       },
     },
-    xAxis: { type: 'value', name: '学习时长（h）' },
-    yAxis: { type: 'value', name: '成绩（分）' },
+    xAxis: { type: 'value', name: '学习时长' },
+    yAxis: { type: 'value', name: '成绩' },
     legend: { top: 28 },
     series: [{ name: '样本', type: 'scatter', symbolSize: 10, data: pts }],
   }

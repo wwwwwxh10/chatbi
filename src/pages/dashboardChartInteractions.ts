@@ -45,6 +45,21 @@ function resolveSeriesSelectionColor(series: any, index: number, palette: unknow
   return dataItemColor ?? itemColor ?? dataBorderColor ?? borderColor ?? lineColor ?? paletteColor ?? accent
 }
 
+function computeUnit(maxAbs: number) {
+  if (!Number.isFinite(maxAbs)) return { div: 1 }
+  if (maxAbs >= 1e8) return { div: 1e8 }
+  if (maxAbs >= 1e4) return { div: 1e4 }
+  if (maxAbs >= 1e3) return { div: 1e3 }
+  return { div: 1 }
+}
+
+function formatCompact(n: number, div: number, digitsOverride?: number) {
+  if (!Number.isFinite(n)) return ''
+  const v = n / div
+  const digits = typeof digitsOverride === 'number' ? digitsOverride : div === 1 ? 0 : v >= 100 ? 0 : v >= 10 ? 1 : 2
+  return `${v.toFixed(digits)}`
+}
+
 export function isGroupBarKind(kind: WidgetKind | null | undefined): kind is 'bar-grouped' | 'bar-stacked' {
   return kind === 'bar-grouped' || kind === 'bar-stacked'
 }
@@ -68,6 +83,26 @@ export function enhanceDashboardChartOption(
   const isPreview = mode === 'preview'
   const palette = Array.isArray(next.color) ? next.color : []
 
+  const collectNumericValues = () => {
+    const out: number[] = []
+    for (const s of list) {
+      const data = Array.isArray(s?.data) ? s.data : []
+      for (const row of data) {
+        if (typeof row === 'number' && Number.isFinite(row)) out.push(Math.abs(row))
+        else if (Array.isArray(row)) for (const x of row) if (typeof x === 'number' && Number.isFinite(x)) out.push(Math.abs(x))
+        else if (row && typeof row === 'object') {
+          const v = (row as any).value
+          if (typeof v === 'number' && Number.isFinite(v)) out.push(Math.abs(v))
+        }
+      }
+    }
+    return out
+  }
+
+  const nums = collectNumericValues()
+  const maxAbs = nums.length ? Math.max(...nums) : Number.NaN
+  const { div } = computeUnit(maxAbs)
+
   next.tooltip = {
     ...(next.tooltip ?? {}),
     ...(isPreview
@@ -90,6 +125,45 @@ export function enhanceDashboardChartOption(
           shadowStyle: { color: 'rgba(0, 0, 0, 0.22)' },
         }
       : undefined,
+  }
+
+  const patchAxis = (axis: any) => {
+    if (!axis || typeof axis !== 'object') return axis
+    const type = String(axis.type ?? '')
+    if (type === 'category') {
+      const data = Array.isArray(axis.data) ? axis.data : []
+      const maxLen = data.reduce((acc: number, x: any) => Math.max(acc, String(x ?? '').length), 0)
+      const shouldRotate = data.length >= 10 || (data.length >= 8 && maxLen >= 6) || (data.length >= 7 && maxLen >= 10)
+      const rotate = shouldRotate ? 28 : 0
+      return {
+        ...axis,
+        axisTick: axis.axisTick ?? { show: false },
+        axisLabel: { ...(axis.axisLabel ?? {}), hideOverlap: true, rotate, margin: axis.axisLabel?.margin ?? 8 },
+      }
+    }
+    if (type === 'value') {
+      const forceInt = kind === 'bubble' || kind === 'scatter'
+      return {
+        ...axis,
+        splitNumber: axis.splitNumber ?? 4,
+        axisTick: axis.axisTick ?? { show: false },
+        axisLabel: {
+          ...(axis.axisLabel ?? {}),
+          hideOverlap: true,
+          margin: axis.axisLabel?.margin ?? 8,
+          formatter: (v: any) => formatCompact(Number(v), div, forceInt ? 0 : undefined),
+        },
+      }
+    }
+    return axis
+  }
+
+  if (next.xAxis && !Array.isArray(next.xAxis)) next.xAxis = patchAxis(next.xAxis)
+  if (next.yAxis && !Array.isArray(next.yAxis)) next.yAxis = patchAxis(next.yAxis)
+  if (next.grid && typeof next.grid === 'object' && !Array.isArray(next.grid)) {
+    const bottomRaw = Number((next.grid as any).bottom)
+    const bottom = Number.isFinite(bottomRaw) ? bottomRaw : 0
+    next.grid = { ...(next.grid as any), bottom: Math.max(bottom, 46), containLabel: true }
   }
 
   next.series = list.map((seriesLike: any, index: number) => {

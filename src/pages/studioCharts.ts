@@ -415,12 +415,12 @@ export function buildCurveOption(title: string, themeColors: string[], unit = ''
   }
 }
 
-export function buildScatterOption(title: string, themeColors: string[]): EChartsOption {
+export function buildScatterOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   void title
-  const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'item' })
+  const common = baseOption(themeColors, { showLegend: true, unit, tooltipTrigger: 'item' })
   return {
     ...common,
-    tooltip: { ...(common as any).tooltip, formatter: itemTooltipFormatter('') },
+    tooltip: { ...(common as any).tooltip, formatter: itemTooltipFormatter(unit) },
     xAxis: { ...(common as any).xAxis, type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } } },
     yAxis: { ...(common as any).yAxis, type: 'value' },
     series: [
@@ -442,9 +442,9 @@ export function buildScatterOption(title: string, themeColors: string[]): EChart
   }
 }
 
-export function buildBubbleOption(title: string, themeColors: string[]): EChartsOption {
+export function buildBubbleOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   void title
-  const common = baseOption(themeColors, { showLegend: true, unit: '', tooltipTrigger: 'item' })
+  const common = baseOption(themeColors, { showLegend: true, unit, tooltipTrigger: 'item' })
   const sizeToBubble = (value: unknown) => {
     const raw = typeof value === 'number' && Number.isFinite(value) ? value : 0
     return Math.max(16, Math.min(52, Math.round(raw * 0.62)))
@@ -455,9 +455,10 @@ export function buildBubbleOption(title: string, themeColors: string[]): ECharts
       ...(common as any).tooltip,
       formatter: (p: any) => {
         const v = p?.value || []
+        const u = unit ? String(unit) : ''
         return isEn()
-          ? `Category: ${p?.seriesName || ''}<br/>Cost: ${v[0]}<br/>Revenue: ${v[1]}<br/>Size: ${v[2]}`
-          : `分类：${p?.seriesName || ''}<br/>成本：${v[0]}<br/>收益：${v[1]}<br/>规模：${v[2]}`
+          ? `Category: ${p?.seriesName || ''}<br/>Cost: ${v[0]}${u}<br/>Revenue: ${v[1]}${u}<br/>Size: ${v[2]}${u}`
+          : `分类：${p?.seriesName || ''}<br/>成本：${v[0]}${u}<br/>收益：${v[1]}${u}<br/>规模：${v[2]}${u}`
       },
     },
     xAxis: { ...(common as any).xAxis, type: 'value', name: '', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } } },
@@ -493,7 +494,7 @@ export function buildBubbleOption(title: string, themeColors: string[]): ECharts
   }
 }
 
-export function buildPieOption(title: string, themeColors: string[]): EChartsOption {
+export function buildPieOption(title: string, themeColors: string[], unit = ''): EChartsOption {
   void title
   const s = sources()
   const data = [
@@ -519,8 +520,8 @@ export function buildPieOption(title: string, themeColors: string[]): EChartsOpt
       textStyle: { color: UI_TEXT, fontSize: 13 },
       formatter: (p: any) =>
         isEn()
-          ? `${p.name}<br/>Value: ${p.value}<br/>Share: ${p.percent}%`
-          : `${p.name}<br/>值：${p.value}<br/>占比：${p.percent}%`,
+          ? `${p.name}<br/>Value: ${p.value}${unit}<br/>Share: ${p.percent}%`
+          : `${p.name}<br/>值：${p.value}${unit}<br/>占比：${p.percent}%`,
     },
     legend: {
       show: true,

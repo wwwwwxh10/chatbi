@@ -41,6 +41,7 @@ import { FlipCounter } from '../components/MetricCards'
 import { broadcastGlobalSelection, GLOBAL_SELECTION_EVENT } from '../utils/globalSelection'
 import { buildMockResult } from './chat/chatUtils'
 import type { MessageResult } from './chat/chatUtils'
+import { ChatRichText } from './chat/ChatRichText'
 import { CHART_PALETTES, KIND_NAME, THEME_ACCENT } from './studioModel'
 import type { StudioAppearance, StudioLayout, WidgetKind } from './studioModel'
 import { enhanceDashboardChartOption } from './dashboardChartInteractions'
@@ -173,20 +174,46 @@ function inferSupportedChartTypes(r: MessageResult | null): Set<ChartTypeKey> {
   const supported = new Set<ChartTypeKey>()
   if (!r || r.status !== 'done') return supported
   if (r.metric) supported.add('metric')
-  if (r.chartVariants && Object.keys(r.chartVariants).length) {
-    const keys = Object.keys(r.chartVariants).join('|')
-    if (/柱|bar/i.test(keys)) supported.add('bar')
-    if (/折|line/i.test(keys)) supported.add('line')
-    if (/饼|pie/i.test(keys)) supported.add('pie')
-    if (/漏斗|funnel/i.test(keys)) supported.add('funnel')
-    if (/雷达|radar/i.test(keys)) supported.add('radar')
-    if (/气泡|bubble/i.test(keys)) supported.add('bubble')
-    if (/散点|scatter/i.test(keys)) supported.add('scatter')
-    if (/桑基|sankey/i.test(keys)) supported.add('sankey')
-  } else if (r.chart) {
-    supported.add('bar')
+  const hasSeries = (opt: unknown) => {
+    if (!opt || typeof opt !== 'object') return false
+    const s = (opt as any).series
+    if (Array.isArray(s)) return s.length > 0
+    return Boolean(s)
   }
-  if (r.table) supported.add('bar')
+  if (r.chartVariants && Object.keys(r.chartVariants).length) {
+    const v = r.chartVariants ?? {}
+    const has = (t: ChartTypeKey) => {
+      if (t === 'line') return hasSeries(v['折线图'] || v['折线'] || v['line'])
+      if (t === 'bar') return hasSeries(v['柱状图'] || v['柱图'] || v['bar'])
+      if (t === 'pie') return hasSeries(v['饼图'] || v['pie'])
+      if (t === 'funnel') return hasSeries(v['漏斗图'] || v['funnel'])
+      if (t === 'radar') return hasSeries(v['雷达图'] || v['radar'])
+      if (t === 'bubble') return hasSeries(v['气泡图'] || v['bubble'])
+      if (t === 'scatter') return hasSeries(v['散点图'] || v['scatter'])
+      if (t === 'sankey') return hasSeries(v['桑基图'] || v['sankey'])
+      return false
+    }
+    ;(['bar', 'line', 'pie', 'funnel', 'radar', 'bubble', 'scatter', 'sankey'] as ChartTypeKey[]).forEach((t) => {
+      if (has(t)) supported.add(t)
+    })
+  } else if (r.chart) {
+    const s = (r.chart as any)?.series
+    const list = Array.isArray(s) ? s : s ? [s] : []
+    const types = new Set(list.map((it: any) => String(it?.type || '')).filter((x) => x))
+    if (types.has('line')) supported.add('line')
+    if (types.has('bar')) supported.add('bar')
+    if (types.has('pie')) supported.add('pie')
+    if (types.has('funnel')) supported.add('funnel')
+    if (types.has('radar')) supported.add('radar')
+    if (types.has('sankey')) supported.add('sankey')
+    if (types.has('scatter')) supported.add('scatter')
+    if (types.has('effectScatter')) supported.add('bubble')
+  }
+  if (r.table && !r.chart && !(r.chartVariants && Object.keys(r.chartVariants).length)) {
+    if (buildDerivedChartOption('bar', r)) supported.add('bar')
+    if (buildDerivedChartOption('line', r)) supported.add('line')
+    if (buildDerivedChartOption('pie', r)) supported.add('pie')
+  }
   return supported
 }
 
@@ -195,8 +222,29 @@ function inferDefaultChartType(r: MessageResult | null): ChartTypeKey {
   if (r.metric && !r.table && !r.chart) return 'metric'
   const cols = r.table?.columns ?? []
   const hasTime = cols.some((c) => /日期|时间|小时|月份|周|day|date|time/i.test(c))
-  if (hasTime && (r.chartVariants?.折线图 || r.chartVariants?.['折线图'] || r.chartVariants?.['line'] || r.chartVariants?.['折线'])) return 'line'
-  if (r.chartVariants?.柱状图 || r.chartVariants?.['柱状图'] || r.chartVariants?.['bar'] || r.chartVariants?.['柱图']) return 'bar'
+  if (r.chartVariants) {
+    if (r.chartVariants?.饼图 || r.chartVariants?.pie) return 'pie'
+    if (r.chartVariants?.漏斗图 || r.chartVariants?.funnel) return 'funnel'
+    if (r.chartVariants?.雷达图 || r.chartVariants?.radar) return 'radar'
+    if (r.chartVariants?.桑基图 || r.chartVariants?.sankey) return 'sankey'
+    if (r.chartVariants?.气泡图 || r.chartVariants?.bubble) return 'bubble'
+    if (r.chartVariants?.散点图 || r.chartVariants?.scatter) return 'scatter'
+    if (hasTime && (r.chartVariants?.折线图 || r.chartVariants?.['折线图'] || r.chartVariants?.['line'] || r.chartVariants?.['折线'])) return 'line'
+    if (r.chartVariants?.柱状图 || r.chartVariants?.['柱状图'] || r.chartVariants?.['bar'] || r.chartVariants?.['柱图']) return 'bar'
+  }
+  if (r.chart) {
+    const s = (r.chart as any)?.series
+    const list = Array.isArray(s) ? s : s ? [s] : []
+    const types = new Set(list.map((it: any) => String(it?.type || '')).filter((x) => x))
+    if (types.has('pie')) return 'pie'
+    if (types.has('funnel')) return 'funnel'
+    if (types.has('radar')) return 'radar'
+    if (types.has('sankey')) return 'sankey'
+    if (types.has('effectScatter')) return 'bubble'
+    if (types.has('scatter')) return 'scatter'
+    if (types.has('line')) return 'line'
+    if (types.has('bar')) return 'bar'
+  }
   if (r.metric) return 'metric'
   return 'bar'
 }
@@ -563,9 +611,9 @@ function StudioDebugDashboardCanvas({
     if (kind === 'line') return buildLineOption(name, themeColors, unit)
     if (kind === 'line-area') return buildAreaOption(name, themeColors, unit)
     if (kind === 'line-curve') return buildCurveOption(name, themeColors, unit)
-    if (kind === 'scatter') return buildScatterOption(name, themeColors)
-    if (kind === 'bubble') return buildBubbleOption(name, themeColors)
-    if (kind === 'pie') return buildPieOption(name, themeColors)
+    if (kind === 'scatter') return buildScatterOption(name, themeColors, unit)
+    if (kind === 'bubble') return buildBubbleOption(name, themeColors, unit)
+    if (kind === 'pie') return buildPieOption(name, themeColors, unit)
     if (kind === 'donut') return buildDonutOption(name, themeColors)
     if (kind === 'rose') return buildRoseOption(name, themeColors)
     if (kind === 'radar') return buildRadarOption(name, themeColors)
@@ -799,26 +847,45 @@ function StudioDebugDashboardCanvas({
             legendSingleLine
             onSelectedChange={kind === 'sankey' ? undefined : (next, click) => {
               if (!kind) return
-              const pointKinds = new Set<WidgetKind>(['line', 'line-area', 'line-curve', 'bubble', 'scatter'])
-              const blockKinds = new Set<WidgetKind>([
-                'bar',
-                'bar-h',
-                'bar-grouped',
-                'bar-stacked',
-                'bar-gradient',
-                'pie',
-                'donut',
-                'rose',
-                'funnel',
-                'sankey',
-              ])
-              const labelKind = pointKinds.has(kind) ? '数据点' : blockKinds.has(kind) ? '数据块' : '数据点'
-              const nameText = String(click.name ?? click.seriesName ?? '').trim()
-              const v = click.value
-              const valueText = Array.isArray(v) ? v.map((x) => String(x)).join(', ') : String(v ?? '').trim()
-              const detail =
-                nameText && valueText ? `${labelKind}：${nameText}=${valueText}` : nameText ? `${labelKind}：${nameText}` : valueText ? `${labelKind}：${valueText}` : labelKind
-              const ctx = `${cardContext}｜${detail}`
+              const preferSeriesNameKinds = new Set<WidgetKind>(['bar-grouped', 'bar-stacked'])
+              const nameText = String((preferSeriesNameKinds.has(kind) ? click.seriesName ?? click.name : click.name ?? click.seriesName) ?? '').trim()
+              const categoryText = String((preferSeriesNameKinds.has(kind) ? click.name : '') ?? '').trim()
+              const normalizeValue = (raw: unknown): string => {
+                if (raw == null) return ''
+                if (typeof raw === 'number') return Number.isFinite(raw) ? String(raw) : ''
+                if (typeof raw === 'string') return raw.trim()
+                if (Array.isArray(raw)) {
+                  const vs = raw.map((x) => normalizeValue(x)).filter((x) => x)
+                  if (vs.length === 3) return `成本：${vs[0]}, 收益：${vs[1]}, 规模：${vs[2]}`
+                  if (vs.length === 2) return `X：${vs[0]}, Y：${vs[1]}`
+                  return vs.join(', ')
+                }
+                if (typeof raw === 'object') {
+                  const v0: any = raw as any
+                  if (v0 && 'value' in v0) return normalizeValue(v0.value)
+                }
+                const s = String(raw).trim()
+                return s === '[object Object]' ? '' : s
+              }
+              const pieKinds = new Set<WidgetKind>(['pie', 'donut', 'rose'])
+              const rawValueText = normalizeValue(click.value)
+              const percentText =
+                pieKinds.has(kind) && typeof click.percent === 'number' && Number.isFinite(click.percent)
+                  ? `${+click.percent.toFixed(2)}%`
+                  : ''
+              const valueText = percentText || (pieKinds.has(kind) && rawValueText && !rawValueText.includes('%') ? `${rawValueText}%` : rawValueText)
+              const detailCore =
+                valueText && valueText.includes('：')
+                  ? valueText
+                  : nameText && valueText
+                    ? `${nameText}=${valueText}`
+                    : nameText
+                      ? nameText
+                      : valueText
+                        ? valueText
+                        : ''
+              const detail = categoryText && detailCore ? `${categoryText}｜${detailCore}` : detailCore
+              const ctx = detail ? `${cardContext}｜${detail}` : cardContext
               if (!next) {
                 onDatumSelect(null, ctx)
                 return
@@ -1426,34 +1493,39 @@ export default function DashboardChatWorkspacePage() {
     const summary: string[] = []
     const next: string[] = []
     if (r.metric) {
-      summary.push(
-        `本次结果显示 **${r.metric.label}** 为 **${r.metric.value}**，建议同步确认时间范围、去重口径与是否包含退款/补贴等边界条件，确保与业务侧对同一指标的理解一致，从而避免口径差异导致的解读偏差。`,
-      )
-      next.push(
-        '可从业务维度补充拆分与对比口径，例如按 **渠道/城市/品类/新老客/设备类型** 拆分结构贡献，并结合 **同比/环比/活动前后/节假日** 做对比观察，用于判断增长来自结构变化还是整体波动。',
-      )
-      return { summary, next }
+      summary.push(`当前范围内，**${r.metric.label}** 达到 **${r.metric.value}**，体现该指标在所选业务场景下的整体规模与水平。`)
     }
 
     const table = r.table
     if (table && table.columns.length >= 2 && table.rows.length) {
       const dimCol = table.columns[0]
       const valCol = table.columns.find((c, idx) => idx !== 0 && table.rows.some((row) => parseNumberLike(row[c]) !== null)) ?? table.columns[1]
-      const top = table.rows
-        .map((row) => ({ dim: String(row[dimCol] ?? ''), valRaw: row[valCol], val: parseNumberLike(row[valCol]) ?? -Infinity }))
-        .sort((a, b) => b.val - a.val)[0]
-      if (top?.dim) {
+      const rows = table.rows
+        .map((row) => ({ dim: String(row[dimCol] ?? ''), valRaw: row[valCol], val: parseNumberLike(row[valCol]) }))
+        .filter((x) => x.dim && x.val != null && Number.isFinite(x.val))
+        .sort((a, b) => (b.val ?? -Infinity) - (a.val ?? -Infinity))
+
+      const top1 = rows[0]
+      const top2 = rows[1]
+      const total = rows.reduce((acc, x) => acc + (x.val ?? 0), 0)
+      const top1Share = total > 0 && top1?.val != null ? Math.round((top1.val / total) * 100) : null
+
+      if (top1?.dim) {
         summary.push(
-          `按 **${dimCol}** 拆分后，Top 为 **${top.dim}**（**${String(top.valRaw ?? '')}**）。建议同步补充维度含义、指标单位与是否含税/含券等说明，避免将口径差异误判为真实业务差异，从而影响后续分析结论的可复用性。`,
+          `按 **${dimCol}** 拆分后，Top1 为 **${top1.dim}**（**${String(top1.valRaw ?? '')}**${top1Share != null ? `，约占 ${top1Share}%` : ''}）。`,
         )
-        next.push(
-          '围绕业务结构补充拆分与交叉维度，例如按 **渠道/城市/品类/人群分层** 进行结构拆分，并做 **渠道×城市、品类×渠道、人群×品类** 交叉对比，用于定位主要贡献来源与结构性异常。',
-        )
+        if (top2?.dim && top2.val != null && top1.val != null) {
+          const gapPct = top2.val > 0 ? Math.round(((top1.val - top2.val) / top2.val) * 100) : null
+          summary.push(`Top2 为 **${top2.dim}**（**${String(top2.valRaw ?? '')}**）${gapPct != null ? `，Top1 高出约 ${gapPct}%` : ''}。`)
+        }
       }
     }
 
-    if (summary.length === 0) summary.push('已生成可视化结果，建议补充指标口径与维度含义说明，以便在不同场景下复用并保持一致的解释标准。')
-    if (next.length === 0) next.push('可从业务维度按 **渠道/城市/品类** 做结构拆分，并结合 **同比/环比** 做对比观察，用于定位结构贡献与趋势变化。')
+    if (summary.length === 0) summary.push('已生成可视化结果，并对关键指标与结构分布做了概要性归纳，便于快速定位主要贡献与变化方向。')
+    if (next.length === 0)
+      next.push(
+        '建议围绕业务核心维度继续拆分（如 **渠道/城市/品类/新老客**），并结合 **同比/环比/活动前后** 做对比，定位驱动因素与结构性变化。',
+      )
     return { summary, next }
   }
 
@@ -1489,23 +1561,6 @@ export default function DashboardChatWorkspacePage() {
     document.addEventListener('pointerdown', onDown, true)
     return () => document.removeEventListener('pointerdown', onDown, true)
   }, [])
-
-  const renderEmphasis = (text: string) => {
-    const parts = String(text ?? '').split('**')
-    return (
-      <>
-        {parts.map((p, idx) =>
-          idx % 2 === 1 ? (
-            <span key={idx} style={{ fontWeight: 650 }}>
-              {p}
-            </span>
-          ) : (
-            <span key={idx}>{p}</span>
-          ),
-        )}
-      </>
-    )
-  }
 
   const send = async (q: string) => {
     if (sending) return
@@ -1632,6 +1687,17 @@ export default function DashboardChatWorkspacePage() {
     const ctx = String(context ?? '').trim()
     if (!ctx) return
 
+    pendingDoneRef.current = null
+    pendingMessagesRef.current = null
+    if (finishTimerRef.current) {
+      window.clearTimeout(finishTimerRef.current)
+      finishTimerRef.current = null
+    }
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+
     let sid = activeSessionId
     if (!sid) {
       const s: Session = { id: nowId(), name: '未命名会话', messages: [] }
@@ -1647,20 +1713,27 @@ export default function DashboardChatWorkspacePage() {
     setRunningVisible(true)
     setActiveResult({ status: 'running', answerText: '正在分析问题...' })
 
+    const userMsg: ChatMessage = { id: nowId(), role: 'user', content: ctx, at: Date.now() }
+    setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, messages: [...(s.messages ?? []), userMsg] } : s)))
+
+    const ctxClean = ctx.replace(/^已选中：/, '').trim()
+    const scopeParts = ctxClean
+      .split('｜')
+      .map((x) => x.trim())
+      .filter((x) => x)
+    const analysisName = scopeParts[1] || scopeParts[0] || '当前图表'
+
     const answerText =
-      '已为你自动进入分析状态，并锁定当前上下文：\n' +
-      `「${ctx}」\n\n` +
-      '系统已基于该范围完成关键指标计算与初步分析：\n' +
-      '- 本月销售额：¥XXX\n' +
-      '- 环比增长：+18%（较2月）\n' +
-      '- 同比增长：+25%（较去年3月）\n' +
-      '- 当前排名：全国第2\n\n' +
-      '初步发现：\n' +
-      '该时间点销售额存在明显增长\n\n' +
+      `已进入“${analysisName}”深度分析模式\n` +
+      '关联明细数据（销售、增长、排名）加载完毕，为您提取核心价值信息：\n\n' +
+      '**业绩快报：** 销售额 ¥99,999（全国 No.2），业务规模持续领跑。\n' +
+      '**动态监测：** 环比 +18% / 同比 +25%。双向高增显示当前市场反馈极佳。\n' +
+      '**异常识别：** 识别到显著增长信号，当前波动表现优于历史同周期轨迹。\n\n' +
       '您可以继续追问：'
 
     const startedAt = Date.now()
-    window.setTimeout(() => {
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null
       const took = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
       const doneResult: MessageResult = {
         status: 'done',
@@ -1672,18 +1745,15 @@ export default function DashboardChatWorkspacePage() {
       const now = Date.now()
       const wait = Math.max(0, runningUntilRef.current - now)
       if (wait > 0) {
-        pendingDoneRef.current = doneResult
-        pendingMessagesRef.current = [...(activeSession?.messages ?? []), botMsg]
-        finishTimerRef.current = window.setTimeout(() => {
+        const commit = () => {
+          setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, messages: [...(s.messages ?? []), botMsg] } : s)))
+          setActiveResult(doneResult)
           setRunningVisible(false)
-          const pendingMsgList = pendingMessagesRef.current
-          pendingMessagesRef.current = null
-          if (pendingMsgList) setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, messages: pendingMsgList } : s)))
-          const pending = pendingDoneRef.current
-          pendingDoneRef.current = null
-          finishTimerRef.current = null
-          if (pending) setActiveResult(pending)
           setSending(false)
+        }
+        finishTimerRef.current = window.setTimeout(() => {
+          finishTimerRef.current = null
+          commit()
         }, wait)
       } else {
         setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, messages: [...(s.messages ?? []), botMsg] } : s)))
@@ -1891,16 +1961,17 @@ export default function DashboardChatWorkspacePage() {
               setStudioSelectedCardIdx(slotIdx)
               setStudioSelectedDatum(null)
               broadcastGlobalSelection({ uid: `card_${slotIdx}`, scope: selectionScopeRef.current, kind: 'card', next: null })
-              runPresetAnalysis(context)
+              runPresetAnalysis(`已选中：${context}`)
             }}
             onDatumSelect={(next, context) => {
               if (!next) {
                 setStudioSelectedDatum(null)
+                setStudioSelectedCardIdx(null)
                 return
               }
               setStudioSelectedCardIdx(null)
               setStudioSelectedDatum(next)
-              runPresetAnalysis(context)
+              runPresetAnalysis(`已选中：${context}`)
             }}
           />
         ) : (
@@ -1914,7 +1985,7 @@ export default function DashboardChatWorkspacePage() {
               }
               setSelectedDashboardKey(key)
               broadcastGlobalSelection({ uid: `dashboard_${key}`, scope: selectionScopeRef.current, kind: 'dashboard', next: null })
-              runPresetAnalysis(context)
+              runPresetAnalysis(`已选中：${context}`)
             }}
           />
         )}
@@ -2010,7 +2081,7 @@ export default function DashboardChatWorkspacePage() {
           flexDirection: 'column',
           minHeight: 0,
           fontSize: 'var(--font-size-base)',
-          lineHeight: 'var(--line-height-base)',
+          lineHeight: 1.6,
           position: isOverlay ? 'absolute' : 'relative',
           right: isOverlay ? 16 : undefined,
           top: isOverlay ? 16 : undefined,
@@ -2026,7 +2097,7 @@ export default function DashboardChatWorkspacePage() {
           ['--chatbi-input-bg-focus' as any]: chatTheme.inputFocusBg,
         }}
       >
-        <div style={{ padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: '1px solid var(--chatbi-panel-border)' }}>
+        <div style={{ padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: '1px solid var(--chatbi-panel-border)' }}>
           <div style={{ minWidth: 0 }}>
             <Typography.Text strong style={{ fontSize: 18, letterSpacing: 0.2, fontWeight: 800 }}>
               <span style={{ opacity: 0.9 }}>Chat</span>
@@ -2064,7 +2135,7 @@ export default function DashboardChatWorkspacePage() {
         <div
           ref={chatScrollRef}
           className="chatbiScrollbarHidden"
-          style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column' }}
+          style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 10, display: 'flex', flexDirection: 'column' }}
         >
           {!activeSession?.messages?.length && !activeResult ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '10%' }}>
@@ -2108,8 +2179,203 @@ export default function DashboardChatWorkspacePage() {
                             if (t === 'sankey') return variants['桑基图'] || variants['sankey']
                             return undefined
                           }
-                          const activeOption = pickOption(chartType) || buildDerivedChartOption(chartType, activeResult) || activeResult.chart
-                          const chartOption = activeOption ? ({ ...(activeOption as any), backgroundColor: 'transparent' } as any) : ({} as any)
+                          const themeColors =
+                            (previewPalette?.colors && previewPalette.colors.length ? previewPalette.colors : CHART_PALETTES.cyber.colors)?.filter(Boolean) ?? []
+
+                          const computeUnit = (maxAbs: number) => {
+                            if (!Number.isFinite(maxAbs)) return { unit: '个', div: 1 }
+                            if (maxAbs >= 1e8) return { unit: '亿', div: 1e8 }
+                            if (maxAbs >= 1e4) return { unit: '万', div: 1e4 }
+                            if (maxAbs >= 1e3) return { unit: '千', div: 1e3 }
+                            return { unit: '个', div: 1 }
+                          }
+
+                          const formatCompact = (n: number, div: number) => {
+                            if (!Number.isFinite(n)) return ''
+                            const v = n / div
+                            const digits = div === 1 ? 0 : v >= 100 ? 0 : v >= 10 ? 1 : 2
+                            return `${v.toFixed(digits)}`
+                          }
+
+                          const axisValue = (v: unknown) => {
+                            if (Array.isArray(v)) return v[v.length - 1]
+                            return v
+                          }
+
+                          const collectNumericValues = (opt: any) => {
+                            const s = opt?.series
+                            const list = Array.isArray(s) ? s : s ? [s] : []
+                            const out: number[] = []
+                            for (const it of list) {
+                              const data = it?.data
+                              const rows = Array.isArray(data) ? data : []
+                              for (const row of rows) {
+                                if (typeof row === 'number' && Number.isFinite(row)) out.push(Math.abs(row))
+                                else if (Array.isArray(row)) for (const x of row) if (typeof x === 'number' && Number.isFinite(x)) out.push(Math.abs(x))
+                                else if (row && typeof row === 'object') {
+                                  const v = (row as any).value
+                                  if (typeof v === 'number' && Number.isFinite(v)) out.push(Math.abs(v))
+                                }
+                              }
+                            }
+                            return out
+                          }
+
+                          const normalizeChartOption = (t: ChartTypeKey, opt: EChartsOption): EChartsOption => {
+                            const nums = collectNumericValues(opt as any)
+                            const maxAbs = nums.length ? Math.max(...nums) : Number.NaN
+                            const { unit, div } = computeUnit(maxAbs)
+
+                            const toAxisTooltip = () => {
+                              return (params: any) => {
+                                const arr = Array.isArray(params) ? params : [params]
+                                if (!arr.length) return ''
+                                const header = arr[0]?.axisValueLabel ?? arr[0]?.name ?? ''
+                                const lines = arr
+                                  .map((p: any) => {
+                                    const marker = p?.marker ?? ''
+                                    const name = p?.seriesName ?? p?.name ?? ''
+                                    const raw = axisValue(p?.value)
+                                    const n = typeof raw === 'number' ? raw : Number(raw)
+                                    const text = Number.isFinite(n) ? `${formatCompact(n, div)}${unit}` : `${raw ?? '-'}${unit}`
+                                    return `${marker}${name}：${text}`
+                                  })
+                                  .join('<br/>')
+                                return header ? `${header}<br/>${lines}` : lines
+                              }
+                            }
+
+                            const toItemTooltip = () => {
+                              return (p: any) => {
+                                const name = p?.name ?? p?.seriesName ?? ''
+                                const raw = axisValue(p?.value)
+                                const n = typeof raw === 'number' ? raw : Number(raw)
+                                const text = Number.isFinite(n) ? `${formatCompact(n, div)}${unit}` : `${raw ?? '-'}${unit}`
+                                return name ? `${name}<br/>${text}` : text
+                              }
+                            }
+
+                            if (t === 'bubble') {
+                              const base = buildBubbleOption('', themeColors, unit)
+                              const srcSeries = (opt as any)?.series
+                              const srcList = Array.isArray(srcSeries) ? srcSeries : srcSeries ? [srcSeries] : []
+                              const data = srcList[0]?.data
+                              const next: any = {
+                                ...(base as any),
+                                series: [{ ...(base as any).series?.[0], data: Array.isArray(data) ? data : (base as any).series?.[0]?.data }],
+                              }
+                              next.grid = { ...(next.grid ?? {}), left: 30, right: 30, top: 36, bottom: 52, containLabel: true }
+                              next.xAxis = {
+                                ...(next.xAxis ?? {}),
+                                type: 'value',
+                                splitNumber: (next.xAxis ?? {}).splitNumber ?? 4,
+                                axisLabel: { ...((next.xAxis ?? {}).axisLabel ?? {}), hideOverlap: true, margin: 8, formatter: (v: any) => `${(Number(v) / div).toFixed(0)}` },
+                                axisTick: (next.xAxis ?? {}).axisTick ?? { show: false },
+                              }
+                              next.yAxis = {
+                                ...(next.yAxis ?? {}),
+                                type: 'value',
+                                splitNumber: (next.yAxis ?? {}).splitNumber ?? 4,
+                                axisLabel: { ...((next.yAxis ?? {}).axisLabel ?? {}), hideOverlap: true, margin: 8, formatter: (v: any) => `${(Number(v) / div).toFixed(0)}` },
+                                axisTick: (next.yAxis ?? {}).axisTick ?? { show: false },
+                              }
+                              return next as any
+                            }
+
+                            if (t === 'scatter') {
+                              const base = buildScatterOption('', themeColors, unit)
+                              const srcSeries = (opt as any)?.series
+                              const srcList = Array.isArray(srcSeries) ? srcSeries : srcSeries ? [srcSeries] : []
+                              const data = srcList[0]?.data
+                              const next: any = {
+                                ...(base as any),
+                                series: [{ ...(base as any).series?.[0], data: Array.isArray(data) ? data : (base as any).series?.[0]?.data }],
+                              }
+                              next.grid = { ...(next.grid ?? {}), left: 30, right: 30, top: 36, bottom: 52, containLabel: true }
+                              next.xAxis = {
+                                ...(next.xAxis ?? {}),
+                                type: 'value',
+                                splitNumber: (next.xAxis ?? {}).splitNumber ?? 4,
+                                axisLabel: { ...((next.xAxis ?? {}).axisLabel ?? {}), hideOverlap: true, margin: 8, formatter: (v: any) => `${(Number(v) / div).toFixed(0)}` },
+                                axisTick: (next.xAxis ?? {}).axisTick ?? { show: false },
+                              }
+                              next.yAxis = {
+                                ...(next.yAxis ?? {}),
+                                type: 'value',
+                                splitNumber: (next.yAxis ?? {}).splitNumber ?? 4,
+                                axisLabel: { ...((next.yAxis ?? {}).axisLabel ?? {}), hideOverlap: true, margin: 8, formatter: (v: any) => `${(Number(v) / div).toFixed(0)}` },
+                                axisTick: (next.yAxis ?? {}).axisTick ?? { show: false },
+                              }
+                              return next as any
+                            }
+
+                            if (t === 'pie') {
+                              const base = buildPieOption('', themeColors, unit)
+                              const srcSeries = (opt as any)?.series
+                              const srcList = Array.isArray(srcSeries) ? srcSeries : srcSeries ? [srcSeries] : []
+                              const data = srcList[0]?.data
+                              return {
+                                ...(base as any),
+                                series: [{ ...(base as any).series?.[0], data: Array.isArray(data) ? data : (base as any).series?.[0]?.data }],
+                              } as any
+                            }
+
+                            const tooltip = (() => {
+                              const src = (opt as any)?.tooltip
+                              const base = typeof src === 'object' && src ? { ...src } : {}
+                              const trigger = base.trigger === 'item' ? 'item' : base.trigger === 'axis' ? 'axis' : undefined
+                              const nextTrigger = trigger ?? (t === 'line' || t === 'bar' ? 'axis' : 'item')
+                              const formatter = nextTrigger === 'axis' ? toAxisTooltip() : toItemTooltip()
+                              return { ...base, trigger: nextTrigger, formatter }
+                            })()
+
+                            const next: any = { ...(opt as any), backgroundColor: 'transparent', tooltip }
+                            if (next.xAxis && typeof next.xAxis === 'object' && !Array.isArray(next.xAxis)) {
+                              const type = String(next.xAxis.type ?? '')
+                              if (type === 'category') {
+                                const data = Array.isArray(next.xAxis.data) ? next.xAxis.data : []
+                                const maxLen = data.reduce((acc: number, x: any) => Math.max(acc, String(x ?? '').length), 0)
+                                const shouldRotate = data.length >= 10 || (data.length >= 8 && maxLen >= 6) || (data.length >= 7 && maxLen >= 10)
+                                const rotate = shouldRotate ? 28 : 0
+                                next.xAxis = {
+                                  ...next.xAxis,
+                                  axisLabel: { ...(next.xAxis.axisLabel ?? {}), hideOverlap: true, rotate },
+                                  axisTick: next.xAxis.axisTick ?? { show: false },
+                                }
+                              }
+                              if (type === 'value') {
+                                next.xAxis = {
+                                  ...next.xAxis,
+                                  splitNumber: next.xAxis.splitNumber ?? 4,
+                                  axisLabel: { ...(next.xAxis.axisLabel ?? {}), hideOverlap: true, formatter: (v: any) => formatCompact(Number(v), div) },
+                                  axisTick: next.xAxis.axisTick ?? { show: false },
+                                }
+                              }
+                            }
+                            if (next.yAxis && typeof next.yAxis === 'object' && !Array.isArray(next.yAxis)) {
+                              next.yAxis = {
+                                ...next.yAxis,
+                                splitNumber: next.yAxis.splitNumber ?? 4,
+                                axisLabel: { ...(next.yAxis.axisLabel ?? {}), hideOverlap: true, formatter: (v: any) => formatCompact(Number(v), div) },
+                                axisTick: next.yAxis.axisTick ?? { show: false },
+                              }
+                            }
+                            return next
+                          }
+
+                          const effectiveChartType = (() => {
+                            if (supportedChartTypes.has(chartType)) return chartType
+                            const inferred = inferDefaultChartType(activeResult)
+                            if (supportedChartTypes.has(inferred)) return inferred
+                            const order: ChartTypeKey[] = ['metric', 'pie', 'bar', 'line', 'bubble', 'scatter', 'funnel', 'radar', 'sankey']
+                            return order.find((k) => supportedChartTypes.has(k)) ?? chartType
+                          })()
+
+                          const activeOption =
+                            pickOption(effectiveChartType) ||
+                            buildDerivedChartOption(effectiveChartType, activeResult) ||
+                            activeResult.chart
+                          const chartOption = activeOption ? (normalizeChartOption(effectiveChartType, activeOption) as any) : ({} as any)
                           const chartTypeMenuItems = (Object.keys(CHART_TYPE_LABELS) as ChartTypeKey[]).map((k) => ({
                             key: k,
                             disabled: !supportedChartTypes.has(k),
@@ -2131,7 +2397,7 @@ export default function DashboardChatWorkspacePage() {
                               borderRadius: 14,
                               border: 'none',
                               background: isTextOnly ? 'transparent' : 'var(--chatbi-llm-bg)',
-                              padding: isTextOnly ? 0 : 12,
+                              padding: isTextOnly ? 0 : 10,
                               color: isTextOnly ? undefined : 'var(--chatbi-llm-text)',
                               ['--ant-color-text' as any]: chatTheme.antText,
                               ['--ant-color-text-secondary' as any]: chatTheme.antTextSecondary,
@@ -2149,7 +2415,7 @@ export default function DashboardChatWorkspacePage() {
                                       textOverflow: 'ellipsis',
                                       whiteSpace: 'nowrap',
                                       fontSize: 'var(--font-size-base)',
-                                      lineHeight: 'var(--line-height-base)',
+                                      lineHeight: 1.6,
                                       fontWeight: 650,
                                     }}
                                   >
@@ -2210,14 +2476,15 @@ export default function DashboardChatWorkspacePage() {
                                                       padding: '6px 8px',
                                                       borderRadius: 6,
                                                       cursor: item.disabled ? 'not-allowed' : 'pointer',
-                                                      background: chartType === item.key && view === 'chart' ? token.colorFillAlter : 'transparent',
+                                                      pointerEvents: item.disabled ? 'none' : 'auto',
+                                                      background: effectiveChartType === item.key && view === 'chart' ? token.colorFillAlter : 'transparent',
                                                       opacity: item.disabled ? 0.4 : 1,
                                                     }}
                                                     onMouseEnter={(e) => {
                                                       if (!item.disabled) e.currentTarget.style.background = token.colorFillAlter
                                                     }}
                                                     onMouseLeave={(e) => {
-                                                      if (chartType !== item.key || view !== 'chart') e.currentTarget.style.background = 'transparent'
+                                                      if (effectiveChartType !== item.key || view !== 'chart') e.currentTarget.style.background = 'transparent'
                                                     }}
                                                   >
                                                     {CHART_TYPE_ICONS[item.key as ChartTypeKey]}
@@ -2233,7 +2500,7 @@ export default function DashboardChatWorkspacePage() {
                                       <Button
                                         size="small"
                                         type="text"
-                                        icon={CHART_TYPE_ICONS[chartType]}
+                                        icon={CHART_TYPE_ICONS[effectiveChartType]}
                                         onClick={() => setView('chart')}
                                         style={{
                                           borderRadius: 10,
@@ -2269,10 +2536,8 @@ export default function DashboardChatWorkspacePage() {
                               </div>
 
                               {isTextOnly ? (
-                                <div className="llmOutputBox" style={{ padding: 12 }}>
-                                  <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
-                                    {renderEmphasis(String(activeResult.answerText ?? ''))}
-                                  </Typography.Paragraph>
+                                <div className="llmOutputBox" style={{ lineHeight: 1.6, fontSize: 'var(--font-size-base)' }}>
+                                  <ChatRichText text={String(activeResult.answerText ?? '')} />
 
                                   <div style={{ height: 10 }} />
                                   <Space size={10} wrap>
@@ -2284,10 +2549,12 @@ export default function DashboardChatWorkspacePage() {
                                         style={{
                                           borderRadius: 999,
                                           fontSize: 'var(--font-size-base)',
-                                          lineHeight: 'var(--line-height-base)',
+                                          lineHeight: 1.6,
                                           boxShadow: 'none',
-                                          border: 'none',
-                                          background: token.colorFillQuaternary,
+                                          border: `1px solid ${token.colorFillSecondary}`,
+                                          background: token.colorFillTertiary,
+                                          fontWeight: 600,
+                                          paddingInline: 12,
                                         }}
                                         onClick={() => {
                                           setInput('')
@@ -2354,29 +2621,29 @@ export default function DashboardChatWorkspacePage() {
 
                               {!isTextOnly ? (
                               <div style={{ marginTop: 10 }}>
-                                <Typography.Text strong style={{ fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
+                                <Typography.Text strong style={{ fontSize: 'var(--font-size-base)', lineHeight: 1.6 }}>
                                   总结摘要
                                 </Typography.Text>
                                 <div style={{ height: 6 }} />
-                                <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
                                   {summary.map((x, i) => (
-                                    <Typography.Text key={i} style={{ fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
-                                      {renderEmphasis(x)}
-                                    </Typography.Text>
+                                    <div key={i} style={{ lineHeight: 1.6 }}>
+                                      <ChatRichText text={String(x ?? '')} showContextTags={false} />
+                                    </div>
                                   ))}
                                 </Space>
 
                                 <div style={{ height: 10 }} />
 
-                                <Typography.Text strong style={{ fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
+                                <Typography.Text strong style={{ fontSize: 'var(--font-size-base)', lineHeight: 1.6 }}>
                                   下一步建议
                                 </Typography.Text>
                                 <div style={{ height: 6 }} />
-                                <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
                                   {next.map((x, i) => (
-                                    <Typography.Text key={i} style={{ fontSize: 'var(--font-size-base)', lineHeight: 'var(--line-height-base)' }}>
-                                      {renderEmphasis(x)}
-                                    </Typography.Text>
+                                    <div key={i} style={{ lineHeight: 1.6 }}>
+                                      <ChatRichText text={String(x ?? '')} showContextTags={false} />
+                                    </div>
                                   ))}
                                 </Space>
                               </div>
@@ -2410,10 +2677,12 @@ export default function DashboardChatWorkspacePage() {
                                 maxWidth: bubbleMax,
                                 whiteSpace: 'pre-wrap',
                                 color: 'inherit',
+                                lineHeight: 1.6,
+                                fontSize: 'var(--font-size-base)',
                               }
                         }
                       >
-                        {isAssistant ? renderEmphasis(m.content) : m.content}
+                        {isAssistant ? <ChatRichText text={String(m.content ?? '')} /> : m.content}
                       </div>
                     </div>
                   </div>
@@ -2446,7 +2715,7 @@ export default function DashboardChatWorkspacePage() {
           )}
         </div>
 
-        <div style={{ padding: 12, position: 'relative' }}>
+        <div style={{ padding: 10, position: 'relative' }}>
           <div
             className="chatInputBox"
             style={{
@@ -2454,7 +2723,7 @@ export default function DashboardChatWorkspacePage() {
               alignItems: 'flex-end',
               gap: 8,
               borderRadius: 14,
-              padding: 8,
+              padding: 6,
             }}
           >
             <Tooltip title="快捷提问">

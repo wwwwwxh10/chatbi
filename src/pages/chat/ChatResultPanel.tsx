@@ -4,6 +4,7 @@ import { BarChartOutlined, DownloadOutlined, EyeOutlined } from '@ant-design/ico
 import { useEffect, useMemo, useState } from 'react'
 import { EChart } from '../../components/EChart'
 import type { MessageResult } from './chatUtils'
+import { ChatRichText } from './ChatRichText'
 
 export function ChatResultPanel({
   view,
@@ -112,7 +113,7 @@ export function ChatResultPanel({
               </Typography.Text>
 
               {view === 'chart' && result.metric ? (
-                <div className="llmOutputBox" style={{ padding: 14 }}>
+                <div className="llmOutputBox">
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                     {result.metric.label}
                   </Typography.Text>
@@ -154,7 +155,9 @@ export function ChatResultPanel({
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 总结
               </Typography.Text>
-              <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{result.answerText}</Typography.Paragraph>
+              <div style={{ paddingTop: 4 }}>
+                <ChatRichText text={String(result.answerText ?? '')} />
+              </div>
             </>
           )}
         </Space>

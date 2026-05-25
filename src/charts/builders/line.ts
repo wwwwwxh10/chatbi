@@ -1,6 +1,20 @@
 import type { EChartsOption } from 'echarts'
 import { commonTitle } from './common'
 
+function axisValue(v: unknown) {
+  if (Array.isArray(v)) return v[v.length - 1]
+  return v
+}
+
+function axisTooltipWithUnit(unit: string) {
+  return (params: unknown) => {
+    const list = Array.isArray(params) ? params : [params]
+    const axis = (list[0] as any)?.axisValueLabel ?? (list[0] as any)?.axisValue ?? ''
+    const lines = list.map((p: any) => `${p?.marker ?? ''}${p?.seriesName ?? ''}：${axisValue(p?.value) ?? '-'}${unit}`)
+    return axis ? `${axis}<br/>${lines.join('<br/>')}` : lines.join('<br/>')
+  }
+}
+
 export function buildLineOption({
   smooth,
   multi,
@@ -22,12 +36,12 @@ export function buildLineOption({
     : [{ name: '订单量', type: 'line' as const, smooth, symbolSize: 8, data: a }]
 
   return {
-    ...commonTitle(smooth ? '曲线趋势' : '折线趋势', 'X：月份 · Y：数量（单）'),
+    ...commonTitle(smooth ? '曲线趋势' : '折线趋势', 'X：月份 · Y：数量'),
     grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', formatter: axisTooltipWithUnit('单') },
     legend: multi ? { top: 28 } : undefined,
     xAxis: { type: 'category', name: '月份', boundaryGap: false, data: x },
-    yAxis: { type: 'value', name: '数量（单）' },
+    yAxis: { type: 'value', name: '数量' },
     series,
   }
 }
@@ -38,12 +52,12 @@ export function buildAreaOption({ stacked }: { stacked: boolean }): EChartsOptio
   const b = [220, 182, 191, 234, 290, 330, 310]
   const c = [150, 232, 201, 154, 190, 330, 410]
   return {
-    ...commonTitle(stacked ? '堆积面积图' : '面积图', 'X：星期 · Y：用量（GB）'),
+    ...commonTitle(stacked ? '堆积面积图' : '面积图', 'X：星期 · Y：用量'),
     grid: { left: 16, right: 12, top: 56, bottom: 40, containLabel: true },
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', formatter: axisTooltipWithUnit('GB') },
     legend: stacked ? { top: 28 } : undefined,
     xAxis: { type: 'category', name: '星期', boundaryGap: false, data: x },
-    yAxis: { type: 'value', name: '用量（GB）' },
+    yAxis: { type: 'value', name: '用量' },
     series: stacked
       ? [
           { name: '视频', type: 'line' as const, stack: 't', areaStyle: {}, symbolSize: 7, data: a },

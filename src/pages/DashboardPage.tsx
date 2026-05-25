@@ -950,7 +950,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                 onCell: () => ({ className: 'actionCol actionColRight', style: { width: 150, minWidth: 150, maxWidth: 150 } }),
                 align: 'right' as const,
                 render: (_: unknown, r: CustomDashboard) => (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2, width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, width: '100%' }}>
                     <Tooltip title={t('dashboard.customActions.preview')}>
                       <Button
                         type="text"
@@ -3378,7 +3378,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                 width: 120,
                 render: (_: unknown, r: CustomDashboard) => (
                   <div style={{ display: 'flex', justifyContent: 'center', whiteSpace: 'nowrap', width: '100%' }}>
-                    <div style={{ width: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <div style={{ width: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                       <Tooltip title={locale === 'zh-CN' ? '预览' : 'Preview'}>
                         <Button
                           type="text"

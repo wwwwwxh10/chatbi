@@ -2,6 +2,7 @@ import { Button, Space, theme } from 'antd'
 import { DownloadOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { ChatMessage, MessageResult } from './chatUtils'
 import { VirtualAvatar } from '../../components/VirtualAvatar'
+import { ChatRichText } from './ChatRichText'
 
 export function ChatThread({
   messages,
@@ -25,7 +26,7 @@ export function ChatThread({
   const { token } = theme.useToken()
 
   return (
-    <div ref={listRef} style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 12 }}>
+    <div ref={listRef} style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 10 }}>
       <Space direction="vertical" size={10} style={{ width: '100%' }}>
         {messages.map((m) => {
           const isActive = m.role === 'assistant' && m.id === activeAssistantId
@@ -46,10 +47,12 @@ export function ChatThread({
                     color: m.role === 'user' ? token.colorTextLightSolid : token.colorText,
                     border: `1px solid ${m.role === 'user' ? token.colorPrimary : isActive ? token.colorPrimary : token.colorSplit}`,
                     whiteSpace: 'pre-wrap',
+                    lineHeight: 1.6,
+                    fontSize: 'var(--font-size-base)',
                     cursor: m.role === 'assistant' ? 'pointer' : 'default',
                   }}
                 >
-                  {m.content}
+                  {m.role === 'assistant' ? <ChatRichText text={String(m.content ?? '')} /> : m.content}
                 </div>
               </div>
               {m.role === 'assistant' ? (

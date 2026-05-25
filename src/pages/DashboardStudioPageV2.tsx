@@ -80,6 +80,7 @@ import {
   buildTreemapOption,
   kpiValue,
 } from './studioCharts'
+import { enhanceDashboardChartOption } from './dashboardChartInteractions'
 type StudioMode = 'new' | 'edit' | 'preview'
 type Ds = { id: string; name: string; type: string; tables: string[] }
 
@@ -722,11 +723,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             : slot.kind === 'line-curve'
               ? buildCurveOption(name, colors, unit)
               : slot.kind === 'scatter'
-                ? buildScatterOption(name, colors)
+                ? buildScatterOption(name, colors, unit)
                 : slot.kind === 'bubble'
-                  ? buildBubbleOption(name, colors)
+                  ? buildBubbleOption(name, colors, unit)
                   : slot.kind === 'pie'
-                    ? buildPieOption(name, colors)
+                    ? buildPieOption(name, colors, unit)
                     : slot.kind === 'donut'
                       ? buildDonutOption(name, colors)
                       : slot.kind === 'rose'
@@ -1122,6 +1123,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
     const opt = optionForSlot(slot)
     const fittedOpt = opt ? fitOptionForFreeCard(opt as any, idx) : null
+    const renderOpt =
+      fittedOpt && slot.kind
+        ? (enhanceDashboardChartOption(slot.kind, fittedOpt as any, { accent, mode: 'preview' }) as any)
+        : fittedOpt
     const freePos = layout.mode === 'free' ? layout.cards?.[idx] : null
     const freeArea = freePos ? Math.max(1, Number(freePos.colSpan || 1)) * Math.max(1, Number(freePos.rowSpan || 1)) : 0
     const freeCompact = layout.mode === 'free' && freePos ? Math.max(1, Number(freePos.rowSpan || 1)) <= 1 || freeArea <= 6 : false
@@ -1202,7 +1207,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, paddingTop: slot.kind === 'funnel' ? 0 : freeTiny ? 2 : freeCompact ? 4 : 10 }}>
-          <EChart option={fittedOpt as any} legendSingleLine style={layout.mode === 'free' ? { minHeight: 0 } : undefined} />
+          <EChart
+            option={renderOpt as any}
+            datumSelectable={previewMode ? undefined : false}
+            legendSingleLine
+            style={layout.mode === 'free' ? { minHeight: 0 } : undefined}
+          />
         </div>
       </div>
     ) : (

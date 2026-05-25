@@ -44,11 +44,12 @@ export default function App() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const [collapsed, setCollapsed] = useState(true)
+  const [collapsed, setCollapsed] = useState(false)
   const isChatWorkspace =
     location.pathname.startsWith('/dashboard/chat-workspace') || location.pathname.startsWith('/dashboard/chat-workspace-studio-demo')
   const isLogin = location.pathname === '/login'
   const isStudio = location.pathname.startsWith('/dashboard/studio')
+  const isStudioEditor = location.pathname === '/dashboard/studio/new' || /^\/dashboard\/studio\/[^/]+$/.test(location.pathname)
   const isDashboardModule = location.pathname.startsWith('/dashboard') && !location.pathname.startsWith('/dashboard/chat') && !isChatWorkspace
 
   const [systemOpen, setSystemOpen] = useState(false)
@@ -100,8 +101,8 @@ export default function App() {
   }, [collapsed, isChatWorkspace, isLogin, isStudio])
 
   useEffect(() => {
-    if (isStudio) setCollapsed(true)
-  }, [isStudio])
+    setCollapsed(isStudioEditor)
+  }, [isStudioEditor])
 
   useEffect(() => {
     if (!isAuthed && location.pathname !== '/login') {

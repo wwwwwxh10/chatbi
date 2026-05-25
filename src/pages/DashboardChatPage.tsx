@@ -1,10 +1,11 @@
-import { Button, Card, Empty, Input, List, Segmented, Space, Table, Tag, Typography, message, theme } from 'antd'
+import { Button, Card, Empty, Input, List, Segmented, Space, Table, Tag, message, theme } from 'antd'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PageIntro } from '../components/PageIntro'
 import { DataSourcePicker } from '../components/DataSourcePicker'
 import { buildMockResult, nowId, storageKey } from './chat/chatUtils'
+import { ChatRichText } from './chat/ChatRichText'
 import { EChart } from '../components/EChart'
 import { VirtualAvatar } from '../components/VirtualAvatar'
 
@@ -129,7 +130,7 @@ export default function DashboardChatPage() {
       />
 
       <Card title={t('dashboard.chat')} size="small" bodyStyle={{ padding: 0 }}>
-        <div style={{ height: 360, overflow: 'auto', padding: 12 }}>
+        <div style={{ height: 360, overflow: 'auto', padding: 10 }}>
           <List
             dataSource={messages}
             renderItem={(m) => (
@@ -154,21 +155,25 @@ export default function DashboardChatPage() {
                             color: token.colorTextLightSolid,
                             border: `1px solid ${token.colorPrimary}`,
                             whiteSpace: 'pre-wrap',
+                            lineHeight: 1.6,
+                            fontSize: 'var(--font-size-base)',
                           }
                         : {
                             maxWidth: 520,
                             whiteSpace: 'pre-wrap',
+                            lineHeight: 1.6,
+                            fontSize: 'var(--font-size-base)',
                           }
                     }
                   >
-                    {m.content}
+                    {m.role === 'assistant' ? <ChatRichText text={String(m.content ?? '')} /> : m.content}
                   </div>
                 </div>
               </List.Item>
             )}
           />
         </div>
-        <div style={{ padding: 12, borderTop: `1px solid ${token.colorSplit}` }}>
+        <div style={{ padding: 10, borderTop: `1px solid ${token.colorSplit}` }}>
           <Space direction="vertical" size={10} style={{ width: '100%' }}>
             <DataSourcePicker value={dataSourceId} onChange={setDataSourceId} placeholder="选择数据源（可搜索）" />
             <Space.Compact style={{ width: '100%' }}>
@@ -201,7 +206,9 @@ export default function DashboardChatPage() {
             <div>
               {sending ? <Tag color="processing">分析中</Tag> : <Tag color="success">分析完毕</Tag>}
             </div>
-            <Typography.Paragraph style={{ margin: 0 }}>{result.answerText}</Typography.Paragraph>
+            <div style={{ paddingTop: 4 }}>
+              <ChatRichText text={String(result.answerText ?? '')} showContextTags={false} />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
               <Segmented
                 value={view}
