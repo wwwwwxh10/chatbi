@@ -50,6 +50,7 @@ import { useAppStore } from '../store/appStore'
 import { DatabaseDuotoneIcon } from '../components/icons/DatabaseDuotoneIcon'
 import { FileDuotoneIcon } from '../components/icons/FileDuotoneIcon'
 import type { DataAccessMode, ExtractFrequency, ExtractMode } from './dataSources/model'
+import { useDashboardsStore } from '../store/dashboardsStore'
 
 function statusTag(s: DataSource['status'], t: (k: string) => string) {
   if (s === 'unknown') {
@@ -92,6 +93,7 @@ export default function DataSourcesPage() {
   const addItem = useDataSourcesStore((s) => s.addItem)
   const updateItem = useDataSourcesStore((s) => s.updateItem)
   const removeItem = useDataSourcesStore((s) => s.removeItem)
+  const dashboards = useDashboardsStore((s) => s.items)
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<DataSourceType | 'all'>('all')
   const [page, setPage] = useState(1)
@@ -153,6 +155,16 @@ export default function DataSourcesPage() {
     () => ['Sheet1', 'Sheet2', 'Sheet3', 'Sheet4', 'Sheet5', 'Sheet6', 'Sheet7', 'Sheet8', 'Sheet9', 'Sheet10'],
     [],
   )
+
+  const deleteLinkedDashboards = useMemo(() => {
+    if (!deleteTarget) return []
+    const n = Math.max(0, Number(deleteTarget.datasetSelected ?? 0) || 0)
+    if (n === 0) return []
+    const tables = deleteTarget.type === 'file' ? fileDatasetOptions.slice(0, n) : dbDatasetOptions.slice(0, n)
+    if (!tables.length) return []
+    const s = new Set(tables)
+    return dashboards.filter((d) => d.tables.some((x) => s.has(x))).map((d) => d.title)
+  }, [dashboards, dbDatasetOptions, deleteTarget, fileDatasetOptions])
 
   const typeCatalogAll = useMemo(
     () => [
@@ -580,19 +592,39 @@ export default function DataSourcesPage() {
         }
         okText="删除"
         cancelText="取消"
-        okButtonProps={{ danger: true }}
+        okButtonProps={{ danger: true, disabled: deleteLinkedDashboards.length > 0 }}
         onCancel={() => setDeleteTarget(null)}
         onOk={() => {
           if (!deleteTarget) return
-          const id = deleteTarget.id
+          if (deleteLinkedDashboards.length > 0) {
+            void message.warning('该数据源已关联仪表盘，请先从仪表盘中移除关联的数据表后再删除。')
+            return
+          }
+          const target = deleteTarget
+          const id = target.id
           setDeleteTarget(null)
           removeItem(id)
+          void message.success('已删除')
         }}
       >
         <div style={{ paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: 'var(--ant-color-text-secondary)' }}>
-          {deleteTarget
-            ? `将删除${deleteTarget.type === 'file' ? '本地文件' : '数据库'}“${deleteTarget.name}”。删除后不可恢复。`
-            : ''}
+          {deleteTarget ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>{`将删除${deleteTarget.type === 'file' ? '本地文件' : '数据库'}“${deleteTarget.name}”。删除后不可恢复。`}</div>
+              {deleteLinkedDashboards.length ? (
+                <div style={{ border: `1px solid ${token.colorErrorBorder}`, background: token.colorErrorBg, borderRadius: 12, padding: 10, color: token.colorTextSecondary }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <InfoCircleOutlined style={{ marginTop: 2, color: token.colorError }} />
+                    <div style={{ lineHeight: 1.65 }}>
+                      已关联仪表盘：{deleteLinkedDashboards.join('、')}。请先从上述仪表盘中移除关联的数据表后再删除。
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            ''
+          )}
         </div>
       </Modal>
 

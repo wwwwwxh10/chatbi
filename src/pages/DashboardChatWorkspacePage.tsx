@@ -1492,9 +1492,8 @@ export default function DashboardChatWorkspacePage() {
   const buildSummaryAndNext = (r: MessageResult) => {
     const summary: string[] = []
     const next: string[] = []
-    if (r.metric) {
-      summary.push(`当前范围内，**${r.metric.label}** 达到 **${r.metric.value}**，体现该指标在所选业务场景下的整体规模与水平。`)
-    }
+    const summaryParts: string[] = []
+    if (r.metric) summaryParts.push(`当前范围内，**${r.metric.label}** 达到 **${r.metric.value}**，体现该指标在所选业务场景下的整体规模与水平。`)
 
     const table = r.table
     if (table && table.columns.length >= 2 && table.rows.length) {
@@ -1511,16 +1510,16 @@ export default function DashboardChatWorkspacePage() {
       const top1Share = total > 0 && top1?.val != null ? Math.round((top1.val / total) * 100) : null
 
       if (top1?.dim) {
-        summary.push(
-          `按 **${dimCol}** 拆分后，Top1 为 **${top1.dim}**（**${String(top1.valRaw ?? '')}**${top1Share != null ? `，约占 ${top1Share}%` : ''}）。`,
-        )
+        summaryParts.push(`按 **${dimCol}** 拆分后，Top1 为 **${top1.dim}**（**${String(top1.valRaw ?? '')}**${top1Share != null ? `，约占 ${top1Share}%` : ''}）。`)
         if (top2?.dim && top2.val != null && top1.val != null) {
           const gapPct = top2.val > 0 ? Math.round(((top1.val - top2.val) / top2.val) * 100) : null
-          summary.push(`Top2 为 **${top2.dim}**（**${String(top2.valRaw ?? '')}**）${gapPct != null ? `，Top1 高出约 ${gapPct}%` : ''}。`)
+          summaryParts.push(`Top2 为 **${top2.dim}**（**${String(top2.valRaw ?? '')}**）${gapPct != null ? `，Top1 高出约 ${gapPct}%` : ''}。`)
         }
       }
     }
 
+    const oneParagraph = summaryParts.map((x) => x.trim()).filter(Boolean).join(' ')
+    if (oneParagraph) summary.push(oneParagraph)
     if (summary.length === 0) summary.push('已生成可视化结果，并对关键指标与结构分布做了概要性归纳，便于快速定位主要贡献与变化方向。')
     if (next.length === 0)
       next.push(
@@ -1729,7 +1728,7 @@ export default function DashboardChatWorkspacePage() {
       '**业绩快报：** 销售额 ¥99,999（全国 No.2），业务规模持续领跑。\n' +
       '**动态监测：** 环比 +18% / 同比 +25%。双向高增显示当前市场反馈极佳。\n' +
       '**异常识别：** 识别到显著增长信号，当前波动表现优于历史同周期轨迹。\n\n' +
-      '您可以继续追问：'
+      '继续追问：'
 
     const startedAt = Date.now()
     timerRef.current = window.setTimeout(() => {

@@ -138,29 +138,30 @@ function parseContextTags(text: string) {
 export function ChatRichText({ text, showContextTags }: { text: string; showContextTags?: boolean }) {
   const { token } = theme.useToken()
   const raw = String(text ?? '').trim()
-  const hasContext = /锁定当前上下文/.test(raw) && /「[^」]+」/.test(raw)
-  const { tags } = useMemo(() => parseContextTags(raw), [raw])
+  const normalizedRaw = raw.replace(/您可以继续追问：/g, '继续追问：')
+  const hasContext = /锁定当前上下文/.test(normalizedRaw) && /「[^」]+」/.test(normalizedRaw)
+  const { tags } = useMemo(() => parseContextTags(normalizedRaw), [normalizedRaw])
 
   const bodyText = useMemo(() => {
-    if (!hasContext) return raw
-    return raw
+    if (!hasContext) return normalizedRaw
+    return normalizedRaw
       .replace(/已为你自动进入分析状态，并锁定当前上下文：/g, '')
-      .replace(/您可以继续追问：/g, '您可以继续追问：')
+      .replace(/您可以继续追问：/g, '继续追问：')
       .replace(/「[^」]+」/g, '')
       .trim()
-  }, [hasContext, raw])
+  }, [hasContext, normalizedRaw])
 
   const blocks = useMemo(() => normalizeBlocks(bodyText), [bodyText])
 
   const renderBlock = (block: string, i: number) => {
-    const isFollowUpHead = /^(您可以继续追问|追问建议)：?$/.test(block.trim())
+    const isFollowUpHead = /^(继续追问|您可以继续追问|追问建议)：?$/.test(block.trim())
     const lines = block
       .split('\n')
       .map((x) => x.trimEnd())
       .filter((x) => x.trim())
     const headLine = lines[0]?.trim() ?? ''
     const headIsTitle = /：$/.test(headLine) && headLine.length <= 16
-    const followUpByFirstLine = /^(您可以继续追问|追问建议)：?$/.test(headLine)
+    const followUpByFirstLine = /^(继续追问|您可以继续追问|追问建议)：?$/.test(headLine)
     const deepAnalysisTitle = i === 0 && /^已进入“.+”深度分析模式/.test(headLine)
 
     if (lines.length > 1 && (headIsTitle || deepAnalysisTitle)) {
@@ -210,7 +211,13 @@ export function ChatRichText({ text, showContextTags }: { text: string; showCont
       return (
         <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: TITLE_CONTENT_GAP }}>
           {isFollowUpHead ? <div style={{ height: 1, background: token.colorFillSecondary, opacity: 0.9 }} /> : null}
-          <div style={{ fontSize: 'var(--font-size-base)', lineHeight: BASE_LINE_HEIGHT, fontWeight: deepAnalysisTitle ? 800 : EMPHASIS_WEIGHT }}>
+          <div
+            style={{
+              fontSize: 'var(--font-size-base)',
+              lineHeight: BASE_LINE_HEIGHT,
+              fontWeight: deepAnalysisTitle ? 800 : EMPHASIS_WEIGHT,
+            }}
+          >
             <InlineRich text={block} />
           </div>
         </div>
@@ -225,14 +232,22 @@ export function ChatRichText({ text, showContextTags }: { text: string; showCont
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: BLOCK_GAP, lineHeight: BASE_LINE_HEIGHT, fontSize: 'var(--font-size-base)' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: BLOCK_GAP,
+        lineHeight: BASE_LINE_HEIGHT,
+        fontSize: 'var(--font-size-base)',
+      }}
+    >
       {hasContext && showContextTags !== false ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: SECTION_GAP }}>
           <div style={{ fontSize: 'var(--font-size-base)', lineHeight: BASE_LINE_HEIGHT, fontWeight: EMPHASIS_WEIGHT }}>
             已锁定当前分析上下文：
           </div>
           {tags.length ? (
-            <div style={{ fontSize: 'var(--font-size-base)', lineHeight: BASE_LINE_HEIGHT, fontWeight: 650, color: token.colorTextSecondary }}>
+            <div style={{ fontSize: 'var(--font-size-base)', lineHeight: BASE_LINE_HEIGHT, fontWeight: 650 }}>
               {tags.join('｜')}
             </div>
           ) : null}

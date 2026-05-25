@@ -358,7 +358,7 @@ export default function App() {
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <Upload
                   accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                  maxCount={1}
+                  fileList={[]}
                   showUploadList={false}
                   beforeUpload={(file) => {
                     const isOk = /image\/(png|jpeg)/.test(file.type)
