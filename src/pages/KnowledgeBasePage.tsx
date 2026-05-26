@@ -16,7 +16,7 @@ import {
   message,
   theme,
 } from 'antd'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MutableRefObject, ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { buildSeed, nowId, readTab, setQuery } from './knowledgeBase/kbModel'
@@ -57,6 +57,33 @@ function formatRefCount(n: unknown) {
   const v = Number(n ?? 0)
   if (!Number.isFinite(v) || v <= 0) return '0次引用'
   return `${v}次引用`
+}
+
+function withAlpha(color: string, alpha: number) {
+  const c = String(color ?? '').trim()
+  const a = Math.max(0, Math.min(1, alpha))
+  if (!c) return `rgba(0,0,0,${a})`
+  if (c.startsWith('rgba(')) return c.replace(/^rgba\(([^)]+)\)$/, (_, body) => `rgba(${body.split(',').slice(0, 3).join(',')},${a})`)
+  if (c.startsWith('rgb(')) return c.replace(/^rgb\(([^)]+)\)$/, (_, body) => `rgba(${body},${a})`)
+  if (c.startsWith('#')) {
+    const hex = c.slice(1)
+    const norm =
+      hex.length === 3
+        ? hex
+            .split('')
+            .map((x) => x + x)
+            .join('')
+        : hex.length === 6
+          ? hex
+          : ''
+    if (norm.length === 6) {
+      const r = parseInt(norm.slice(0, 2), 16)
+      const g = parseInt(norm.slice(2, 4), 16)
+      const b = parseInt(norm.slice(4, 6), 16)
+      if ([r, g, b].every((n) => Number.isFinite(n))) return `rgba(${r},${g},${b},${a})`
+    }
+  }
+  return `rgba(0,0,0,${a})`
 }
 
 type CardMenuState = {
@@ -581,6 +608,86 @@ function highlightAggregates(text: string) {
   return out
 }
 
+const MetricFormulaEditor = ({
+  value,
+  onChange,
+  readOnly,
+  highlight,
+  placeholderLike,
+  rows,
+  placeholder,
+  token,
+}: {
+  value?: string
+  onChange?: (e: any) => void
+  readOnly?: boolean
+  highlight?: boolean
+  placeholderLike?: boolean
+  rows?: number
+  placeholder?: string
+  token: any
+}) => {
+  const overlayRef = useRef<HTMLDivElement | null>(null)
+  const paddingX = 11
+  const paddingY = 6
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div
+        ref={overlayRef}
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          padding: `${paddingY}px ${paddingX}px`,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          overflow: 'hidden',
+          pointerEvents: 'none',
+          zIndex: 1,
+          fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+          fontSize: token.fontSize,
+          lineHeight: 1.5715,
+          color: token.colorText,
+        }}
+      >
+        {String(value ?? '').length > 0 ? (
+          highlight ? (
+            highlightAggregates(String(value))
+          ) : (
+            <span style={{ color: placeholderLike ? token.colorTextQuaternary : token.colorText, opacity: placeholderLike ? 0.78 : 1 }}>
+              {String(value)}
+            </span>
+          )
+        ) : (
+          <span style={{ color: token.colorTextQuaternary, opacity: 0.78 }}>{placeholder}</span>
+        )}
+      </div>
+      <Input.TextArea
+        value={value}
+        onChange={onChange}
+        readOnly={readOnly}
+        rows={rows}
+        placeholder=""
+        spellCheck={false}
+        onScroll={(e) => {
+          if (overlayRef.current) overlayRef.current.scrollTop = e.currentTarget.scrollTop
+        }}
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+          fontSize: token.fontSize,
+          lineHeight: 1.5715,
+          color: 'transparent',
+          caretColor: readOnly ? 'transparent' : token.colorText,
+          background: 'transparent',
+        }}
+      />
+    </div>
+  )
+}
+
 const TermCard = ({
   item,
   onEdit,
@@ -600,6 +707,8 @@ const TermCard = ({
 }) => {
   const tags = item.synonyms.slice(0, 3)
   const rest = Math.max(0, item.synonyms.length - tags.length)
+  const tagFg = token.colorPrimary
+  const tagBg = withAlpha(tagFg, 0.16)
 
   return (
     <BaseCard
@@ -618,12 +727,14 @@ const TermCard = ({
     >
       <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 8, overflow: 'hidden' }}>
         {tags.map((s) => (
-          <Tag key={s} style={{ marginInlineEnd: 0, borderWidth: 1 }}>
-            <span style={{ color: token.colorPrimary, fontWeight: 400 }}>{s}</span>
+          <Tag key={s} bordered={false} style={{ marginInlineEnd: 0, background: tagBg, color: tagFg }}>
+            <span style={{ fontWeight: 400 }}>{s}</span>
           </Tag>
         ))}
         {rest > 0 ? (
-          <Tag style={{ marginInlineEnd: 0, borderWidth: 1, color: token.colorTextSecondary }}>+{rest}</Tag>
+          <Tag bordered={false} style={{ marginInlineEnd: 0, background: tagBg, color: tagFg }}>
+            +{rest}
+          </Tag>
         ) : null}
       </div>
       {item.desc ? (
@@ -844,6 +955,13 @@ export default function KnowledgeBasePage() {
   const themeMode = useAppStore((s) => s.themeMode)
   const isDark = themeMode === 'dark'
   const { token } = theme.useToken()
+  const defaultMetricFormula = '离网率 = SUM([离网客户总数]) / SUM([期初在网客户总数]) * 100.0'
+
+  const normalizeMetricFormula = useCallback((name: string, formula: string) => {
+    if (name !== '离网率') return formula
+    const base = String(formula ?? '').replace(/^离网率\s*=\s*/i, '').trim()
+    return `离网率 = ${base}`
+  }, [])
 
   const [items, setItems] = useState<KnowledgeItem[]>(() => buildSeed())
   const [keyword, setKeyword] = useState('')
@@ -872,12 +990,30 @@ export default function KnowledgeBasePage() {
   const regexExampleIn = Form.useWatch('exampleIn', form)
   const sqlText = Form.useWatch('sql', form)
 
+  const regexDemo = useMemo(() => {
+    return {
+      pattern: '^(?:(?<year>\\d{4})[./-](?<month>\\d{1,2})[./-](?<day>\\d{1,2})|(?<day>\\d{1,2})[./-](?<month>\\d{1,2})[./-](?<year>\\d{4}))$',
+      conversionStrategy: '${year}-${month}-${day}',
+      samples: ['2023.10.01', '01/10/2023', '格式错误测试'],
+    }
+  }, [])
+
+  const splitSampleLines = (raw: unknown) => {
+    const s = String(raw ?? '')
+    const lines = s
+      .replace(/\r\n?/g, '\n')
+      .split('\n')
+      .map((x) => x.trim())
+    while (lines.length && !lines[lines.length - 1]) lines.pop()
+    return lines
+  }
+
   const computeRegexOut = (args: { pattern: string; conversionStrategy: string; input: string }) => {
     const rawPattern = String(args.pattern ?? '')
     const conversionStrategy = String(args.conversionStrategy ?? '')
     const input = String(args.input ?? '')
 
-    if (!input) return { out: '', error: '' }
+    if (!input) return { out: '', error: '', matched: false }
 
     const buildRegExp = () => {
       const raw = rawPattern.trim()
@@ -889,10 +1025,10 @@ export default function KnowledgeBasePage() {
 
     const applyStrategy = (re: RegExp | null) => {
       const code = conversionStrategy.trim()
-      if (!code) return input
-
       const reNoG = re ? new RegExp(re.source, re.flags.replace(/g/g, '')) : null
       const match = reNoG ? reNoG.exec(input) : null
+      const matched = !!match
+      if (!code) return { out: input, matched }
       const ctx = {
         input,
         out: match?.[0] ?? input,
@@ -908,7 +1044,17 @@ export default function KnowledgeBasePage() {
         const body = /\breturn\b/.test(code) ? code : `return (${code});`
         const fn = new Function('ctx', body) as (ctx: any) => unknown
         const next = fn(ctx)
-        return String(next ?? '')
+        return { out: String(next ?? ''), matched }
+      }
+
+      const hasNamedPlaceholders = /\$\{[a-zA-Z_][a-zA-Z0-9_]*\}/.test(code)
+      if (hasNamedPlaceholders) {
+        if (!matched) return { out: input, matched: false }
+        const groups = ((match as any)?.groups ?? {}) as Record<string, unknown>
+        const out = code
+          .replace(/\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, (_, k) => String(groups?.[k] ?? ''))
+          .replace(/\$(\d+)/g, (_, n) => String(match?.[Number(n)] ?? ''))
+        return { out: out || input, matched }
       }
 
       const pieces = code.split('+').map((x) => x.trim()).filter(Boolean)
@@ -933,31 +1079,43 @@ export default function KnowledgeBasePage() {
             return p
           })
           .join('')
-        return out || input
+        return { out: out || input, matched }
       }
 
       const reg = re ?? null
-      if (!reg) return input
-      return input.replace(reg, code)
+      if (!reg) return { out: input, matched }
+      return { out: input.replace(reg, code), matched }
     }
 
     try {
       const re = buildRegExp()
-      const out = applyStrategy(re)
-      return { out, error: '' }
+      const res = applyStrategy(re)
+      return { out: res.out, error: '', matched: res.matched }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      return { out: '', error: msg }
+      return { out: '', error: msg, matched: false }
     }
   }
 
-  const regexPreview = useMemo(() => {
-    return computeRegexOut({
-      pattern: String(regexPattern ?? ''),
-      conversionStrategy: String(regexConversionStrategy ?? ''),
-      input: String(regexExampleIn ?? ''),
+  const regexSampleLines = useMemo(() => {
+    if (createOpen) return regexDemo.samples
+    const lines = splitSampleLines(regexExampleIn)
+    return [lines[0] ?? '', lines[1] ?? '', lines[2] ?? '']
+  }, [createOpen, regexDemo.samples, regexExampleIn])
+
+  const regexPreviews = useMemo(() => {
+    const pattern = String(regexPattern ?? '').trim()
+    const conversionStrategy = String(regexConversionStrategy ?? '').trim()
+    const hasRule = !!pattern && !!conversionStrategy
+    const useDemo = createOpen && !hasRule
+    const p = useDemo ? regexDemo.pattern : pattern
+    const s = useDemo ? regexDemo.conversionStrategy : conversionStrategy
+    return regexSampleLines.map((input) => {
+      if (!input) return { out: '', error: '', matched: false }
+      if (!p || !s) return { out: '', error: '', matched: false }
+      return computeRegexOut({ pattern: p, conversionStrategy: s, input })
     })
-  }, [regexConversionStrategy, regexExampleIn, regexPattern])
+  }, [createOpen, regexConversionStrategy, regexDemo.conversionStrategy, regexDemo.pattern, regexPattern, regexSampleLines])
 
   const intro = useMemo(() => {
     const title = tabLabel(t, tab)
@@ -984,7 +1142,8 @@ export default function KnowledgeBasePage() {
 
   const modalHint = useMemo(() => {
     if (tab === 'terms') return '统一业务表达，将多种说法映射为标准语义，减少理解偏差。'
-    if (tab === 'metrics') return '固化指标定义与计算口径，统一标准计算方式，保证分析口径一致。'
+    if (tab === 'metrics')
+      return '请使用聚合函数（如 SUM/COUNT 等）编写统一计算公式，直接固化指标定义与计算口径，统一标准计算方式，以确保数据在多维度动态汇总时口径准确对齐。'
     if (tab === 'regex') return '规范数据格式，通过规则自动纠正格式异常，提升数据一致性与可解析性。'
     if (tab === 'logic-tree') return '沉淀分析方法，将复杂问题按既定路径拆解与推理，提升分析结果的专业性与稳定性。'
     if (tab === 'sql-examples') return '提供标准SQL参考模板，辅助生成更符合业务习惯的查询语句，提升准确性与可用性。'
@@ -994,7 +1153,7 @@ export default function KnowledgeBasePage() {
   const downloadImportTemplate = () => {
     const template = (() => {
       if (tab === 'terms') return [{ term: 'ARPU', synonyms: ['用户产值', '每用户收入'] }]
-      if (tab === 'metrics') return [{ name: '离网率', formula: '离网率 = 离网用户数 / 在网用户数' }]
+      if (tab === 'metrics') return [{ name: '离网率', formula: defaultMetricFormula }]
       if (tab === 'regex')
         return [{ name: 'demo', pattern: '^abc(\\d+)$', conversionStrategy: '$1.upper + $2', exampleIn: 'abc123', exampleOut: 'ABC123' }]
       if (tab === 'logic-tree') return [{ name: '营销活动复盘', scenario: '适用于活动效果复盘与异常归因。', steps: '1. 明确目标\n2. 指标口径\n3. 拆解维度\n4. 验证路径\n5. 结论输出' }]
@@ -1037,15 +1196,21 @@ export default function KnowledgeBasePage() {
 
     if (!editing) {
       if (tab === 'terms') form.setFieldsValue({ term: '', synonyms: [], desc: '' })
-      if (tab === 'metrics') form.setFieldsValue({ name: '', formula: '' })
-      if (tab === 'regex') form.setFieldsValue({ name: '', pattern: '', conversionStrategy: '', exampleIn: '' })
+      if (tab === 'metrics') form.setFieldsValue({ name: '', formula: defaultMetricFormula })
+      if (tab === 'regex')
+        form.setFieldsValue({
+          name: '',
+          pattern: '',
+          conversionStrategy: '',
+          exampleIn: '',
+        })
       if (tab === 'logic-tree') form.setFieldsValue({ name: '', scenario: '', steps: '' })
       if (tab === 'sql-examples') form.setFieldsValue({ question: '', sql: '' })
       return
     }
 
     if (editing.category === 'terms') form.setFieldsValue({ term: editing.term, synonyms: editing.synonyms, desc: editing.desc })
-    if (editing.category === 'metrics') form.setFieldsValue({ name: editing.name, formula: editing.formula })
+    if (editing.category === 'metrics') form.setFieldsValue({ name: editing.name, formula: normalizeMetricFormula(editing.name, editing.formula) })
     if (editing.category === 'regex')
       form.setFieldsValue({
         name: editing.name,
@@ -1103,7 +1268,7 @@ export default function KnowledgeBasePage() {
         if (tab === 'metrics') {
           const name = String(x?.name ?? '').trim()
           const definition = String(x?.definition ?? '').trim()
-          const formula = String(x?.formula ?? '').trim()
+          const formula = normalizeMetricFormula(name, String(x?.formula ?? '').trim())
           const referenceCount = Number(x?.referenceCount ?? x?.references ?? 0) || 0
           if (!name || !formula) return null
           return { id: nowId(), category: 'metrics', name, definition, layer: 'standard', formula, updatedAt, referenceCount }
@@ -1117,7 +1282,8 @@ export default function KnowledgeBasePage() {
           const referenceCount = Number(x?.referenceCount ?? x?.references ?? 0) || 0
           if (!name || !pattern) return null
           if (!exampleOut && exampleIn) {
-            const computed = computeRegexOut({ pattern, conversionStrategy, input: exampleIn })
+            const first = splitSampleLines(exampleIn).find((x) => x.trim()) ?? ''
+            const computed = computeRegexOut({ pattern, conversionStrategy, input: first })
             if (!computed.error) exampleOut = computed.out
           }
           return { id: nowId(), category: 'regex', name, pattern, conversionStrategy, exampleIn, exampleOut, updatedAt, referenceCount }
@@ -1250,7 +1416,7 @@ export default function KnowledgeBasePage() {
 
     if (tab === 'metrics') {
       const name = String((v as any).name ?? '').trim()
-      const formula = String((v as any).formula ?? '').trim()
+      const formula = normalizeMetricFormula(name, String((v as any).formula ?? '').trim())
       if (!name || !formula) return
 
       const normalized = name.toLowerCase()
@@ -1281,12 +1447,14 @@ export default function KnowledgeBasePage() {
       const conversionStrategy = String((v as any).conversionStrategy ?? '').trim()
       const exampleIn = String((v as any).exampleIn ?? '')
       if (!name || !pattern || !conversionStrategy) return
-
-      const computed = computeRegexOut({ pattern, conversionStrategy, input: exampleIn })
-      if (computed.error) {
-        void message.error(`转换策略错误：${computed.error}`)
+      const lines = splitSampleLines(exampleIn).filter(Boolean)
+      const computedList = lines.map((x) => computeRegexOut({ pattern, conversionStrategy, input: x }))
+      const anyError = computedList.find((x) => x.error)
+      if (anyError?.error) {
+        void message.error(`转换策略错误：${anyError.error}`)
         return
       }
+      const exampleOut = computedList.map((x) => x.out).join('\n')
 
       const next: KnowledgeItem = {
         id: editing?.id ?? nowId(),
@@ -1295,7 +1463,7 @@ export default function KnowledgeBasePage() {
         pattern,
         conversionStrategy,
         exampleIn,
-        exampleOut: computed.out,
+        exampleOut,
         updatedAt,
         referenceCount: preservedReferenceCount,
       }
@@ -1476,6 +1644,7 @@ export default function KnowledgeBasePage() {
             {(() => {
               const obj = tab === 'terms' ? '术语' : tab === 'metrics' ? '指标' : tab === 'regex' ? '策略' : tab === 'logic-tree' ? '分析思路' : 'SQL 示例库'
               const action = isViewMode ? '预览' : editing ? '编辑' : '新建'
+              if (tab === 'regex') return `${action}策略`
               return `${action}${obj}`
             })()}
           </div>
@@ -1490,7 +1659,7 @@ export default function KnowledgeBasePage() {
           void onSave()
         }}
         destroyOnHidden
-        width={520}
+        width={540}
         centered
       >
         <Form form={form} layout="vertical">
@@ -1513,23 +1682,37 @@ export default function KnowledgeBasePage() {
               <Form.Item name="name" label="指标名" rules={[{ required: true, message: t('validation.required') }]}>
                 <Input disabled={isViewMode} placeholder="例如：离网率" />
               </Form.Item>
-              <Form.Item name="formula" label="统一计算公式" rules={[{ required: true, message: t('validation.required') }]}>
-                <Input.TextArea disabled={isViewMode} rows={4} placeholder="例如：离网率 = 离网用户数 / 在网用户数" />
+              <Form.Item
+                name="formula"
+                label="统一计算公式"
+                valuePropName="value"
+                trigger="onChange"
+                rules={[{ required: true, message: t('validation.required') }]}
+              >
+                <MetricFormulaEditor
+                  highlight={isViewMode || !!editing}
+                  placeholderLike={!isViewMode && !editing}
+                  readOnly={isViewMode}
+                  rows={4}
+                  placeholder={defaultMetricFormula}
+                  token={token}
+                />
               </Form.Item>
             </>
           ) : null}
 
           {tab === 'regex' ? (
             <>
-              <Form.Item name="name" label="策略名称" rules={[{ required: true, message: t('validation.required') }]}>
-                <Input disabled={isViewMode} placeholder="例如：通用手机号格式化汇总" />
+              <Form.Item name="name" label="目标字段" rules={[{ required: true, message: t('validation.required') }]}>
+                <Input disabled={isViewMode} placeholder="例如：交易日期" />
               </Form.Item>
 
-              <Row gutter={14}>
-                <Col span={12}>
-                  <Form.Item
-                    name="pattern"
-                    label={
+              <Form.Item
+                name="pattern"
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minWidth: 0 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'default', minWidth: 0 }}>
+                      <span style={{ whiteSpace: 'nowrap' }}>匹配规则（正则表达式）</span>
                       <Popover
                         placement="topLeft"
                         content={
@@ -1537,16 +1720,13 @@ export default function KnowledgeBasePage() {
                             <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 10 }}>如何汇总多种格式？</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, lineHeight: 1.65 }}>
                               <div>
-                                  使用 <Tag>( )</Tag> 圈住保留内容（对应 $1、$2…）
+                                使用 <Tag>|</Tag> 汇总多种格式
                               </div>
                               <div>
-                                  使用 <Tag>(?: )</Tag> 匹配但不保留内容
+                                优先使用 <Tag>(?&lt;name&gt;...)</Tag> 命名捕获组，方便在输出格式里引用
                               </div>
                               <div>
-                                  使用 <Tag>|</Tag> 表示 “或” 逻辑（匹配多种格式）
-                              </div>
-                              <div>
-                                  使用 <Tag>^</Tag> 和 <Tag>$</Tag> 标记开头与结尾
+                                使用 <Tag>(?:...)</Tag> 匹配但不保留内容
                               </div>
                             </div>
                           </div>
@@ -1554,27 +1734,48 @@ export default function KnowledgeBasePage() {
                         trigger="hover"
                         overlayInnerStyle={{ padding: 12 }}
                       >
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'default' }}>
-                          匹配规则
-                          <InfoCircleFilled style={{ color: token.colorTextTertiary, fontSize: 14 }} />
-                        </span>
+                        <InfoCircleFilled style={{ color: token.colorTextTertiary, fontSize: 14 }} />
                       </Popover>
-                    }
-                    rules={[{ required: true, message: t('validation.required') }]}
-                  >
-                    <Input disabled={isViewMode} placeholder="例如：^(\\d{11})$|^(\\d{3})-(\\d{4})-(\\d{4})$" />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="conversionStrategy" label="转换策略" rules={[{ required: true, message: t('validation.required') }]}>
-                    <Input
-                      disabled={isViewMode}
-                      placeholder="例如：$1.upper + $2"
-                      style={{ fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace' }}
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
+                    </span>
+                  </div>
+                }
+                rules={[{ required: true, message: t('validation.required') }]}
+              >
+                <Input.TextArea
+                  disabled={isViewMode}
+                  autoSize={{ minRows: 2, maxRows: 2 }}
+                  placeholder={'例如：^(?:(?<year>\\d{4})[./-](?<month>\\d{1,2})[./-](?<day>\\d{1,2})|(?<day>\\d{1,2})[./-](?<month>\\d{1,2})[./-](?<year>\\d{4}))$'}
+                  style={{ fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace' }}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="conversionStrategy"
+                label={
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'default' }}>
+                    转换策略（输出格式）
+                    <Popover
+                      placement="topLeft"
+                      content={
+                        <div style={{ width: 360, padding: 6, lineHeight: 1.65 }}>
+                          提示：引用命名组变量使用 <Tag>${'{name}'}</Tag>，基础变量使用 <Tag>$1</Tag>、<Tag>$2</Tag>
+                        </div>
+                      }
+                      trigger="hover"
+                      overlayInnerStyle={{ padding: 12 }}
+                    >
+                      <InfoCircleFilled style={{ color: token.colorTextTertiary, fontSize: 14 }} />
+                    </Popover>
+                  </span>
+                }
+                rules={[{ required: true, message: t('validation.required') }]}
+              >
+                <Input
+                  disabled={isViewMode}
+                  placeholder="例如：${year}-${month}-${day}"
+                  style={{ fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace' }}
+                />
+              </Form.Item>
 
               <div
                 style={{
@@ -1588,13 +1789,13 @@ export default function KnowledgeBasePage() {
                 <Row gutter={10} style={{ marginBottom: 6 }}>
                   <Col span={10}>
                     <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>
-                      输入示例数据
+                      用户不规范输入（样本）
                     </Typography.Text>
                   </Col>
                   <Col span={4} />
                   <Col span={10}>
                     <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>
-                      最终转换结果
+                      规整后结果
                     </Typography.Text>
                   </Col>
                 </Row>
@@ -1602,50 +1803,61 @@ export default function KnowledgeBasePage() {
                 <Row align="middle" gutter={10}>
                   <Col span={10}>
                     <Form.Item name="exampleIn" noStyle>
-                      <Input disabled={isViewMode} placeholder="例如：138-0013-8000" />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {regexSampleLines.map((v, idx) => (
+                          <Input
+                            key={idx}
+                            disabled={isViewMode || createOpen}
+                            value={v}
+                            onChange={(e) => {
+                              if (createOpen) return
+                              const next = [...regexSampleLines]
+                              next[idx] = e.target.value
+                              form.setFieldsValue({ exampleIn: next.join('\n') })
+                            }}
+                          />
+                        ))}
+                      </div>
                     </Form.Item>
                   </Col>
                   <Col span={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <ArrowRightOutlined style={{ fontSize: 20, color: token.colorTextTertiary }} />
                   </Col>
                   <Col span={10} style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        minHeight: 40,
-                        display: 'flex',
-                        alignItems: 'center',
-                        minWidth: 0,
-                        width: '100%',
-                      }}
-                    >
-                      <Typography.Text
-                        ellipsis={{ tooltip: false }}
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          maxWidth: '100%',
-                          fontSize: 30,
-                          fontWeight: 400,
-                          color: token.colorPrimary,
-                          letterSpacing: 0.3,
-                        }}
-                      >
-                        {regexPreview.out || '13800138000'}
-                      </Typography.Text>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {regexPreviews.map((p, idx) => {
+                        const raw = regexSampleLines[idx]
+                        const hasRule = !!String(regexPattern ?? '').trim() && !!String(regexConversionStrategy ?? '').trim()
+                        const useDemo = createOpen && !hasRule
+                        const v = !raw ? '' : p.error ? '' : p.matched ? p.out : '不匹配（将保留原值）'
+                        const color = !raw || p.error ? undefined : p.matched ? token.colorPrimary : token.colorError
+                        return (
+                          <Input
+                            key={idx}
+                            disabled
+                            value={v}
+                            style={{
+                              fontSize: 18,
+                              fontWeight: 600,
+                              color: useDemo || hasRule ? color : undefined,
+                            }}
+                          />
+                        )
+                      })}
                     </div>
                   </Col>
                 </Row>
 
                 <div style={{ marginTop: 8 }}>
                   <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.7 }}>
-                    提示：尝试在左侧输入多种表达方式，均可被正确转换
+                    提示：支持多条样本同时预览；未匹配时将保留原值
                   </Typography.Text>
                 </div>
               </div>
 
-              {regexPreview.error ? (
+              {regexPreviews.find((x) => x.error)?.error ? (
                 <Typography.Text type="danger" style={{ display: 'block', marginTop: 10, fontSize: 12 }}>
-                  {regexPreview.error}
+                  {regexPreviews.find((x) => x.error)?.error}
                 </Typography.Text>
               ) : null}
             </>

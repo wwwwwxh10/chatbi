@@ -53,6 +53,8 @@ import { AppGridIcon } from '../components/icons/AppGridIcon'
 import { DataTableIcon } from '../components/icons/DataTableIcon'
 import { DatasetPreviewModal } from '../components/DatasetPreviewModal'
 import { DashboardIcon } from '../components/icons/DashboardIcon'
+import { validateWidget, type WidgetKind } from './studioModel'
+import { AlertTriangle } from 'lucide-react'
 
 type DashboardTemplate = {
   id: string
@@ -80,6 +82,45 @@ type DashboardAppearance = {
 
 function nowText() {
   return new Date().toISOString().slice(0, 16).replace('T', ' ')
+}
+
+function demoConfigErrorMessageForKind(kind: string) {
+  if (kind === 'radar') return 'Schema: indicators 至少 3 项'
+  if (kind === 'pie' || kind === 'donut' || kind === 'rose') return 'Schema: 缺少 valueKey'
+  if (kind === 'heatmap') return 'Schema: 缺少 valueKey'
+  if (kind === 'funnel') return 'Schema: 缺少 stageKey'
+  if (kind === 'treemap') return 'Schema: 缺少 labelKey'
+  if (kind === 'sankey' || kind === 'graph') return 'Schema: 缺少 sourceKey'
+  return 'Schema: 缺少 xKey'
+}
+
+function getPublishBlockInfo(id: string, configText?: string): { title: string; detail: string } | null {
+  if (id === 'custom-3') {
+    try {
+      const obj = configText ? JSON.parse(configText) : null
+      const kind = String(obj?.widgets?.[4]?.kind ?? 'line')
+      return { title: '组件配置异常', detail: demoConfigErrorMessageForKind(kind) }
+    } catch {
+      return { title: '组件配置异常', detail: '配置文件解析失败' }
+    }
+  }
+
+  if (!configText) return { title: '组件配置异常', detail: '缺少配置文件' }
+  try {
+    const obj = JSON.parse(configText)
+    const widgets = obj?.widgets
+    if (!Array.isArray(widgets) || widgets.length === 0) return { title: '组件配置异常', detail: 'Schema: 缺少 widgets' }
+    for (const w of widgets) {
+      const kind = (w as any)?.kind
+      if (typeof kind !== 'string' || !kind) return { title: '组件配置异常', detail: 'Schema: widget.kind 缺失' }
+      const cfgText = JSON.stringify((w as any)?.config ?? {})
+      const res = validateWidget(kind as WidgetKind, cfgText)
+      if (!res.ok) return { title: '组件配置异常', detail: res.error.message }
+    }
+    return null
+  } catch {
+    return { title: '组件配置异常', detail: '配置文件解析失败' }
+  }
 }
 
 export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
@@ -589,6 +630,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
   const [deleteDashboardTarget, setDeleteDashboardTarget] = useState<{ id: string; title: string } | null>(null)
   const [deleteBlockedTarget, setDeleteBlockedTarget] = useState<{ title: string } | null>(null)
   const [publishTarget, setPublishTarget] = useState<{ id: string; title: string; nextPublished: boolean } | null>(null)
+  const [publishBlocked, setPublishBlocked] = useState<{ title: string; detail: string } | null>(null)
 
   const parseLayoutFromConfig = (configText: string) => {
     try {
@@ -849,6 +891,8 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
         ) : (
           <Table
             size="middle"
+            tableLayout="fixed"
+            scroll={{ x: 840 }}
             pagination={{ pageSize: 5 }}
             dataSource={customDashboards.map((d) => ({ ...d, key: d.id }))}
             columns={[
@@ -856,8 +900,11 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                 title: t('dashboard.table.name'),
                 dataIndex: 'title',
                 key: 'title',
+                width: 150,
                 ellipsis: true,
-                render: (v: string) => (
+                render: (v: string, r: CustomDashboard) => {
+                  const err = getPublishBlockInfo(String(r.id), r.configText)
+                  return (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     <DashboardIcon
                       size={18}
@@ -870,9 +917,28 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                             : 'drop-shadow(0 2px 6px rgba(22,119,255,0.20))',
                       }}
                     />
-                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(v ?? '')}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(v ?? '')}</span>
+                      {err ? (
+                        <Tooltip title={`${err.title}，${err.detail}`}>
+                          <span
+                            style={{
+                              width: 18,
+                              height: 18,
+                              display: 'grid',
+                              placeItems: 'center',
+                              color: 'rgba(248,113,113,0.95)',
+                              flex: 'none',
+                            }}
+                          >
+                            <AlertTriangle size={12} />
+                          </span>
+                        </Tooltip>
+                      ) : null}
+                    </span>
                   </span>
-                ),
+                  )
+                },
               },
               {
                 title: t('dashboard.table.publishStatus'),
@@ -896,7 +962,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                 title: t('dashboard.table.tables'),
                 dataIndex: 'tables',
                 key: 'tables',
-                width: 240,
+                width: 200,
                 render: (v: string[]) => {
                   const arr = Array.isArray(v) ? v.map((x) => String(x)) : []
                   const tooLong = arr.some((x) => x.length > 12)
@@ -982,6 +1048,7 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                     <Dropdown
                       trigger={['click']}
                       placement="bottomRight"
+                      overlayClassName="dashboardMoreMenu"
                       menu={{
                         items: [
                           {
@@ -1012,6 +1079,13 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
                             return
                           }
                           if (key === 'publish') {
+                            if (!r.published) {
+                              const block = getPublishBlockInfo(String(r.id), r.configText)
+                              if (block) {
+                                setPublishBlocked(block)
+                                return
+                              }
+                            }
                             setPublishTarget({ id: r.id, title: r.title, nextPublished: !r.published })
                             return
                           }
@@ -1741,14 +1815,16 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
         footer={null}
         destroyOnHidden
         centered
+        styles={{ body: { padding: 16 } }}
       >
-        <Row gutter={[12, 12]}>
+        <Row gutter={[16, 16]}>
           {templates.map((tpl) => (
             <Col key={tpl.id} xs={24} md={12} xl={8}>
               <Card
                 hoverable
                 className="dashboardCaseCard"
                 onClick={() => openChatWorkspace({ template: tpl.id })}
+                styles={{ body: { padding: 16 } }}
                 cover={
                   <div className="dashboardCaseCover">
                     <div className="dashboardTemplateBadge">
@@ -3088,6 +3164,32 @@ export function DashboardPageLegacy({ refreshKey }: { refreshKey?: number }) {
       </Modal>
 
       <Modal
+        open={!!publishBlocked}
+        centered
+        width={360}
+        zIndex={20000}
+        getContainer={() => document.body}
+        title={
+          <div className="dsConflictTitle">
+            <AlertTriangle size={18} />
+            <span>{locale === 'zh-CN' ? '发布失败' : 'Publish failed'}</span>
+          </div>
+        }
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+            <Button type="primary" onClick={() => setPublishBlocked(null)}>
+              {locale === 'zh-CN' ? '知道了' : 'OK'}
+            </Button>
+          </div>
+        }
+        onCancel={() => setPublishBlocked(null)}
+      >
+        <div style={{ paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: token.colorTextSecondary }}>
+          <div style={{ color: token.colorTextSecondary }}>{publishBlocked ? `${publishBlocked.title}，${publishBlocked.detail}` : ''}</div>
+        </div>
+      </Modal>
+
+      <Modal
         open={!!deleteDashboardTarget}
         centered
         width={360}
@@ -3130,6 +3232,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
 
   const [casesOpen, setCasesOpen] = useState(false)
   const [publishTarget, setPublishTarget] = useState<{ id: string; title: string; nextPublished: boolean; scope?: 'studio' | 'custom' } | null>(null)
+  const [publishBlocked, setPublishBlocked] = useState<{ title: string; detail: string } | null>(null)
   const [deleteDashboardTarget, setDeleteDashboardTarget] = useState<{ id: string; title: string } | null>(null)
   const [deleteBlockedTarget, setDeleteBlockedTarget] = useState<{ title: string } | null>(null)
 
@@ -3263,6 +3366,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
           <Table
             size="middle"
             tableLayout="fixed"
+            scroll={{ x: 840 }}
             pagination={{ pageSize: 5 }}
             dataSource={customDashboards.map((d) => ({ ...d, key: d.id }))}
             columns={[
@@ -3270,9 +3374,11 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                 title: t('dashboard.table.name'),
                 dataIndex: 'title',
                 key: 'title',
-                width: 220,
+                width: 150,
                 ellipsis: true,
-                render: (v: string) => (
+                render: (v: string, r: CustomDashboard) => {
+                  const err = getPublishBlockInfo(String(r.id), r.configText)
+                  return (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     <DashboardIcon
                       size={18}
@@ -3285,9 +3391,28 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                             : 'drop-shadow(0 2px 6px rgba(22,119,255,0.20))',
                       }}
                     />
-                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(v ?? '')}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(v ?? '')}</span>
+                      {err ? (
+                        <Tooltip title={`${err.title}，${err.detail}`}>
+                          <span
+                            style={{
+                              width: 18,
+                              height: 18,
+                              display: 'grid',
+                              placeItems: 'center',
+                              color: 'rgba(248,113,113,0.95)',
+                              flex: 'none',
+                            }}
+                          >
+                            <AlertTriangle size={12} />
+                          </span>
+                        </Tooltip>
+                      ) : null}
+                    </span>
                   </span>
-                ),
+                  )
+                },
               },
               {
                 title: t('dashboard.table.publishStatus'),
@@ -3408,6 +3533,8 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                       </Tooltip>
                       <Dropdown
                         trigger={['click']}
+                        placement="bottomRight"
+                        overlayClassName="dashboardMoreMenu"
                         menu={{
                           items: [
                             {
@@ -3419,6 +3546,13 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                           ],
                           onClick: async ({ key }) => {
                             if (key === 'publish') {
+                              if (!r.published) {
+                                const block = getPublishBlockInfo(String(r.id), r.configText)
+                                if (block) {
+                                  setPublishBlocked(block)
+                                  return
+                                }
+                              }
                               setPublishTarget({ id: String(r.id), title: String(r.title), nextPublished: !r.published })
                               return
                             }
@@ -3461,14 +3595,16 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
         footer={null}
         destroyOnHidden
         centered
+        styles={{ body: { padding: 16 } }}
       >
-        <Row gutter={[12, 12]}>
+        <Row gutter={[16, 16]}>
           {templates.map((tpl) => (
             <Col key={tpl.id} xs={24} md={12} xl={8}>
               <Card
                 hoverable
                 className="dashboardCaseCard"
                 onClick={() => openChatWorkspace({ template: tpl.id })}
+                styles={{ body: { padding: 16 } }}
                 cover={
                   <div className="dashboardCaseCover">
                     <div className="dashboardTemplateBadge">
@@ -3535,6 +3671,32 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
               ? `将删除仪表盘“${deleteDashboardTarget.title}”。删除后不可恢复。`
               : `Delete dashboard "${deleteDashboardTarget.title}". This action cannot be undone.`
             : ''}
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!publishBlocked}
+        centered
+        width={360}
+        zIndex={20000}
+        getContainer={() => document.body}
+        title={
+          <div className="dsConflictTitle">
+            <AlertTriangle size={18} />
+            <span>{locale === 'zh-CN' ? '发布失败' : 'Publish failed'}</span>
+          </div>
+        }
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+            <Button type="primary" onClick={() => setPublishBlocked(null)}>
+              {locale === 'zh-CN' ? '知道了' : 'OK'}
+            </Button>
+          </div>
+        }
+        onCancel={() => setPublishBlocked(null)}
+      >
+        <div style={{ paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: token.colorTextSecondary }}>
+          <div style={{ color: token.colorTextSecondary }}>{publishBlocked ? `${publishBlocked.title}，${publishBlocked.detail}` : ''}</div>
         </div>
       </Modal>
 

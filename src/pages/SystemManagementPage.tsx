@@ -30,23 +30,37 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
 
   const [keyword, setKeyword] = useState('')
 
-  const ROLE_META: Record<UserRole, { name: string; desc: string; tag: string }> = {
+  const ROLE_META: Record<UserRole, { name: string; desc: string }> = {
     Admin: {
       name: '系统管理员',
       desc: '负责平台整体运行与安全管理，拥有账号分配、权限授权和系统配置权限，保障系统稳定。',
-      tag: 'geekblue',
     },
     Analyst: {
       name: '数据分析师',
       desc: '负责数据建设与AI语义建模，配置数据源、维护指标与知识库，并搭建可视化仪表盘，将数据转化为可用业务洞察。',
-      tag: 'blue',
     },
     Viewer: {
       name: '普通用户',
       desc: '负责数据消费与业务探索，可通过自然语言查询分析结果，查看已发布的报表，实现零门槛决策。',
-      tag: 'default',
     },
   }
+
+  const roleTagStyle = useMemo(() => {
+    return {
+      Admin: {
+        color: 'rgba(96, 165, 250, 0.98)',
+        background: 'rgba(37, 99, 235, 0.20)',
+      },
+      Analyst: {
+        color: 'rgba(34, 211, 238, 0.98)',
+        background: 'rgba(34, 211, 238, 0.14)',
+      },
+      Viewer: {
+        color: 'rgba(226, 232, 240, 0.88)',
+        background: 'rgba(148, 163, 184, 0.14)',
+      },
+    } satisfies Record<UserRole, { color: string; background: string }>
+  }, [])
 
   const roleHelpContent = (
     <div style={{ width: 520, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -168,7 +182,17 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
                   key: 'role',
                   width: 140,
                   render: (v: UserRole) => (
-                    <Tag color={ROLE_META[v].tag} style={{ marginInlineEnd: 0 }}>
+                    <Tag
+                      bordered={false}
+                      style={{
+                        marginInlineEnd: 0,
+                        borderRadius: 999,
+                        paddingInline: 10,
+                        fontWeight: 650,
+                        background: roleTagStyle[v].background,
+                        color: roleTagStyle[v].color,
+                      }}
+                    >
                       {ROLE_META[v].name}
                     </Tag>
                   ),
@@ -191,7 +215,7 @@ export default function SystemManagementPage({ mode }: { mode: 'users' | 'settin
                   onCell: () => ({ className: 'actionCol actionColNarrow', style: { width: 140, minWidth: 140, maxWidth: 140 } }),
                   align: 'center' as const,
                   render: (_: unknown, r: SystemUser) => (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 2, width: '100%', justifyItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%' }}>
                       <Button
                         type="text"
                         className="iconOnly"

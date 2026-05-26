@@ -41,6 +41,7 @@ import {
   SearchOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
+import { AlertTriangle, BarChart3, ChartScatter, Droplets, Filter, Gauge, LineChart, Network, PieChart, Radar } from 'lucide-react'
 import { DataTableIcon } from '../components/icons/DataTableIcon'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useDataSourcesStore } from '../store/dataSourcesStore'
@@ -51,6 +52,7 @@ import { DatabaseDuotoneIcon } from '../components/icons/DatabaseDuotoneIcon'
 import { FileDuotoneIcon } from '../components/icons/FileDuotoneIcon'
 import type { DataAccessMode, ExtractFrequency, ExtractMode } from './dataSources/model'
 import { useDashboardsStore } from '../store/dashboardsStore'
+import { DashboardIcon } from '../components/icons/DashboardIcon'
 
 function statusTag(s: DataSource['status'], t: (k: string) => string) {
   if (s === 'unknown') {
@@ -87,6 +89,30 @@ export default function DataSourcesPage() {
   const { token } = theme.useToken()
   const isDark = themeMode === 'dark'
   const screens = Grid.useBreakpoint()
+
+  const chartTypeIcon = (k?: 'bar' | 'line' | 'pie' | 'metric' | 'funnel' | 'radar' | 'bubble' | 'scatter' | 'sankey') => {
+    const key = k ?? 'bar'
+    const size = 16
+    const Icon =
+      key === 'line'
+        ? LineChart
+        : key === 'bar'
+          ? BarChart3
+          : key === 'pie'
+            ? PieChart
+            : key === 'metric'
+              ? Gauge
+              : key === 'funnel'
+                ? Filter
+                : key === 'radar'
+                  ? Radar
+                  : key === 'bubble'
+                    ? Droplets
+                    : key === 'scatter'
+                      ? ChartScatter
+                      : Network
+    return <Icon size={size} />
+  }
   const WHITELIST =
     '47.101.108.0/24,101.132.48.0/24,47.101.107.0/24,139.224.92.0/24,139.224.4.0/24,106.15.146.0/24,106.15.145.0/24,106.15.143.0/24,106.15.14.0/24,106.15.13.0/24,100.104.0.0/16,139.224.19.222,47.102.111.163'
   const items = useDataSourcesStore((s) => s.items)
@@ -156,15 +182,43 @@ export default function DataSourcesPage() {
     [],
   )
 
-  const deleteLinkedDashboards = useMemo(() => {
+  const deleteTargetTables = useMemo(() => {
     if (!deleteTarget) return []
     const n = Math.max(0, Number(deleteTarget.datasetSelected ?? 0) || 0)
     if (n === 0) return []
-    const tables = deleteTarget.type === 'file' ? fileDatasetOptions.slice(0, n) : dbDatasetOptions.slice(0, n)
-    if (!tables.length) return []
-    const s = new Set(tables)
-    return dashboards.filter((d) => d.tables.some((x) => s.has(x))).map((d) => d.title)
-  }, [dashboards, dbDatasetOptions, deleteTarget, fileDatasetOptions])
+    return deleteTarget.type === 'file' ? fileDatasetOptions.slice(0, n) : dbDatasetOptions.slice(0, n)
+  }, [dbDatasetOptions, deleteTarget, fileDatasetOptions])
+
+  const deleteLinkedDashboardRefs = useMemo(() => {
+    if (!deleteTarget) return []
+    if (!deleteTargetTables.length) return []
+    const s = new Set(deleteTargetTables)
+    return dashboards.filter((d) => d.tables.some((x) => s.has(x))).map((d) => ({ id: d.id, title: d.title }))
+  }, [dashboards, deleteTarget, deleteTargetTables])
+
+  const conflictPreviewGroups = useMemo(
+    () => [
+      {
+        id: 'preview-1',
+        title: '核心业务监控看板',
+        items: [
+          { title: 'GMV 实时趋势线图', table: 'sales_report_2024', chartType: 'line' as const },
+          { title: '用户实时在线波动图', table: 'user_logs_v2', chartType: 'line' as const },
+        ],
+      },
+      {
+        id: 'preview-2',
+        title: '季度财务分析报告',
+        items: [{ title: '年度成本支出对比图', table: 'sales_report_2024', chartType: 'bar' as const }],
+      },
+      {
+        id: 'preview-3',
+        title: '运营活动复盘看板',
+        items: [{ title: '双11大促数据汇总', table: 'user_logs_v2', chartType: 'bar' as const }],
+      },
+    ],
+    [],
+  )
 
   const typeCatalogAll = useMemo(
     () => [
@@ -582,22 +636,37 @@ export default function DataSourcesPage() {
       <Modal
         open={!!deleteTarget}
         centered
-        width={360}
+        className={deleteLinkedDashboardRefs.length > 0 ? 'dsDeleteConflictModal' : 'deleteConfirmModal'}
+        width={deleteLinkedDashboardRefs.length > 0 ? 620 : 360}
         zIndex={20000}
         getContainer={() => document.body}
         title={
-          <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>
-            {deleteTarget?.type === 'file' ? '删除本地文件' : '删除数据库'}
-          </div>
+          deleteLinkedDashboardRefs.length > 0 ? (
+            <div className="dsConflictTitle">
+              <AlertTriangle size={18} />
+              <span>配置冲突：无法删除表</span>
+            </div>
+          ) : (
+            <div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>
+              <span>{deleteTarget?.type === 'file' ? '删除本地文件' : '删除数据库'}</span>
+            </div>
+          )
+        }
+        footer={
+          deleteLinkedDashboardRefs.length > 0 ? (
+            <Button type="primary" className="dsConflictOk" onClick={() => setDeleteTarget(null)}>
+              我知道了
+            </Button>
+          ) : undefined
         }
         okText="删除"
         cancelText="取消"
-        okButtonProps={{ danger: true, disabled: deleteLinkedDashboards.length > 0 }}
+        okButtonProps={{ danger: true }}
         onCancel={() => setDeleteTarget(null)}
         onOk={() => {
           if (!deleteTarget) return
-          if (deleteLinkedDashboards.length > 0) {
-            void message.warning('该数据源已关联仪表盘，请先从仪表盘中移除关联的数据表后再删除。')
+          if (deleteLinkedDashboardRefs.length > 0) {
+            setDeleteTarget(null)
             return
           }
           const target = deleteTarget
@@ -607,21 +676,74 @@ export default function DataSourcesPage() {
           void message.success('已删除')
         }}
       >
-        <div style={{ paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: 'var(--ant-color-text-secondary)' }}>
+        <div
+          className={deleteLinkedDashboardRefs.length > 0 ? 'dsConflictWrap' : undefined}
+          style={
+            deleteLinkedDashboardRefs.length > 0
+              ? { color: 'var(--ant-color-text-secondary)' }
+              : { paddingTop: 8, paddingBottom: 18, lineHeight: 1.65, color: 'var(--ant-color-text-secondary)' }
+          }
+        >
           {deleteTarget ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>{`将删除${deleteTarget.type === 'file' ? '本地文件' : '数据库'}“${deleteTarget.name}”。删除后不可恢复。`}</div>
-              {deleteLinkedDashboards.length ? (
-                <div style={{ border: `1px solid ${token.colorErrorBorder}`, background: token.colorErrorBg, borderRadius: 12, padding: 10, color: token.colorTextSecondary }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                    <InfoCircleOutlined style={{ marginTop: 2, color: token.colorError }} />
-                    <div style={{ lineHeight: 1.65 }}>
-                      已关联仪表盘：{deleteLinkedDashboards.join('、')}。请先从上述仪表盘中移除关联的数据表后再删除。
-                    </div>
-                  </div>
+            deleteLinkedDashboardRefs.length > 0 ? (
+              <div className="dsConflictBody">
+                <div className="dsConflictIntro">
+                  <span>检测到数据表 </span>
+                  <span className="dsConflictLink">sales_report_2024</span>
+                  <span>, </span>
+                  <span className="dsConflictLink">user_logs_v2</span>
+                  <span> 正被以下所有组件引用。请在对应的配置文件中移除关联后再重试：</span>
                 </div>
-              ) : null}
-            </div>
+
+                <div className="dsConflictGroups">
+                  {conflictPreviewGroups.map((d) => (
+                    <div className="dsConflictGroup" key={d.id}>
+                      <div className="dsConflictGroupHeader">
+                        <DashboardIcon
+                          size={18}
+                          primaryColor={token.colorPrimary}
+                          secondaryColor={themeMode === 'dark' ? 'rgba(255,255,255,0.82)' : 'rgba(15,23,42,0.70)'}
+                          style={{
+                            filter:
+                              themeMode === 'dark'
+                                ? 'drop-shadow(0 2px 6px rgba(0,0,0,0.45))'
+                                : 'drop-shadow(0 2px 6px rgba(22,119,255,0.20))',
+                          }}
+                        />
+                        <span>{d.title}</span>
+                      </div>
+
+                      <div className="dsConflictGroupList">
+                        {d.items.map((c, idx) => (
+                          <div className="dsConflictRow" key={`${d.id}:${c.table}:${idx}`}>
+                            <span className="dsConflictRowLabel">
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  marginRight: 8,
+                                  verticalAlign: '-2px',
+                                  flex: 'none',
+                                  color: token.colorTextSecondary,
+                                }}
+                              >
+                                {chartTypeIcon((c as any).chartType)}
+                              </span>
+                              {c.title}
+                            </span>
+                            <span className="dsConflictPill">{c.table}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>{`将删除${deleteTarget.type === 'file' ? '本地文件' : '数据库'}“${deleteTarget.name}”。删除后不可恢复。`}</div>
+              </div>
+            )
           ) : (
             ''
           )}

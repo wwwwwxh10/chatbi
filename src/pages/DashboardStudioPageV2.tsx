@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CopyPlus,
   Save,
+  AlertTriangle,
   AreaChart,
   LineChart,
   BarChart3,
@@ -40,6 +41,8 @@ import {
 } from '@ant-design/icons'
 import { EChart } from '../components/EChart'
 import { FlipCounter } from '../components/MetricCards'
+import { DatasetPreviewModal } from '../components/DatasetPreviewModal'
+import { DataTableIcon } from '../components/icons/DataTableIcon'
 import { useAppStore } from '../store/appStore'
 import { createDashboardId, touchUpdatedAt, useDashboardsStore } from '../store/dashboardsStore'
 import { StudioJsonEditor } from './StudioJsonEditor'
@@ -110,11 +113,14 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const readOnly = mode === 'preview'
   const dataSources = useMemo(() => buildTables(), [])
+  const demoConfigErrorDashboard = useMemo(() => (mode === 'edit' || mode === 'preview') && String(id ?? '') === 'custom-3', [id, mode])
+  const demoConfigErrorSlotIndex = useMemo(() => (demoConfigErrorDashboard ? 4 : null), [demoConfigErrorDashboard])
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [tables, setTables] = useState<string[]>([])
   const [presetId, setPresetId] = useState<string | null>(null)
+  const [tablePreviewOpen, setTablePreviewOpen] = useState(false)
 
   const [appearance, setAppearance] = useState<StudioAppearance>({
     language: locale,
@@ -331,7 +337,40 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
     const widgets = Array.isArray(obj?.widgets) ? (obj.widgets as any[]) : []
     const unplacedWidgets = Array.isArray((obj as any)?.unplacedWidgets) ? ((obj as any).unplacedWidgets as any[]) : []
-    const allWidgets = [...widgets, ...unplacedWidgets]
+    const forceRefreshWidgetKinds = new Set<WidgetKind>([
+      'kpi',
+      'line',
+      'line-area',
+      'line-curve',
+      'bar',
+      'bar-h',
+      'bar-stacked',
+      'bar-grouped',
+      'bar-gradient',
+      'pie',
+      'donut',
+      'radar',
+      'bubble',
+      'funnel',
+      'sankey',
+    ])
+    const nextWidgets = widgets.map((w) => {
+      const kind = w?.kind as WidgetKind | undefined
+      if (!kind || !KIND_NAME[kind]) return w
+      if (!forceRefreshWidgetKinds.has(kind)) return w
+      return { ...w, config: defaultConfig(kind) }
+    })
+    const nextUnplacedWidgets = unplacedWidgets.map((w) => {
+      const kind = w?.kind as WidgetKind | undefined
+      if (!kind || !KIND_NAME[kind]) return w
+      if (!forceRefreshWidgetKinds.has(kind)) return w
+      return { ...w, config: defaultConfig(kind) }
+    })
+    if (looksLikeStudioConfig) {
+      const nextText = JSON.stringify({ ...(obj ?? {}), widgets: nextWidgets, unplacedWidgets: nextUnplacedWidgets }, null, 2)
+      if (nextText !== String(hit.configText ?? '')) updateItem(String(hit.id ?? ''), { configText: nextText })
+    }
+    const allWidgets = [...nextWidgets, ...nextUnplacedWidgets]
     const nextSpecs = layoutSpecs(nextLayout)
     const baseSlots =
       nextLayout.mode === 'free'
@@ -344,7 +383,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       const kind = w?.kind as WidgetKind | undefined
       const cfg = w?.config
       if (!kind || !KIND_NAME[kind]) continue
-      const text = JSON.stringify({ ...(cfg ?? {}), type: kind }, null, 2)
+      const text = JSON.stringify(forceRefreshWidgetKinds.has(kind) ? defaultConfig(kind) : (cfg ?? {}), null, 2)
       const v = validateWidget(kind, text)
       let err: WidgetSlot['error'] = null
       if ('error' in v) err = v.error
@@ -399,6 +438,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const editingIdx = useMemo(() => (editingSlotId ? slots.findIndex((s) => s.id === editingSlotId) : -1), [editingSlotId, slots])
   const editingSlot = useMemo(() => (editingIdx >= 0 ? slots[editingIdx] : null), [editingIdx, slots])
+  const liveEditorError = useMemo(() => {
+    if (!editingSlot?.kind) return null
+    const v = validateWidget(editingSlot.kind, editorDraft)
+    return 'error' in v ? v.error : null
+  }, [editorDraft, editingSlot?.kind])
 
   useEffect(() => {
     if (!editingSlot || !editingSlot.kind) {
@@ -407,10 +451,68 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       setEditorFullscreen(false)
       return
     }
-    setEditorDraft(editingSlot.configText)
-    setEditorError(editingSlot.error)
+    const text = editingSlot.configText
+    const guessLine = (needles: string[]) => {
+      const lines = String(text ?? '').split('\n')
+      for (let i = 0; i < lines.length; i++) {
+        const ln = lines[i] ?? ''
+        for (const n of needles) {
+          if (ln.includes(`"${n}"`) || ln.includes(n)) return i + 1
+        }
+      }
+      return 1
+    }
+    const demoInjectedError =
+      demoConfigErrorSlotIndex != null && editingIdx === demoConfigErrorSlotIndex && editingSlot.kind
+        ? ({
+            message:
+              editingSlot.kind === 'radar'
+                ? 'Schema: metrics 至少 3 项'
+                : editingSlot.kind === 'pie' || editingSlot.kind === 'donut'
+                  ? 'Schema: 缺少 metric.field'
+                  : editingSlot.kind === 'bubble'
+                    ? 'Schema: 缺少 bubbleSize.field'
+                    : editingSlot.kind === 'funnel'
+                      ? 'Schema: 缺少 stageField'
+                      : editingSlot.kind === 'sankey'
+                        ? 'Schema: 缺少 weight.field'
+                        : editingSlot.kind === 'bar' ||
+                            editingSlot.kind === 'bar-h' ||
+                            editingSlot.kind === 'bar-grouped' ||
+                            editingSlot.kind === 'bar-stacked' ||
+                            editingSlot.kind === 'bar-gradient' ||
+                            editingSlot.kind === 'waterfall'
+                          ? 'Schema: yAxis 至少 1 项'
+                          : 'Schema: 缺少 xAxis.field',
+            line: (() => {
+              const msg = String(
+                editingSlot.kind === 'radar'
+                  ? 'metrics'
+                  : editingSlot.kind === 'pie' || editingSlot.kind === 'donut'
+                    ? 'metric'
+                    : editingSlot.kind === 'bubble'
+                      ? 'bubbleSize'
+                      : editingSlot.kind === 'funnel'
+                        ? 'stageField'
+                        : editingSlot.kind === 'sankey'
+                          ? 'weight'
+                          : editingSlot.kind === 'bar' ||
+                              editingSlot.kind === 'bar-h' ||
+                              editingSlot.kind === 'bar-grouped' ||
+                              editingSlot.kind === 'bar-stacked' ||
+                              editingSlot.kind === 'bar-gradient' ||
+                              editingSlot.kind === 'waterfall'
+                            ? 'yAxis'
+                            : 'xAxis',
+              )
+              return guessLine([msg])
+            })(),
+          } as WidgetSlot['error'])
+        : null
+    setEditorDraft(text)
+    setEditorError(demoInjectedError ?? editingSlot.error)
     setEditorFullscreen(false)
-  }, [editingSlotId])
+  }, [demoConfigErrorSlotIndex, editingIdx, editingSlot])
 
   const applyLayout = (nextLayout: StudioLayout, opts?: { fillFromUnplaced?: boolean }) => {
     const fillFromUnplaced = opts?.fillFromUnplaced !== false
@@ -660,7 +762,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           if (to === 'en-US' && next.unit === '万') next.unit = 'k'
           if (to === 'zh-CN' && next.unit === 'k') next.unit = '万'
         }
-        const text = JSON.stringify({ ...next, type: s.kind }, null, 2)
+        const text = JSON.stringify(next, null, 2)
         const v = validateWidget(s.kind, text)
         const err: WidgetSlot['error'] = 'error' in v ? v.error : null
         return { ...s, configText: text, error: err }
@@ -682,7 +784,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           if (to === 'en-US' && next.unit === '万') next.unit = 'k'
           if (to === 'zh-CN' && next.unit === 'k') next.unit = '万'
         }
-        const text = JSON.stringify({ ...next, type: s.kind }, null, 2)
+        const text = JSON.stringify(next, null, 2)
         const v = validateWidget(s.kind, text)
         const err: WidgetSlot['error'] = 'error' in v ? v.error : null
         return { ...s, configText: text, error: err }
@@ -700,7 +802,18 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       }
     })()
     if (!parsed) return null
-    const unit = typeof parsed.unit === 'string' ? String(parsed.unit) : ''
+    const unit = (() => {
+      if (typeof parsed.unit === 'string') return String(parsed.unit)
+      const ct = typeof parsed.chartType === 'string' ? String(parsed.chartType) : ''
+      if (ct === 'MetricCard') return String(parsed.metrics?.[0]?.unit ?? '')
+      if (ct === 'Line') return String(parsed.yAxis?.[0]?.unit ?? '')
+      if (ct === 'Bar') return String(parsed.yAxis?.[0]?.unit ?? '')
+      if (ct === 'Donut') return String(parsed.metric?.unit ?? '')
+      if (ct === 'Bubble') return String(parsed.bubbleSize?.unit ?? parsed.yAxis?.unit ?? parsed.xAxis?.unit ?? '')
+      if (ct === 'Funnel') return String(parsed.metric?.unit ?? '')
+      if (ct === 'Sankey') return String(parsed.settings?.unit ?? parsed.weight?.unit ?? '')
+      return ''
+    })()
     const colors = CHART_PALETTES[appearance.chartPalette].colors.slice(0, 10)
     const name = String(parsed.title ?? KIND_NAME[slot.kind])
     const base =
@@ -950,6 +1063,56 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     const palette = CHART_PALETTES[appearance.chartPalette]
     const c0 = palette.colors[0] ?? accent
     const swapHint = appearance.language === 'en-US' ? 'Drag to reorder' : '拖拽可移动换位'
+
+    const demoInjectedError =
+      demoConfigErrorSlotIndex != null && idx === demoConfigErrorSlotIndex && slot.kind && !slot.error
+        ? ({
+            message:
+              slot.kind === 'radar'
+                ? 'Schema: indicators 至少 3 项'
+                : slot.kind === 'pie' || slot.kind === 'donut' || slot.kind === 'rose'
+                  ? 'Schema: 缺少 valueKey'
+                  : slot.kind === 'heatmap'
+                    ? 'Schema: 缺少 valueKey'
+                    : slot.kind === 'funnel'
+                      ? 'Schema: 缺少 stageKey'
+                      : slot.kind === 'treemap'
+                        ? 'Schema: 缺少 labelKey'
+                        : slot.kind === 'sankey'
+                          ? 'Schema: 缺少 sourceKey'
+                          : slot.kind === 'graph'
+                            ? 'Schema: 缺少 sourceKey'
+                            : 'Schema: 缺少 xKey',
+          } as WidgetSlot['error'])
+        : null
+    const slotError = slot.error ?? demoInjectedError
+    if (slotError) {
+      return (
+        <div style={{ padding: 16, height: '100%', display: 'grid', placeItems: 'center', textAlign: 'center' }}>
+          <div style={{ display: 'grid', placeItems: 'center', gap: 8, padding: 10, textAlign: 'center' }}>
+            <span
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                display: 'grid',
+                placeItems: 'center',
+                background: 'rgba(248,113,113,0.10)',
+                color: 'rgba(248,113,113,0.95)',
+              }}
+            >
+              <AlertTriangle size={20} />
+            </span>
+            <Typography.Text style={{ fontWeight: 700, color: token.colorText }}>
+              {appearance.language === 'en-US' ? 'Invalid widget config' : '组件配置异常'}
+            </Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.6 }}>
+              {slotError.message}
+            </Typography.Text>
+          </div>
+        </div>
+      )
+    }
 
     if (slot.kind === 'flip') {
       const baseRaw = Number(parsed?.value ?? 6_894)
@@ -1207,16 +1370,88 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
           </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, paddingTop: slot.kind === 'funnel' ? 0 : freeTiny ? 2 : freeCompact ? 4 : 10 }}>
-          <EChart
-            option={renderOpt as any}
-            datumSelectable={previewMode ? undefined : false}
-            legendSingleLine
-            style={layout.mode === 'free' ? { minHeight: 0 } : undefined}
-          />
+          <EChart option={renderOpt as any} datumSelectable={previewMode ? undefined : false} legendSingleLine style={layout.mode === 'free' ? { minHeight: 0 } : undefined} />
         </div>
       </div>
     ) : (
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="" />
+      <div style={{ padding: shellPadding, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div
+          className="studioSlotHeader"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
+          draggable={!readOnly && !previewMode}
+          onMouseMove={(e) => {
+            if (readOnly || previewMode) return
+            if (dragFromIdx != null || draggingKind != null) return
+            scheduleMoveTip({ x: e.clientX, y: e.clientY, text: swapHint })
+          }}
+          onMouseLeave={() => scheduleMoveTip(null)}
+          onDragStart={(e) => onSlotDragStart(idx, e)}
+          onDragEnd={onSlotDragEnd}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <Space size={6} style={{ minWidth: 0 }}>
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: accent,
+                  flex: '0 0 22px',
+                }}
+              >
+                {(() => {
+                  const k = slot.kind
+                  const Icon =
+                    k === 'line'
+                      ? LineChart
+                      : k === 'line-area'
+                        ? AreaChart
+                        : k === 'line-curve'
+                          ? Activity
+                          : k === 'bar'
+                            ? BarChart3
+                            : k === 'bar-h'
+                              ? ArrowDownUp
+                              : k === 'bar-grouped'
+                                ? Boxes
+                                : k === 'bar-stacked'
+                                  ? Layers
+                                  : k === 'pie'
+                                    ? PieChart
+                                    : k === 'donut'
+                                      ? Donut
+                                      : k === 'rose'
+                                        ? Flower2
+                                        : k === 'scatter'
+                                          ? ChartScatter
+                                          : k === 'bubble'
+                                            ? Droplets
+                                            : k === 'funnel'
+                                              ? Filter
+                                              : k === 'radar'
+                                                ? Radar
+                                                : k === 'heatmap' || k === 'treemap'
+                                                  ? Layers
+                                                  : k === 'sankey' || k === 'graph'
+                                                    ? Network
+                                                    : Activity
+                  return <Icon size={14} />
+                })()}
+              </span>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {chartTitle}
+              </Typography.Text>
+            </Space>
+          </div>
+          {null}
+        </div>
+        <div style={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center' }}>
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="" />
+        </div>
+      </div>
     )
   }
 
@@ -1621,7 +1856,19 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
 
   const slotBodies = useMemo(
     () => slots.map((s, idx) => renderSlotBody(s, idx)),
-    [slots, appearance.chartPalette, appearance.language, appearance.theme, readOnly, previewMode, accent, token.colorError, token.colorText, token.colorTextSecondary],
+    [
+      slots,
+      appearance.chartPalette,
+      appearance.language,
+      appearance.theme,
+      readOnly,
+      previewMode,
+      accent,
+      token.colorError,
+      token.colorText,
+      token.colorTextSecondary,
+      demoConfigErrorSlotIndex,
+    ],
   )
 
   return (
@@ -1737,7 +1984,30 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             <Space size={10}>
               <div style={{ minWidth: 0 }}>
                 <Typography.Text strong style={{ display: 'block', lineHeight: 1.1 }}>
-                  {title.trim() || '未命名仪表盘'}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {title.trim() || '未命名仪表盘'}
+                    </span>
+                    <span
+                      onClick={() => setTablePreviewOpen(true)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        color: token.colorTextSecondary,
+                        fontSize: 12,
+                        fontWeight: 400,
+                        lineHeight: 1,
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        whiteSpace: 'nowrap',
+                        flex: 'none',
+                      }}
+                    >
+                      <DataTableIcon size={14} color={token.colorTextSecondary} />
+                      {tables.length}
+                    </span>
+                  </span>
                 </Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   {THEME_NAME[appearance.theme]} · {CHART_PALETTES[appearance.chartPalette].name}
@@ -1782,7 +2052,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 borderRadius: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 0 : 16,
                 border: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 'none' : `1px solid ${token.colorSplit}`,
                 background: appearance.theme === 'obsidian' ? token.colorBgLayout : appearance.theme === 'cyber' || appearance.theme === 'tech' ? 'transparent' : 'rgba(8, 12, 22, 0.70)',
-                overflow: 'auto',
+                overflow: layout.mode === 'free' ? 'hidden' : 'auto',
+                scrollbarGutter: 'stable both-edges',
                 padding: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 0 : 12,
                 backdropFilter: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? undefined : 'blur(14px)',
               }}
@@ -1972,35 +2243,37 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      display: 'grid',
-                      gridTemplateColumns: `repeat(${freeCols}, minmax(0, 1fr))`,
-                      gridTemplateRows: `repeat(${freeRows}, minmax(0, 1fr))`,
-                      gap,
                       zIndex: 1,
                       pointerEvents: 'auto',
-                      padding: gap,
                       cursor: 'crosshair',
+                      overflow: 'hidden',
                     }}
                     onMouseMove={(e) => {
                       if (layout.mode !== 'free') return
                       const el = freeOverlayRef.current
                       if (!el) return
+                      const cx = e.clientX
+                      const cy = e.clientY
                       const rect = el.getBoundingClientRect()
                       const pad = gap
-                      const rawX = e.clientX - rect.left
-                      const rawY = e.clientY - rect.top
+                      const rawX = cx - rect.left
+                      const rawY = cy - rect.top
                       const x = Math.max(pad, Math.min(rect.width - pad - 1, rawX))
                       const y = Math.max(pad, Math.min(rect.height - pad - 1, rawY))
-                      const cw = Math.max(1, rect.width - pad * 2)
-                      const ch = Math.max(1, rect.height - pad * 2)
                       const lx = x - pad
                       const ly = y - pad
-                      const col = Math.min(freeCols, Math.max(1, Math.floor((lx / cw) * freeCols) + 1))
-                      const row = Math.min(freeRows, Math.max(1, Math.floor((ly / ch) * freeRows) + 1))
+                      const innerW = Math.max(1, rect.width - pad * 2)
+                      const innerH = Math.max(1, rect.height - pad * 2)
+                      const cellW = Math.max(1, (innerW - gap * Math.max(0, freeCols - 1)) / Math.max(1, freeCols))
+                      const cellH = Math.max(1, (innerH - gap * Math.max(0, freeRows - 1)) / Math.max(1, freeRows))
+                      const unitW = cellW + gap
+                      const unitH = cellH + gap
+                      const col = Math.min(freeCols, Math.max(1, Math.floor((lx + gap / 2) / unitW) + 1))
+                      const row = Math.min(freeRows, Math.max(1, Math.floor((ly + gap / 2) / unitH) + 1))
                       if (freeRafRef.current != null) cancelAnimationFrame(freeRafRef.current)
                       freeRafRef.current = requestAnimationFrame(() => {
                         setFreeHoverPoint((prev) => (prev?.r === row && prev?.c === col ? prev : { r: row, c: col }))
-                        setFreeCursor((prev) => (prev?.x === rawX && prev?.y === rawY ? prev : { x: rawX, y: rawY }))
+                        setFreeCursor((prev) => (prev?.x === cx && prev?.y === cy ? prev : { x: cx, y: cy }))
                       })
                     }}
                     onMouseLeave={() => {
@@ -2019,12 +2292,16 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       const rawY = e.clientY - rect.top
                       const x = Math.max(pad, Math.min(rect.width - pad - 1, rawX))
                       const y = Math.max(pad, Math.min(rect.height - pad - 1, rawY))
-                      const cw = Math.max(1, rect.width - pad * 2)
-                      const ch = Math.max(1, rect.height - pad * 2)
                       const lx = x - pad
                       const ly = y - pad
-                      const c = Math.min(freeCols, Math.max(1, Math.floor((lx / cw) * freeCols) + 1))
-                      const r = Math.min(freeRows, Math.max(1, Math.floor((ly / ch) * freeRows) + 1))
+                      const innerW = Math.max(1, rect.width - pad * 2)
+                      const innerH = Math.max(1, rect.height - pad * 2)
+                      const cellW = Math.max(1, (innerW - gap * Math.max(0, freeCols - 1)) / Math.max(1, freeCols))
+                      const cellH = Math.max(1, (innerH - gap * Math.max(0, freeRows - 1)) / Math.max(1, freeRows))
+                      const unitW = cellW + gap
+                      const unitH = cellH + gap
+                      const c = Math.min(freeCols, Math.max(1, Math.floor((lx + gap / 2) / unitW) + 1))
+                      const r = Math.min(freeRows, Math.max(1, Math.floor((ly + gap / 2) / unitH) + 1))
 
                       if (!freeStartPoint) {
                         setFreeStartPoint({ r, c })
@@ -2060,7 +2337,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     }}
                   >
                     {freeCursor ? (
-                      <div style={{ position: 'absolute', left: freeCursor.x + 12, top: freeCursor.y + 12, zIndex: 3, pointerEvents: 'none' }}>
+                      <div style={{ position: 'fixed', left: freeCursor.x + 12, top: freeCursor.y + 12, zIndex: 120, pointerEvents: 'none' }}>
                         <div style={{ padding: '8px 10px', borderRadius: 12, background: 'rgba(9, 12, 18, 0.62)', color: token.colorText, fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
                           {freeStartPoint
                             ? appearance.language === 'en-US'
@@ -2072,6 +2349,31 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         </div>
                       </div>
                     ) : null}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${freeCols}, minmax(0, 1fr))`,
+                        gridTemplateRows: `repeat(${freeRows}, minmax(0, 1fr))`,
+                        gap,
+                        padding: gap,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {Array.from({ length: freeRows * freeCols }).map((_, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            borderRadius: 12,
+                            border: `1px solid ${fieldBorder}`,
+                            opacity: appearance.theme === 'obsidian' ? 0.28 : 0.26,
+                            background: 'transparent',
+                          }}
+                        />
+                      ))}
+                    </div>
+
                     {freeStartPoint && freeHoverPoint ? (
                       (() => {
                         const rowStart = Math.min(freeStartPoint.r, freeHoverPoint.r)
@@ -2083,83 +2385,83 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         return (
                           <div
                             style={{
-                              gridColumn: `${colStart} / span ${colSpan}`,
-                              gridRow: `${rowStart} / span ${rowSpan}`,
-                              position: 'relative',
-                              background: `${accent}10`,
-                              border: `1px solid ${accent}B8`,
-                              borderRadius: 14,
-                              boxShadow: `0 0 0 1px ${accent}22, 0 0 12px ${accent}2e`,
+                              position: 'absolute',
+                              inset: 0,
+                              display: 'grid',
+                              gridTemplateColumns: `repeat(${freeCols}, minmax(0, 1fr))`,
+                              gridTemplateRows: `repeat(${freeRows}, minmax(0, 1fr))`,
+                              gap,
+                              padding: gap,
+                              pointerEvents: 'none',
                               zIndex: 40,
                             }}
                           >
                             <div
                               style={{
-                                position: 'absolute',
-                                left: 12,
-                                top: -26,
-                                padding: '4px 9px',
-                                borderRadius: 8,
-                                background: 'rgba(6, 10, 18, 0.92)',
-                                border: `1px solid ${accent}66`,
-                                color: accent,
-                                fontSize: 12,
-                                fontWeight: 800,
-                                lineHeight: 1,
-                                whiteSpace: 'nowrap',
-                                zIndex: 60,
+                                gridColumn: `${colStart} / span ${colSpan}`,
+                                gridRow: `${rowStart} / span ${rowSpan}`,
+                                position: 'relative',
+                                background: `${accent}10`,
+                                border: `1px solid ${accent}B8`,
+                                borderRadius: 14,
+                                boxShadow: `0 0 0 1px ${accent}22, 0 0 12px ${accent}2e`,
                               }}
                             >
-                              {rowSpan}行*{colSpan}列
-                            </div>
-                            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                              {(
-                                [
-                                  { top: 0, left: 0, borders: ['borderBottom', 'borderRight'] as const },
-                                  { top: 0, right: 0, borders: ['borderBottom', 'borderLeft'] as const },
-                                  { bottom: 0, left: 0, borders: ['borderTop', 'borderRight'] as const },
-                                  { bottom: 0, right: 0, borders: ['borderTop', 'borderLeft'] as const },
-                                ] as Array<{
-                                  top?: number
-                                  right?: number
-                                  bottom?: number
-                                  left?: number
-                                  borders: ReadonlyArray<'borderTop' | 'borderRight' | 'borderBottom' | 'borderLeft'>
-                                }>
-                              ).map((p, i) => {
-                                const style: any = {
+                              <div
+                                style={{
                                   position: 'absolute',
-                                  width: 18,
-                                  height: 18,
-                                  borderColor: accent,
-                                  borderStyle: 'solid',
-                                  borderRadius: 0,
-                                }
-                                if (p.top != null) style.top = -2
-                                if (p.bottom != null) style.bottom = -2
-                                if (p.left != null) style.left = -2
-                                if (p.right != null) style.right = -2
-                                for (const k of p.borders) style[k] = '40px'
-                                return <div key={i} style={style} />
-                              })}
+                                  left: 12,
+                                  top: -26,
+                                  padding: '4px 9px',
+                                  borderRadius: 8,
+                                  background: 'rgba(6, 10, 18, 0.92)',
+                                  border: `1px solid ${accent}66`,
+                                  color: accent,
+                                  fontSize: 12,
+                                  fontWeight: 800,
+                                  lineHeight: 1,
+                                  whiteSpace: 'nowrap',
+                                  zIndex: 60,
+                                }}
+                              >
+                                {rowSpan}行*{colSpan}列
+                              </div>
+                              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                                {(
+                                  [
+                                    { top: 0, left: 0, borders: ['borderBottom', 'borderRight'] as const },
+                                    { top: 0, right: 0, borders: ['borderBottom', 'borderLeft'] as const },
+                                    { bottom: 0, left: 0, borders: ['borderTop', 'borderRight'] as const },
+                                    { bottom: 0, right: 0, borders: ['borderTop', 'borderLeft'] as const },
+                                  ] as Array<{
+                                    top?: number
+                                    right?: number
+                                    bottom?: number
+                                    left?: number
+                                    borders: ReadonlyArray<'borderTop' | 'borderRight' | 'borderBottom' | 'borderLeft'>
+                                  }>
+                                ).map((p, i) => {
+                                  const style: any = {
+                                    position: 'absolute',
+                                    width: 18,
+                                    height: 18,
+                                    borderColor: accent,
+                                    borderStyle: 'solid',
+                                    borderRadius: 0,
+                                  }
+                                  if (p.top != null) style.top = -2
+                                  if (p.bottom != null) style.bottom = -2
+                                  if (p.left != null) style.left = -2
+                                  if (p.right != null) style.right = -2
+                                  for (const k of p.borders) style[k] = '40px'
+                                  return <div key={i} style={style} />
+                                })}
+                              </div>
                             </div>
                           </div>
                         )
                       })()
                     ) : null}
-
-                    {Array.from({ length: freeRows * freeCols }).map((_, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          borderRadius: 12,
-                          border: `1px solid ${fieldBorder}`,
-                          opacity: appearance.theme === 'obsidian' ? 0.28 : 0.26,
-                          background: 'transparent',
-                          pointerEvents: 'none',
-                        }}
-                      />
-                    ))}
                   </div>
                 ) : null}
 
@@ -2174,8 +2476,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   const pos = (layout.mode === 'free' ? layout.cards : templatePositions)?.[idx]
                   const colSpan = pos ? pos.colSpan : Math.max(1, Math.min(freeCols, spec.colSpan))
                   const rowSpan = pos ? pos.rowSpan : Math.max(1, spec.rowSpan)
+                  const demoInjectedError = demoConfigErrorSlotIndex != null && idx === demoConfigErrorSlotIndex && slot.kind && !slot.error
                   const borderColor = slot.kind
-                    ? slot.error
+                    ? slot.error || demoInjectedError
                       ? token.colorError
                       : isEditing || isSelected
                         ? accent
@@ -2222,7 +2525,10 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         zIndex: layout.mode === 'free' ? 2 : 1,
                         overflow: layout.mode === 'free' ? 'visible' : 'hidden',
                         cursor: slot.kind ? 'default' : !readOnly && !previewMode ? 'pointer' : 'default',
-                        boxShadow: undefined,
+                        boxShadow:
+                          slot.kind && (slot.error || demoInjectedError)
+                            ? '0 0 0 1px rgba(248,113,113,0.35), 0 0 18px rgba(248,113,113,0.10)'
+                            : undefined,
                         outline: undefined,
                       }}
                       onClick={() => {
@@ -2484,7 +2790,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     <Button onClick={() => setEditingSlotId(null)}>取消</Button>
                     <Button
                       type="primary"
-                      disabled={readOnly || previewMode || Boolean(editorError)}
+                      disabled={readOnly || previewMode || Boolean(editorError ?? liveEditorError)}
                       onClick={() => {
                         if (!editingSlot?.kind) return
                         const v = validateWidget(editingSlot.kind, editorDraft)
@@ -2510,7 +2816,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 assignWidget(editingIdx, k)
               }}
               text={editorDraft}
-              error={editorError}
+              error={editorError ?? liveEditorError}
               fullscreen={editorFullscreen}
               onChangeText={(txt) => {
                 if (!editingSlot?.kind) return
@@ -2969,6 +3275,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             </div>
           </div>
         ) : null}
+
+        <DatasetPreviewModal open={tablePreviewOpen} onClose={() => setTablePreviewOpen(false)} tables={tables} zIndex={2500} />
       </div>
     </div>
   )

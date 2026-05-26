@@ -33,7 +33,7 @@ export default function LoginPage() {
           )}
         </div>
         <div style={{ color: 'rgba(255,255,255,0.84)', maxWidth: 520, lineHeight: 1.7, textShadow: '0 10px 28px rgba(0,0,0,0.35)' }}>
-          <div style={{ fontSize: 40, fontWeight: 860, marginBottom: 12, letterSpacing: 2, color: 'rgba(255,255,255,0.96)' }}>超级数据分析师</div>
+          <div style={{ fontSize: 40, fontWeight: 860, marginBottom: 4, letterSpacing: 2, color: 'rgba(255,255,255,0.96)' }}>超级数据分析师</div>
           <div style={{ fontSize: 22, letterSpacing: 1, color: 'rgba(255,255,255,0.88)' }}>让企业从看懂数据到用好数据</div>
         </div>
         <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>版权所有 © 科大讯飞股份有限公司</div>

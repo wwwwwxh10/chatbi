@@ -59,12 +59,7 @@ function escapeHtml(s: string) {
 }
 
 function highlightJson(text: string) {
-  const src = escapeHtml(text)
-  return src
-    .replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"\s*:)/g, '<span style="color:#93c5fd">$1</span>')
-    .replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*")/g, '<span style="color:#fca5a5">$1</span>')
-    .replace(/\b(true|false|null)\b/g, '<span style="color:#86efac">$1</span>')
-    .replace(/(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g, '<span style="color:#fcd34d">$1</span>')
+  return escapeHtml(text)
 }
 
 function parseErrorLine(text: string, err: unknown): WidgetConfigError {
@@ -79,10 +74,97 @@ function parseErrorLine(text: string, err: unknown): WidgetConfigError {
 }
 
 function defaultConfig(kind: WidgetKind) {
-  if (kind === 'kpi') return { type: 'kpi', title: '订单金额', format: 'currency', valueKey: 'gmv' }
-  if (kind === 'pie') return { type: 'pie', title: '渠道分布', categoryKey: 'channel', valueKey: 'gmv' }
-  if (kind === 'line') return { type: 'line', title: 'GMV 趋势', xKey: 'date', yKey: 'gmv' }
-  if (kind === 'bar') return { type: 'bar', title: '品类对比', xKey: 'category', yKey: 'gmv' }
+  if (kind === 'kpi')
+    return {
+      chartType: 'MetricCard',
+      title: 'ARPU均值',
+      dataSource: 'sales_detail_table',
+      metrics: [
+        {
+          label: 'ARPU',
+          type: 'Derived',
+          expression: 'SUM(revenue) / COUNT(DISTINCT user_id)',
+          unit: '元',
+        },
+      ],
+      thresholds: [
+        { condition: '> 100', color: '#4ade80', icon: 'up-arrow' },
+        { condition: '< 50', color: '#f87171', icon: 'warning' },
+      ],
+      filters: {
+        timeRange: 'LAST_30_DAYS',
+        dimensionFilters: [{ field: 'region', operator: 'AND', value: '华东' }],
+      },
+      autoRefresh: { enabled: true, interval: 60 },
+    }
+  if (kind === 'pie')
+    return {
+      chartType: 'Donut',
+      title: '用户来源结构',
+      dimension: 'channel_source',
+      metric: {
+        label: '用户数',
+        field: 'user_id',
+        aggregation: 'COUNT',
+        unit: '人',
+      },
+      settings: {
+        limit: 6,
+        sortBy: 'DESC',
+        innerRadius: '50%',
+      },
+    }
+  if (kind === 'line')
+    return {
+      chartType: 'Line',
+      title: 'GMV趋势',
+      xAxis: {
+        field: 'order_date',
+        granularity: 'AUTO',
+        unitDisplay: 'TOOLTIP_ONLY',
+      },
+      yAxis: [
+        {
+          label: 'GMV',
+          type: 'Basic',
+          field: 'gmv_amount',
+          aggregation: 'SUM',
+          unit: '元',
+          unitDisplay: 'TOOLTIP_ONLY',
+        },
+      ],
+      settings: {
+        areaStyle: false,
+        stack: false,
+      },
+    }
+  if (kind === 'bar')
+    return {
+      chartType: 'Bar',
+      title: '各地区经营对比',
+      xAxis: {
+        field: 'region',
+        unit: '',
+      },
+      yAxis: [
+        {
+          label: '收入',
+          field: 'revenue',
+          aggregation: 'SUM',
+          unit: '元',
+        },
+        {
+          label: '成本',
+          field: 'cost',
+          aggregation: 'SUM',
+          unit: '元',
+        },
+      ],
+      display: {
+        layout: 'Vertical',
+        unitDisplay: 'TOOLTIP_ONLY',
+      },
+    }
   return { type: 'graph', title: '关系图', sourceKey: 'source', targetKey: 'target', weightKey: 'weight' }
 }
 
@@ -90,23 +172,52 @@ function validateWidget(kind: WidgetKind, text: string): { ok: true; value: any 
   try {
     const obj = JSON.parse(text)
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, error: { message: 'Schema: 根节点必须是对象' } }
-    const t = String((obj as any).type ?? kind)
-    if (t !== kind) return { ok: false, error: { message: `Schema: type 必须为 ${kind}` } }
-    if (kind === 'line' || kind === 'bar') {
-      if (!String((obj as any).xKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 xKey' } }
-      if (!String((obj as any).yKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 yKey' } }
-    }
-    if (kind === 'pie') {
-      if (!String((obj as any).categoryKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 categoryKey' } }
-      if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
-    }
-    if (kind === 'kpi') {
+    const chartType = typeof (obj as any).chartType === 'string' ? String((obj as any).chartType) : ''
+
+    if (chartType) {
+      const expected = kind === 'kpi' ? 'MetricCard' : kind === 'line' ? 'Line' : kind === 'bar' ? 'Bar' : kind === 'pie' ? 'Donut' : null
+      if (!expected) return { ok: false, error: { message: `Schema: ${kind} 不支持 chartType 模式` } }
+      if (chartType !== expected) return { ok: false, error: { message: `Schema: chartType 必须为 ${expected}` } }
+
       if (!String((obj as any).title ?? '')) return { ok: false, error: { message: 'Schema: 缺少 title' } }
-      if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
-    }
-    if (kind === 'graph') {
-      if (!String((obj as any).sourceKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 sourceKey' } }
-      if (!String((obj as any).targetKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 targetKey' } }
+
+      if (kind === 'kpi') {
+        const metrics = (obj as any).metrics
+        if (!Array.isArray(metrics) || metrics.length < 1) return { ok: false, error: { message: 'Schema: metrics 至少 1 项' } }
+      }
+      if (kind === 'line') {
+        if (!String((obj as any).xAxis?.field ?? '')) return { ok: false, error: { message: 'Schema: 缺少 xAxis.field' } }
+        const yAxis = (obj as any).yAxis
+        if (!Array.isArray(yAxis) || yAxis.length < 1) return { ok: false, error: { message: 'Schema: yAxis 至少 1 项' } }
+      }
+      if (kind === 'bar') {
+        if (!String((obj as any).xAxis?.field ?? '')) return { ok: false, error: { message: 'Schema: 缺少 xAxis.field' } }
+        const yAxis = (obj as any).yAxis
+        if (!Array.isArray(yAxis) || yAxis.length < 1) return { ok: false, error: { message: 'Schema: yAxis 至少 1 项' } }
+      }
+      if (kind === 'pie') {
+        if (!String((obj as any).dimension ?? '')) return { ok: false, error: { message: 'Schema: 缺少 dimension' } }
+        if (!String((obj as any).metric?.field ?? '')) return { ok: false, error: { message: 'Schema: 缺少 metric.field' } }
+      }
+    } else {
+      const t = String((obj as any).type ?? kind)
+      if (t !== kind) return { ok: false, error: { message: `Schema: type 必须为 ${kind}` } }
+      if (kind === 'line' || kind === 'bar') {
+        if (!String((obj as any).xKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 xKey' } }
+        if (!String((obj as any).yKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 yKey' } }
+      }
+      if (kind === 'pie') {
+        if (!String((obj as any).categoryKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 categoryKey' } }
+        if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
+      }
+      if (kind === 'kpi') {
+        if (!String((obj as any).title ?? '')) return { ok: false, error: { message: 'Schema: 缺少 title' } }
+        if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
+      }
+      if (kind === 'graph') {
+        if (!String((obj as any).sourceKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 sourceKey' } }
+        if (!String((obj as any).targetKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 targetKey' } }
+      }
     }
     return { ok: true, value: obj }
   } catch (e) {
@@ -340,13 +451,22 @@ export default function DashboardStudioPage({ mode }: { mode: StudioMode }) {
       }
     }
     const widgets = Array.isArray(obj?.widgets) ? (obj.widgets as any[]) : []
+    const forceRefreshWidgetKinds = new Set<WidgetKind>(['kpi', 'line', 'bar', 'pie'])
+    const nextWidgets = widgets.map((w) => {
+      const kind = w?.kind as WidgetKind | undefined
+      if (!kind || !kindName[kind]) return w
+      if (!forceRefreshWidgetKinds.has(kind)) return w
+      return { ...w, config: defaultConfig(kind) }
+    })
+    const nextText = JSON.stringify({ ...(obj ?? {}), widgets: nextWidgets }, null, 2)
+    if (nextText !== String(hit.configText ?? '')) updateItem(String(hit.id ?? ''), { configText: nextText })
     const nextSlots = normalizeSlots(specs, [])
     for (let i = 0; i < nextSlots.length; i++) {
-      const w = widgets[i]
+      const w = nextWidgets[i]
       const kind = w?.kind as WidgetKind | undefined
       const cfg = w?.config
       if (!kind || !kindName[kind]) continue
-      const text = JSON.stringify({ ...(cfg ?? {}), type: kind }, null, 2)
+      const text = JSON.stringify(forceRefreshWidgetKinds.has(kind) ? defaultConfig(kind) : (cfg ?? {}), null, 2)
       const v = validateWidget(kind, text)
       nextSlots[i] = { ...nextSlots[i], kind, configText: text, error: v.ok ? null : v.error }
     }
@@ -1125,4 +1245,3 @@ export default function DashboardStudioPage({ mode }: { mode: StudioMode }) {
     </div>
   )
 }
-

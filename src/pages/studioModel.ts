@@ -158,12 +158,7 @@ export function escapeHtml(s: string) {
 }
 
 export function highlightJson(text: string) {
-  const src = escapeHtml(text)
-  return src
-    .replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"\s*:)/g, '<span style="color:#93c5fd">$1</span>')
-    .replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*")/g, '<span style="color:#fca5a5">$1</span>')
-    .replace(/\b(true|false|null)\b/g, '<span style="color:#86efac">$1</span>')
-    .replace(/(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g, '<span style="color:#fcd34d">$1</span>')
+  return escapeHtml(text)
 }
 
 export function parseErrorLine(text: string, err: unknown): WidgetConfigError {
@@ -174,21 +169,120 @@ export function parseErrorLine(text: string, err: unknown): WidgetConfigError {
   if (!Number.isFinite(pos)) return { message: msg }
   const before = text.slice(0, Math.max(0, Math.min(text.length, pos)))
   const line = before.split('\n').length
-  return { message: `Line ${line}: ${msg}`, line }
+  const lines = String(text ?? '').split('\n')
+  const issues: Array<{ message: string; line?: number }> = [{ message: `Line ${line}: ${msg}`, line }]
+  for (let i = Math.max(0, line - 2); i >= 0; i--) {
+    const raw = lines[i] ?? ''
+    const trimmed = raw.trim()
+    if (!trimmed) continue
+    if (/[:\[{,]\s*$/.test(trimmed) || /"\s*:\s*[\[{]\s*,?$/.test(trimmed)) {
+      if (i + 1 !== line) issues.push({ message: '该结构行可能受当前语法错误影响', line: i + 1 })
+      break
+    }
+  }
+  return { message: `Line ${line}: ${msg}`, line, issues }
 }
 
 export function defaultConfig(kind: WidgetKind) {
   const en = curLocale() === 'en-US'
-  if (kind === 'kpi') return { type: 'kpi', title: en ? 'Average ARPU' : 'ARPU均值', format: 'currency', valueKey: 'arpu' }
+  if (kind === 'kpi')
+    return {
+      chartType: 'MetricCard',
+      title: 'ARPU均值',
+      dataSource: 'sales_detail_table',
+      metrics: [
+        {
+          label: 'ARPU',
+          type: 'Derived',
+          expression: 'SUM(revenue) / COUNT(DISTINCT user_id)',
+          unit: '元',
+        },
+      ],
+      thresholds: [
+        { condition: '> 100', color: '#4ade80', icon: 'up-arrow' },
+        { condition: '< 50', color: '#f87171', icon: 'warning' },
+      ],
+      filters: {
+        timeRange: 'LAST_30_DAYS',
+        dimensionFilters: [{ field: 'region', operator: 'AND', value: '华东' }],
+      },
+      autoRefresh: { enabled: true, interval: 60 },
+    }
   if (kind === 'flip') return { type: 'flip', title: en ? 'Total Subscribers' : '在网总用户数', unit: en ? 'k' : '万', valueKey: 'subs' }
   if (kind === 'gauge') return { type: 'gauge', title: en ? '5G Penetration' : '5G渗透率', valueKey: 'rate', max: 100 }
   if (kind === 'progress') return { type: 'progress', title: en ? 'Alarm Resolution' : '告警处理进度', valueKey: 'progress', max: 100 }
   if (kind === 'wave') return { type: 'wave', title: en ? 'Capacity Level' : '容量水位', valueKey: 'capacity', max: 100 }
-  if (kind === 'pie' || kind === 'donut' || kind === 'rose') return { type: kind, title: en ? 'Channel Mix' : '渠道分布', categoryKey: 'channel', valueKey: 'gmv' }
+  if (kind === 'pie' || kind === 'donut')
+    return {
+      chartType: 'Donut',
+      title: '用户来源结构',
+      dimension: 'channel_source',
+      metric: {
+        label: '用户数',
+        field: 'user_id',
+        aggregation: 'COUNT',
+        unit: '人',
+      },
+      settings: {
+        limit: 6,
+        sortBy: 'DESC',
+        innerRadius: '50%',
+      },
+    }
+  if (kind === 'rose') return { type: kind, title: en ? 'Channel Mix' : '渠道分布', categoryKey: 'channel', valueKey: 'gmv' }
   if (kind === 'line' || kind === 'line-area' || kind === 'line-curve')
-    return { type: kind, title: en ? 'GMV Trend' : 'GMV 趋势', unit: en ? 'k' : '万', xKey: 'date', yKey: 'gmv' }
-  if (kind === 'scatter' || kind === 'bubble') return { type: kind, title: en ? 'Scatter Plot' : '散点分布', xKey: 'x', yKey: 'y', sizeKey: 'size' }
-  if (kind === 'bar' || kind === 'bar-h' || kind === 'bar-stacked' || kind === 'bar-grouped' || kind === 'bar-gradient' || kind === 'waterfall')
+    return {
+      chartType: 'Line',
+      title: 'GMV趋势',
+      xAxis: {
+        field: 'order_date',
+        granularity: 'AUTO',
+        unitDisplay: 'TOOLTIP_ONLY',
+      },
+      yAxis: [
+        {
+          label: 'GMV',
+          type: 'Basic',
+          field: 'gmv_amount',
+          aggregation: 'SUM',
+          unit: '元',
+          unitDisplay: 'TOOLTIP_ONLY',
+        },
+      ],
+      settings: {
+        areaStyle: false,
+        stack: false,
+      },
+    }
+  if (kind === 'scatter') return { type: kind, title: en ? 'Scatter Plot' : '散点分布', xKey: 'x', yKey: 'y', sizeKey: 'size' }
+  if (kind === 'bar' || kind === 'bar-h' || kind === 'bar-stacked' || kind === 'bar-grouped' || kind === 'bar-gradient')
+    return {
+      chartType: 'Bar',
+      title: '各地区经营对比',
+      xAxis: {
+        field: 'region',
+        unit: '',
+      },
+      yAxis: [
+        {
+          label: '收入',
+          field: 'revenue',
+          aggregation: 'SUM',
+          unit: '元',
+        },
+        {
+          label: '成本',
+          field: 'cost',
+          aggregation: 'SUM',
+          unit: '元',
+        },
+      ],
+      display: {
+        layout: 'Vertical',
+        unitDisplay: 'TOOLTIP_ONLY',
+      },
+    }
+  if (kind === 'waterfall')
     return {
       type: kind,
       title: en ? 'Category Comparison' : '品类对比',
@@ -196,76 +290,308 @@ export function defaultConfig(kind: WidgetKind) {
       xKey: 'category',
       yKey: 'gmv',
     }
-  if (kind === 'radar') return { type: 'radar', title: en ? 'Radar' : '能力雷达', indicators: ['A', 'B', 'C', 'D', 'E'], valueKey: 'score' }
+  if (kind === 'radar')
+    return {
+      chartType: 'Radar',
+      title: '产品竞争力画像',
+      analysisMode: 'METRIC_AS_AXIS',
+      dimensions: ['product_name'],
+      metrics: [
+        { field: 'price_score', label: '价格力', aggregation: 'AVG' },
+        { field: 'quality_score', label: '质量分', aggregation: 'AVG' },
+        { field: 'service_score', label: '服务分', aggregation: 'AVG' },
+      ],
+      constraints: 'SAME_SCALE_REQUIRED',
+    }
   if (kind === 'heatmap') return { type: 'heatmap', title: en ? 'Heatmap' : '热力图', xKey: 'x', yKey: 'y', valueKey: 'v' }
-  if (kind === 'funnel') return { type: 'funnel', title: en ? 'Conversion Funnel' : '转化漏斗', stageKey: 'stage', valueKey: 'count' }
+  if (kind === 'bubble')
+    return {
+      chartType: 'Bubble',
+      title: '产品潜力散点分布',
+      xAxis: {
+        label: '平均单价',
+        field: 'price',
+        aggregation: 'AVG',
+        unit: '元',
+      },
+      yAxis: {
+        label: '总销量',
+        field: 'sales_volume',
+        aggregation: 'SUM',
+        unit: '件',
+      },
+      bubbleSize: {
+        label: '总销售额',
+        field: 'revenue',
+        aggregation: 'SUM',
+        unit: '万元',
+      },
+    }
+  if (kind === 'funnel')
+    return {
+      chartType: 'Funnel',
+      title: '购买全链路转化',
+      stageField: 'step_name',
+      metric: {
+        field: 'user_id',
+        aggregation: 'COUNT',
+        unit: '人',
+      },
+      conversionLogic: {
+        base: 'OVERALL',
+        showRate: true,
+        showLoss: true,
+      },
+      sortOrder: ['曝光', '点击', '加购', '下单', '支付'],
+    }
   if (kind === 'treemap') return { type: 'treemap', title: en ? 'Treemap' : '树图', labelKey: 'name', valueKey: 'value' }
-  if (kind === 'sankey') return { type: 'sankey', title: en ? 'Sankey' : '桑基图', sourceKey: 'source', targetKey: 'target', valueKey: 'value' }
+  if (kind === 'sankey')
+    return {
+      chartType: 'Sankey',
+      title: '页面流向分析',
+      source: 'prev_page_name',
+      target: 'curr_page_name',
+      weight: {
+        field: 'session_id',
+        aggregation: 'COUNT',
+        unit: '次',
+      },
+      settings: {
+        nodeAlignment: 'JUSTIFY',
+        unit: '次',
+      },
+    }
   return { type: 'graph', title: en ? 'Graph' : '关系图', sourceKey: 'source', targetKey: 'target', weightKey: 'weight' }
 }
 
 export function validateWidget(kind: WidgetKind, text: string): { ok: true; value: any } | { ok: false; error: WidgetConfigError } {
   try {
+    const guessLine = (needles: string[]) => {
+      const lines = String(text ?? '').split('\n')
+      for (let i = 0; i < lines.length; i++) {
+        const ln = lines[i] ?? ''
+        for (const n of needles) {
+          if (ln.includes(`"${n}"`) || ln.includes(n)) return i + 1
+        }
+      }
+      return 1
+    }
+    const issues: Array<{ message: string; line?: number }> = []
+    const pushIssue = (message: string, needles?: string[]) => {
+      const line = needles && needles.length ? guessLine(needles) : 1
+      if (issues.some((it) => it.message === message && it.line === line)) return
+      issues.push({ message, line })
+    }
+    const done = () =>
+      issues.length
+        ? ({
+            ok: false as const,
+            error: {
+              message: issues[0]?.message ?? 'Schema: 配置错误',
+              line: issues[0]?.line,
+              issues,
+            },
+          })
+        : null
+
     const obj = JSON.parse(text)
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, error: { message: 'Schema: 根节点必须是对象' } }
-    const t = String((obj as any).type ?? kind)
-    if (t !== kind) return { ok: false, error: { message: `Schema: type 必须为 ${kind}` } }
-    if (
-      kind === 'line' ||
-      kind === 'line-area' ||
-      kind === 'line-curve' ||
-      kind === 'bar' ||
-      kind === 'bar-h' ||
-      kind === 'bar-stacked' ||
-      kind === 'bar-grouped' ||
-      kind === 'bar-gradient' ||
-      kind === 'waterfall'
-    ) {
-      if (!String((obj as any).xKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 xKey' } }
-      if (!String((obj as any).yKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 yKey' } }
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+      pushIssue('Schema: 根节点必须是对象')
+      return done() as { ok: false; error: WidgetConfigError }
     }
-    if (kind === 'pie' || kind === 'donut' || kind === 'rose') {
-      if (!String((obj as any).categoryKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 categoryKey' } }
-      if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
+    const chartType = typeof (obj as any).chartType === 'string' ? String((obj as any).chartType) : ''
+    const looksLikeChartTypeConfig = (() => {
+      if (chartType) return true
+      if (obj && typeof obj === 'object') {
+        if ((obj as any).xAxis != null || (obj as any).yAxis != null) return true
+        if ((obj as any).metrics != null || (obj as any).metric != null) return true
+        if ((obj as any).dimension != null) return true
+        if ((obj as any).stageField != null) return true
+        if ((obj as any).source != null || (obj as any).target != null || (obj as any).weight != null) return true
+        if ((obj as any).bubbleSize != null) return true
+        if ((obj as any).analysisMode != null) return true
+      }
+      return false
+    })()
+
+    if (looksLikeChartTypeConfig) {
+      const expected =
+        kind === 'kpi'
+          ? 'MetricCard'
+          : kind === 'line' || kind === 'line-area' || kind === 'line-curve'
+            ? 'Line'
+            : kind === 'bar' || kind === 'bar-h' || kind === 'bar-stacked' || kind === 'bar-grouped' || kind === 'bar-gradient'
+              ? 'Bar'
+              : kind === 'pie' || kind === 'donut'
+                ? 'Donut'
+                : kind === 'radar'
+                  ? 'Radar'
+                  : kind === 'bubble'
+                    ? 'Bubble'
+                    : kind === 'funnel'
+                      ? 'Funnel'
+                      : kind === 'sankey'
+                        ? 'Sankey'
+                        : null
+
+      if (!expected) pushIssue(`Schema: ${kind} 不支持 chartType 模式`, ['chartType'])
+      if (!chartType) {
+        const hasEmptyKey = Object.prototype.hasOwnProperty.call(obj as any, '')
+        pushIssue(`Schema: 缺少 chartType（应为 ${expected ?? ''}）`, hasEmptyKey ? [''] : ['chartType', 'xAxis', 'metrics', 'dimension', 'stageField', 'source'])
+      } else if (expected && chartType !== expected) {
+        const hasEmptyKeyWithExpected = Object.prototype.hasOwnProperty.call(obj as any, '') && String((obj as any)[''] ?? '') === expected
+        pushIssue(`Schema: chartType 必须为 ${expected}`, hasEmptyKeyWithExpected ? [''] : ['chartType'])
+      }
+
+      if (!String((obj as any).title ?? '')) pushIssue('Schema: 缺少 title', ['title'])
+
+      if (kind === 'kpi') {
+        const metrics = (obj as any).metrics
+        if (!Array.isArray(metrics) || metrics.length < 1) pushIssue('Schema: metrics 至少 1 项', ['metrics'])
+        if (Array.isArray(metrics)) {
+          for (let i = 0; i < metrics.length; i++) {
+            const it = metrics[i]
+            if (!it || typeof it !== 'object') continue
+            if (!String((it as any).label ?? '')) pushIssue(`Schema: 缺少 metrics[${i}].label`, ['metrics', 'label'])
+            const mt = String((it as any).type ?? '')
+            if (!mt) pushIssue(`Schema: 缺少 metrics[${i}].type`, ['metrics', 'type'])
+            if (mt === 'Derived') {
+              if (!String((it as any).expression ?? '')) pushIssue(`Schema: 缺少 metrics[${i}].expression`, Object.prototype.hasOwnProperty.call(it, '') ? [''] : ['expression'])
+            }
+          }
+        }
+      }
+
+      if (kind === 'line' || kind === 'line-area' || kind === 'line-curve') {
+        if (!String((obj as any).xAxis?.field ?? '')) pushIssue('Schema: 缺少 xAxis.field', ['xAxis'])
+        const yAxis = (obj as any).yAxis
+        if (!Array.isArray(yAxis) || yAxis.length < 1) pushIssue('Schema: yAxis 至少 1 项', ['yAxis'])
+        if (Array.isArray(yAxis)) {
+          for (let i = 0; i < yAxis.length; i++) {
+            const it = yAxis[i]
+            if (!it || typeof it !== 'object') continue
+            if (!String((it as any).field ?? '')) pushIssue(`Schema: 缺少 yAxis[${i}].field`, Object.prototype.hasOwnProperty.call(it, '') ? [''] : ['field'])
+            if (!String((it as any).aggregation ?? '')) pushIssue(`Schema: 缺少 yAxis[${i}].aggregation`, ['aggregation'])
+          }
+        }
+      }
+
+      if (kind === 'bar' || kind === 'bar-h' || kind === 'bar-stacked' || kind === 'bar-grouped' || kind === 'bar-gradient') {
+        if (!String((obj as any).xAxis?.field ?? '')) pushIssue('Schema: 缺少 xAxis.field', ['xAxis'])
+        const yAxis = (obj as any).yAxis
+        if (!Array.isArray(yAxis) || yAxis.length < 1) pushIssue('Schema: yAxis 至少 1 项', ['yAxis'])
+        if (Array.isArray(yAxis)) {
+          for (let i = 0; i < yAxis.length; i++) {
+            const it = yAxis[i]
+            if (!it || typeof it !== 'object') continue
+            if (!String((it as any).field ?? '')) pushIssue(`Schema: 缺少 yAxis[${i}].field`, Object.prototype.hasOwnProperty.call(it, '') ? [''] : ['field'])
+            if (!String((it as any).aggregation ?? '')) pushIssue(`Schema: 缺少 yAxis[${i}].aggregation`, ['aggregation'])
+          }
+        }
+      }
+
+      if (kind === 'pie' || kind === 'donut') {
+        if (!String((obj as any).dimension ?? '')) pushIssue('Schema: 缺少 dimension', ['dimension'])
+        if (!String((obj as any).metric?.field ?? '')) pushIssue('Schema: 缺少 metric.field', ['metric'])
+        if (!String((obj as any).metric?.aggregation ?? '')) pushIssue('Schema: 缺少 metric.aggregation', ['metric', 'aggregation'])
+      }
+
+      if (kind === 'radar') {
+        const arr = (obj as any).metrics
+        if (!Array.isArray(arr) || arr.length < 3) pushIssue('Schema: metrics 至少 3 项', ['metrics'])
+        if (Array.isArray(arr)) {
+          for (let i = 0; i < arr.length; i++) {
+            const it = arr[i]
+            if (!it || typeof it !== 'object') continue
+            if (!String((it as any).field ?? '')) pushIssue(`Schema: 缺少 metrics[${i}].field`, Object.prototype.hasOwnProperty.call(it, '') ? [''] : ['field'])
+            if (!String((it as any).aggregation ?? '')) pushIssue(`Schema: 缺少 metrics[${i}].aggregation`, ['aggregation'])
+          }
+        }
+      }
+
+      if (kind === 'bubble') {
+        if (!String((obj as any).xAxis?.field ?? '')) pushIssue('Schema: 缺少 xAxis.field', ['xAxis'])
+        if (!String((obj as any).xAxis?.aggregation ?? '')) pushIssue('Schema: 缺少 xAxis.aggregation', ['xAxis', 'aggregation'])
+        if (!String((obj as any).yAxis?.field ?? '')) pushIssue('Schema: 缺少 yAxis.field', ['yAxis'])
+        if (!String((obj as any).yAxis?.aggregation ?? '')) pushIssue('Schema: 缺少 yAxis.aggregation', ['yAxis', 'aggregation'])
+        if (!String((obj as any).bubbleSize?.field ?? '')) pushIssue('Schema: 缺少 bubbleSize.field', ['bubbleSize'])
+        if (!String((obj as any).bubbleSize?.aggregation ?? '')) pushIssue('Schema: 缺少 bubbleSize.aggregation', ['bubbleSize', 'aggregation'])
+      }
+
+      if (kind === 'funnel') {
+        if (!String((obj as any).stageField ?? '')) pushIssue('Schema: 缺少 stageField', ['stageField'])
+        if (!String((obj as any).metric?.field ?? '')) pushIssue('Schema: 缺少 metric.field', ['metric'])
+        if (!String((obj as any).metric?.aggregation ?? '')) pushIssue('Schema: 缺少 metric.aggregation', ['metric', 'aggregation'])
+      }
+
+      if (kind === 'sankey') {
+        if (!String((obj as any).source ?? '')) pushIssue('Schema: 缺少 source', ['source'])
+        if (!String((obj as any).target ?? '')) pushIssue('Schema: 缺少 target', ['target'])
+        if (!String((obj as any).weight?.field ?? '')) pushIssue('Schema: 缺少 weight.field', ['weight'])
+        if (!String((obj as any).weight?.aggregation ?? '')) pushIssue('Schema: 缺少 weight.aggregation', ['weight', 'aggregation'])
+      }
+    } else {
+      const t = String((obj as any).type ?? kind)
+      if (t !== kind) pushIssue(`Schema: type 必须为 ${kind}`, ['type'])
+      if (
+        kind === 'line' ||
+        kind === 'line-area' ||
+        kind === 'line-curve' ||
+        kind === 'bar' ||
+        kind === 'bar-h' ||
+        kind === 'bar-stacked' ||
+        kind === 'bar-grouped' ||
+        kind === 'bar-gradient' ||
+        kind === 'waterfall'
+      ) {
+        if (!String((obj as any).xKey ?? '')) pushIssue('Schema: 缺少 xKey', ['xKey', 'xAxis'])
+        if (!String((obj as any).yKey ?? '')) pushIssue('Schema: 缺少 yKey', ['yKey', 'yAxis'])
+      }
+      if (kind === 'pie' || kind === 'donut' || kind === 'rose') {
+        if (!String((obj as any).categoryKey ?? '')) pushIssue('Schema: 缺少 categoryKey', ['categoryKey'])
+        if (!String((obj as any).valueKey ?? '')) pushIssue('Schema: 缺少 valueKey', ['valueKey'])
+      }
+      if (kind === 'kpi') {
+        if (!String((obj as any).title ?? '')) pushIssue('Schema: 缺少 title', ['title'])
+        if (!String((obj as any).valueKey ?? '')) pushIssue('Schema: 缺少 valueKey', ['valueKey'])
+      }
+      if (kind === 'flip' || kind === 'gauge' || kind === 'progress' || kind === 'wave') {
+        if (!String((obj as any).title ?? '')) pushIssue('Schema: 缺少 title', ['title'])
+        if (!String((obj as any).valueKey ?? '')) pushIssue('Schema: 缺少 valueKey', ['valueKey'])
+      }
+      if (kind === 'scatter' || kind === 'bubble') {
+        if (!String((obj as any).xKey ?? '')) pushIssue('Schema: 缺少 xKey', ['xKey'])
+        if (!String((obj as any).yKey ?? '')) pushIssue('Schema: 缺少 yKey', ['yKey'])
+      }
+      if (kind === 'radar') {
+        const arr = (obj as any).indicators
+        if (!Array.isArray(arr) || arr.length < 3) pushIssue('Schema: indicators 至少 3 项', ['indicators'])
+      }
+      if (kind === 'heatmap') {
+        if (!String((obj as any).xKey ?? '')) pushIssue('Schema: 缺少 xKey', ['xKey'])
+        if (!String((obj as any).yKey ?? '')) pushIssue('Schema: 缺少 yKey', ['yKey'])
+        if (!String((obj as any).valueKey ?? '')) pushIssue('Schema: 缺少 valueKey', ['valueKey'])
+      }
+      if (kind === 'funnel') {
+        if (!String((obj as any).stageKey ?? '')) pushIssue('Schema: 缺少 stageKey', ['stageKey'])
+        if (!String((obj as any).valueKey ?? '')) pushIssue('Schema: 缺少 valueKey', ['valueKey'])
+      }
+      if (kind === 'treemap') {
+        if (!String((obj as any).labelKey ?? '')) pushIssue('Schema: 缺少 labelKey', ['labelKey'])
+        if (!String((obj as any).valueKey ?? '')) pushIssue('Schema: 缺少 valueKey', ['valueKey'])
+      }
+      if (kind === 'sankey') {
+        if (!String((obj as any).sourceKey ?? '')) pushIssue('Schema: 缺少 sourceKey', ['sourceKey'])
+        if (!String((obj as any).targetKey ?? '')) pushIssue('Schema: 缺少 targetKey', ['targetKey'])
+        if (!String((obj as any).valueKey ?? '')) pushIssue('Schema: 缺少 valueKey', ['valueKey'])
+      }
+      if (kind === 'graph') {
+        if (!String((obj as any).sourceKey ?? '')) pushIssue('Schema: 缺少 sourceKey', ['sourceKey'])
+        if (!String((obj as any).targetKey ?? '')) pushIssue('Schema: 缺少 targetKey', ['targetKey'])
+      }
     }
-    if (kind === 'kpi') {
-      if (!String((obj as any).title ?? '')) return { ok: false, error: { message: 'Schema: 缺少 title' } }
-      if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
-    }
-    if (kind === 'flip' || kind === 'gauge' || kind === 'progress' || kind === 'wave') {
-      if (!String((obj as any).title ?? '')) return { ok: false, error: { message: 'Schema: 缺少 title' } }
-      if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
-    }
-    if (kind === 'scatter' || kind === 'bubble') {
-      if (!String((obj as any).xKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 xKey' } }
-      if (!String((obj as any).yKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 yKey' } }
-    }
-    if (kind === 'radar') {
-      const arr = (obj as any).indicators
-      if (!Array.isArray(arr) || arr.length < 3) return { ok: false, error: { message: 'Schema: indicators 至少 3 项' } }
-    }
-    if (kind === 'heatmap') {
-      if (!String((obj as any).xKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 xKey' } }
-      if (!String((obj as any).yKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 yKey' } }
-      if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
-    }
-    if (kind === 'funnel') {
-      if (!String((obj as any).stageKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 stageKey' } }
-      if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
-    }
-    if (kind === 'treemap') {
-      if (!String((obj as any).labelKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 labelKey' } }
-      if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
-    }
-    if (kind === 'sankey') {
-      if (!String((obj as any).sourceKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 sourceKey' } }
-      if (!String((obj as any).targetKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 targetKey' } }
-      if (!String((obj as any).valueKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 valueKey' } }
-    }
-    if (kind === 'graph') {
-      if (!String((obj as any).sourceKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 sourceKey' } }
-      if (!String((obj as any).targetKey ?? '')) return { ok: false, error: { message: 'Schema: 缺少 targetKey' } }
-    }
+    const failed = done()
+    if (failed) return failed
     return { ok: true, value: obj }
   } catch (e) {
     return { ok: false, error: parseErrorLine(text, e) }

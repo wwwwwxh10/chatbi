@@ -42,7 +42,7 @@ import { broadcastGlobalSelection, GLOBAL_SELECTION_EVENT } from '../utils/globa
 import { buildMockResult } from './chat/chatUtils'
 import type { MessageResult } from './chat/chatUtils'
 import { ChatRichText } from './chat/ChatRichText'
-import { CHART_PALETTES, KIND_NAME, THEME_ACCENT } from './studioModel'
+import { CHART_PALETTES, KIND_NAME, THEME_ACCENT, defaultConfig } from './studioModel'
 import type { StudioAppearance, StudioLayout, WidgetKind } from './studioModel'
 import { enhanceDashboardChartOption } from './dashboardChartInteractions'
 import { useDashboardsStore } from '../store/dashboardsStore'
@@ -481,6 +481,55 @@ type StudioDebugPayload = {
   layout?: StudioLayout
   appearance?: StudioAppearance
   slots?: Array<{ kind: WidgetKind | null; configText: string }>
+}
+
+function templateStudioPayload(templateId: string): StudioDebugPayload | null {
+  const id = String(templateId ?? '').trim()
+  if (!id) return null
+  const meta: Record<
+    string,
+    { title: string; description: string; appearance: StudioAppearance; layout: StudioLayout; kinds: WidgetKind[] }
+  > = {
+    'ops-core': {
+      title: '核心运营指标',
+      description: '覆盖关键 KPI、趋势与分布，适用于日常运营监控与异常定位。',
+      appearance: { language: 'zh-CN', timeZone: 'Asia/Shanghai', theme: 'cyber', chartPalette: 'deepsea' },
+      layout: { mode: 'template', template: 'main-sub' },
+      kinds: ['kpi', 'kpi', 'flip', 'progress', 'line', 'radar', 'bar', 'bubble'],
+    },
+    'channel-growth': {
+      title: '渠道增长分析',
+      description: '拆解渠道结构变化，观察投放、自然流量与活动带来的增量。',
+      appearance: { language: 'zh-CN', timeZone: 'Asia/Shanghai', theme: 'cyber', chartPalette: 'deepsea' },
+      layout: { mode: 'template', template: 'main-sub' },
+      kinds: ['kpi', 'kpi', 'flip', 'progress', 'line', 'radar', 'bar', 'bubble'],
+    },
+    retention: {
+      title: '留存与转化',
+      description: '关注漏斗与留存路径，定位转化瓶颈并输出优化建议。',
+      appearance: { language: 'zh-CN', timeZone: 'Asia/Shanghai', theme: 'cyber', chartPalette: 'deepsea' },
+      layout: { mode: 'template', template: 'main-sub' },
+      kinds: ['kpi', 'kpi', 'flip', 'progress', 'line', 'radar', 'bar', 'bubble'],
+    },
+    'product-insight': {
+      title: '产品洞察',
+      description: '按功能与人群切片，观察功能使用、偏好与关键行为变化。',
+      appearance: { language: 'zh-CN', timeZone: 'Asia/Shanghai', theme: 'cyber', chartPalette: 'deepsea' },
+      layout: { mode: 'template', template: 'main-sub' },
+      kinds: ['kpi', 'kpi', 'flip', 'progress', 'line', 'radar', 'bar', 'bubble'],
+    },
+  }
+
+  const picked = meta[id]
+  if (!picked) return null
+  return {
+    title: picked.title,
+    description: picked.description,
+    tables: ['orders', 'users', 'events', 'products', 'sessions'],
+    layout: picked.layout,
+    appearance: picked.appearance,
+    slots: picked.kinds.map((kind) => ({ kind, configText: JSON.stringify(defaultConfig(kind), null, 2) })),
+  }
 }
 
 type StudioDatumSelection = {
@@ -1199,6 +1248,12 @@ export default function DashboardChatWorkspacePage() {
   useEffect(() => {
     if (!debugStudio) return
     if (typeof window === 'undefined') return
+    const qs = new URLSearchParams(location.search)
+    const tpl = String(qs.get('template') ?? '').trim()
+    if (tpl) {
+      setStudioPayload(templateStudioPayload(tpl))
+      return
+    }
     const read = (raw?: string | null) => {
       try {
         const text = raw != null ? raw : localStorage.getItem('studio:debug-dashboard-v1')
@@ -1230,7 +1285,7 @@ export default function DashboardChatWorkspacePage() {
       } catch {
       }
     }
-  }, [debugStudio])
+  }, [debugStudio, location.search])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

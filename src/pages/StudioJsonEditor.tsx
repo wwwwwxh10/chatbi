@@ -1,7 +1,7 @@
 import { Card, Typography, theme } from 'antd'
 import { useMemo, useRef } from 'react'
 import { WarningFilled } from '@ant-design/icons'
-import { highlightJson, KIND_NAME } from './studioModel'
+import { KIND_NAME, validateWidget } from './studioModel'
 import type { WidgetKind, WidgetSlot } from './studioModel'
 
 export function StudioJsonEditor({
@@ -23,22 +23,61 @@ export function StudioJsonEditor({
 }) {
   const { token } = theme.useToken()
 
+  const effectiveError = useMemo(() => {
+    if (!slot.kind) return null
+    if (error) return error
+    const v = validateWidget(slot.kind, text)
+    return 'error' in v ? v.error : null
+  }, [error, slot.kind, text])
+
   const linesArr = useMemo(() => text.split('\n'), [text])
   const lines = Math.max(1, linesArr.length)
   const errLines = useMemo(() => {
-    const xs = (error?.issues ?? []).map((x) => x.line).filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
-    if (typeof error?.line === 'number' && Number.isFinite(error.line)) xs.push(error.line)
+    const xs = (effectiveError?.issues ?? []).map((x) => x.line).filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
+    if (typeof effectiveError?.line === 'number' && Number.isFinite(effectiveError.line)) xs.push(effectiveError.line)
     const set = new Set<number>()
     for (const n of xs) {
       const clamped = Math.max(1, Math.min(lines, n))
       set.add(clamped)
     }
     return set
-  }, [error, lines])
+  }, [effectiveError, lines])
   const highlightedLines = useMemo(() => {
-    const raw = highlightJson(text)
-    return raw.split('\n')
-  }, [text])
+    const tokenRe = /"(?:\\.|[^"\\])*"|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g
+    const renderLine = (line: string) => {
+      const out: any[] = []
+      let last = 0
+      tokenRe.lastIndex = 0
+      for (;;) {
+        const m = tokenRe.exec(line)
+        if (!m) break
+        const start = m.index
+        const end = start + m[0].length
+        if (start > last) out.push({ t: line.slice(last, start), c: null })
+        const raw = m[0]
+        let color: string | null = null
+        if (raw[0] === '"') {
+          const rest = line.slice(end)
+          const isKey = /^\s*:/.test(rest)
+          color = isKey ? '#93c5fd' : '#fca5a5'
+        } else if (raw === 'true' || raw === 'false' || raw === 'null') color = '#86efac'
+        else color = '#fcd34d'
+        out.push({ t: raw, c: color })
+        last = end
+      }
+      if (last < line.length) out.push({ t: line.slice(last), c: null })
+      return out.map((it, idx) =>
+        it.c ? (
+          <span key={idx} style={{ color: it.c }}>
+            {it.t}
+          </span>
+        ) : (
+          <span key={idx}>{it.t}</span>
+        ),
+      )
+    }
+    return linesArr.map((ln) => renderLine(ln))
+  }, [linesArr])
 
   const preRef = useRef<HTMLPreElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -155,9 +194,9 @@ export function StudioJsonEditor({
                   overflow: 'auto',
                 }}
               >
-                {highlightedLines.map((ln, i) => {
+                {highlightedLines.map((nodes, i) => {
                   const n = i + 1
-                    const isErr = errLines.has(n)
+                  const isErr = errLines.has(n)
                   return (
                     <div
                       key={i}
@@ -168,8 +207,9 @@ export function StudioJsonEditor({
                         marginLeft: -12,
                         paddingRight: 12,
                       }}
-                      dangerouslySetInnerHTML={{ __html: ln || ' ' }}
-                    />
+                    >
+                      {nodes.length ? nodes : ' '}
+                    </div>
                   )
                 })}
               </pre>
@@ -205,7 +245,7 @@ export function StudioJsonEditor({
         </div>
       )}
 
-      {slot.kind && error ? (
+      {slot.kind && effectiveError ? (
         <div
           style={{
             marginTop: 0,
@@ -216,14 +256,18 @@ export function StudioJsonEditor({
           }}
         >
           <div style={{ color: 'rgba(254, 226, 226, 0.95)', fontSize: 12, lineHeight: 1.35 }}>
-            <div style={{ fontWeight: 800, marginBottom: 4 }}>语法解析错误</div>
+            <div style={{ fontWeight: 800, marginBottom: 4 }}>
+              {String(effectiveError.message ?? '').startsWith('Schema:') ? '配置校验错误' : '语法解析错误'}
+            </div>
             <div style={{ display: 'grid', gap: 4 }}>
-              {(error.issues && error.issues.length ? error.issues : [{ message: error.message, line: error.line }]).map((it, idx) => (
+              {(effectiveError.issues && effectiveError.issues.length ? effectiveError.issues : [{ message: effectiveError.message, line: effectiveError.line }]).map(
+                (it, idx) => (
                 <div key={idx}>
                   {it.line ? `第 ${it.line} 行：` : ''}
                   {it.message}
                 </div>
-              ))}
+              ),
+              )}
             </div>
           </div>
         </div>

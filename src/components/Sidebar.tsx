@@ -15,7 +15,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../store/appStore'
 import { useSystemStore } from '../store/systemStore'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AppLogoMark } from './logo/AppLogoMark'
 import { AppLogoWordmark } from './logo/AppLogoWordmark'
 import { KbRegexIcon } from './icons/KbRegexIcon'
@@ -71,24 +71,25 @@ export function Sidebar({
     return ''
   })()
 
-  const forcedOpenKey = useMemo(() => {
-    if (location.pathname.startsWith('/knowledge-base')) return 'knowledge'
-    return ''
-  }, [location.pathname])
-
-  const [openKeys, setOpenKeys] = useState<string[]>(forcedOpenKey ? [forcedOpenKey] : ['knowledge'])
+  const [openKeys, setOpenKeys] = useState<string[]>(['knowledge'])
+  const prevCollapsedRef = useRef(collapsed)
 
   useEffect(() => {
     if (collapsed) {
       setOpenKeys([])
+      prevCollapsedRef.current = collapsed
       return
     }
-    if (!forcedOpenKey) {
+    if (prevCollapsedRef.current && openKeys.length === 0) {
+      setOpenKeys(['knowledge'])
+      prevCollapsedRef.current = collapsed
+      return
+    }
+    if (location.pathname.startsWith('/knowledge-base')) {
       setOpenKeys((prev) => (prev.length ? prev : ['knowledge']))
-      return
     }
-    setOpenKeys((prev) => (prev.includes(forcedOpenKey) ? prev : [forcedOpenKey]))
-  }, [collapsed, forcedOpenKey])
+    prevCollapsedRef.current = collapsed
+  }, [collapsed, location.pathname, openKeys.length])
 
   const items: MenuProps['items'] = [
     {
@@ -204,8 +205,7 @@ export function Sidebar({
           triggerSubMenuAction={collapsed ? 'hover' : 'hover'}
           onOpenChange={(keys) => {
             if (collapsed) return
-            const next = Array.from(new Set([...(keys as string[]), 'knowledge']))
-            setOpenKeys(next)
+            setOpenKeys(keys as string[])
           }}
           style={{ border: 0, background: 'transparent' }}
           theme={themeMode === 'dark' ? 'dark' : 'light'}
