@@ -32,7 +32,6 @@ function withAlpha(hex: string, alpha: number) {
 
 function baseOption(themeColors: string[], { showLegend, unit, tooltipTrigger }: { showLegend?: boolean; unit?: string; tooltipTrigger?: 'axis' | 'item' } = {}) {
   void unit
-  const primary = themeColors[0] ?? '#6AA6FF'
   return {
     backgroundColor: 'transparent',
     color: themeColors,
@@ -41,15 +40,19 @@ function baseOption(themeColors: string[], { showLegend, unit, tooltipTrigger }:
     textStyle: { color: UI_TEXT, fontFamily: 'PingFang SC' },
     tooltip: {
       trigger: tooltipTrigger || 'axis',
-      backgroundColor: 'rgba(8, 12, 22, 0.92)',
-      borderColor: withAlpha(primary, 0.5),
-      borderWidth: 1,
-      padding: [12, 16],
-      extraCssText: 'backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px;',
-      textStyle: { color: UI_TEXT, fontSize: 13 },
+      triggerOn: 'mousemove',
+      enterable: true,
+      confine: true,
+      backgroundColor: 'rgba(0, 0, 0, 0.82)',
+      borderColor: 'transparent',
+      borderWidth: 0,
+      padding: [10, 12],
+      extraCssText:
+        'border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.38);backdrop-filter:blur(10px);border:0 !important;outline:0 !important;',
+      textStyle: { color: 'rgba(233,236,242,0.94)', fontWeight: 600, fontSize: 13 },
       axisPointer: {
         type: 'shadow',
-        shadowStyle: { color: withAlpha(primary, 0.14) },
+        shadowStyle: { color: withAlpha(themeColors[0] ?? '#6AA6FF', 0.14) },
       },
     },
     legend: {
@@ -511,13 +514,8 @@ export function buildPieOption(title: string, themeColors: string[], unit = ''):
     xAxis: undefined,
     yAxis: undefined,
     tooltip: {
+      ...(common as any).tooltip,
       trigger: 'item',
-      backgroundColor: 'rgba(8, 12, 22, 0.92)',
-      borderColor: withAlpha(themeColors[0], 0.5),
-      borderWidth: 1,
-      padding: [12, 16],
-      extraCssText: 'backdrop-filter: blur(12px);',
-      textStyle: { color: UI_TEXT, fontSize: 13 },
       formatter: (p: any) =>
         isEn()
           ? `${p.name}<br/>Value: ${p.value}${unit}<br/>Share: ${p.percent}%`
@@ -575,13 +573,8 @@ export function buildDonutOption(title: string, themeColors: string[]): EChartsO
     xAxis: undefined,
     yAxis: undefined,
     tooltip: {
+      ...(common as any).tooltip,
       trigger: 'item',
-      backgroundColor: 'rgba(8, 12, 22, 0.92)',
-      borderColor: withAlpha(themeColors[0], 0.5),
-      borderWidth: 1,
-      padding: [12, 16],
-      extraCssText: 'backdrop-filter: blur(12px);',
-      textStyle: { color: UI_TEXT, fontSize: 13 },
       formatter: (p: any) => (isEn() ? `${p.name}<br/>Rate: ${p.value}%` : `${p.name}<br/>渗透率：${p.value}%`),
     },
     legend: {
@@ -633,13 +626,8 @@ export function buildRoseOption(title: string, themeColors: string[]): EChartsOp
     xAxis: undefined,
     yAxis: undefined,
     tooltip: {
+      ...(common as any).tooltip,
       trigger: 'item',
-      backgroundColor: 'rgba(8, 12, 22, 0.92)',
-      borderColor: withAlpha(themeColors[0], 0.5),
-      borderWidth: 1,
-      padding: [12, 16],
-      extraCssText: 'backdrop-filter: blur(12px);',
-      textStyle: { color: UI_TEXT, fontSize: 13 },
       formatter: (p: any) => (isEn() ? `${p.name}<br/>Share: ${p.percent}%` : `${p.name}<br/>占比：${p.percent}%`),
     },
     legend: {
@@ -681,12 +669,16 @@ export function buildRadarOption(title: string, themeColors: string[]): EChartsO
     color: themeColors,
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(8, 12, 22, 0.9)',
-      borderColor: withAlpha(themeColors[0], 0.4),
-      borderWidth: 1,
-      padding: [12, 16],
-      extraCssText: 'backdrop-filter: blur(10px);',
-      textStyle: { color: UI_TEXT, fontSize: 13 },
+      triggerOn: 'mousemove',
+      enterable: true,
+      confine: true,
+      backgroundColor: 'rgba(0, 0, 0, 0.82)',
+      borderColor: 'transparent',
+      borderWidth: 0,
+      padding: [10, 12],
+      extraCssText:
+        'border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.38);backdrop-filter:blur(10px);border:0 !important;outline:0 !important;',
+      textStyle: { color: 'rgba(233,236,242,0.94)', fontWeight: 600, fontSize: 13 },
     },
     legend: {
       show: true,

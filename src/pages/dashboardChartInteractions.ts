@@ -113,9 +113,11 @@ export function enhanceDashboardChartOption(
           enterable: true,
           confine: true,
           backgroundColor: 'rgba(0, 0, 0, 0.82)',
+          borderColor: 'transparent',
           borderWidth: 0,
           padding: [10, 12],
-          extraCssText: 'border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.38);backdrop-filter:blur(10px);',
+          extraCssText:
+            'border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.38);backdrop-filter:blur(10px);border:0 !important;outline:0 !important;',
           textStyle: { color: 'rgba(233,236,242,0.94)', fontWeight: 600 },
         }
       : null),

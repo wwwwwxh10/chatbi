@@ -558,7 +558,7 @@ function StudioDebugDashboardCanvas({
   selectedCardIdx: number | null
   selectedDatum: StudioDatumSelection | null
   onCardSelect: (slotIdx: number, context: string) => void
-  onDatumSelect: (next: StudioDatumSelection | null, context: string) => void
+  onDatumSelect: (next: StudioDatumSelection | null, context: string, sourceSlotIdx: number) => void
   selectionScope: string
 }) {
   const { token } = theme.useToken()
@@ -936,7 +936,7 @@ function StudioDebugDashboardCanvas({
               const detail = categoryText && detailCore ? `${categoryText}｜${detailCore}` : detailCore
               const ctx = detail ? `${cardContext}｜${detail}` : cardContext
               if (!next) {
-                onDatumSelect(null, ctx)
+                onDatumSelect(null, ctx, idx)
                 return
               }
               const ox = typeof click.offsetX === 'number' ? click.offsetX : 0
@@ -956,6 +956,7 @@ function StudioDebugDashboardCanvas({
                   color: click.color,
                 },
                 ctx,
+                idx,
               )
             }}
           />
@@ -1418,6 +1419,7 @@ export default function DashboardChatWorkspacePage() {
   const pendingDoneRef = useRef<MessageResult | null>(null)
   const finishTimerRef = useRef<number | null>(null)
   const pendingMessagesRef = useRef<ChatMessage[] | null>(null)
+  const chartOptionCacheRef = useRef(new Map<string, any>())
 
   const [panelWidth, setPanelWidth] = useState(420)
   const layoutPadding = 16
@@ -2017,10 +2019,9 @@ export default function DashboardChatWorkspacePage() {
               broadcastGlobalSelection({ uid: `card_${slotIdx}`, scope: selectionScopeRef.current, kind: 'card', next: null })
               runPresetAnalysis(`已选中：${context}`)
             }}
-            onDatumSelect={(next, context) => {
+            onDatumSelect={(next, context, sourceSlotIdx) => {
               if (!next) {
-                setStudioSelectedDatum(null)
-                setStudioSelectedCardIdx(null)
+                setStudioSelectedDatum((prev) => (prev && prev.slotIdx === sourceSlotIdx ? null : prev))
                 return
               }
               setStudioSelectedCardIdx(null)
@@ -2309,6 +2310,28 @@ export default function DashboardChatWorkspacePage() {
                               }
                             }
 
+                            const toRadarTooltip = () => {
+                              return (p: any) => {
+                                const name = p?.name ?? p?.seriesName ?? ''
+                                const radar = (opt as any)?.radar
+                                const radarObj = Array.isArray(radar) ? radar[0] : radar
+                                const indicators = Array.isArray(radarObj?.indicator) ? radarObj.indicator : []
+                                const rawVal = Array.isArray(p?.value) ? p.value : Array.isArray(p?.data?.value) ? p.data.value : null
+                                const arr = Array.isArray(rawVal) ? rawVal : []
+                                const lines = indicators.length
+                                  ? indicators
+                                      .map((it: any, i: number) => {
+                                        const label = String(it?.name ?? '')
+                                        const n = Number(arr[i])
+                                        const text = Number.isFinite(n) ? `${n}` : `${arr[i] ?? '-'}`
+                                        return label ? `${label}：${text}` : text
+                                      })
+                                      .join('<br/>')
+                                  : arr.map((x: any) => `${x ?? '-'}`).join('<br/>')
+                                return name ? `${name}<br/>${lines}` : lines
+                              }
+                            }
+
                             if (t === 'bubble') {
                               const base = buildBubbleOption('', themeColors, unit)
                               const srcSeries = (opt as any)?.series
@@ -2368,10 +2391,24 @@ export default function DashboardChatWorkspacePage() {
                               const srcSeries = (opt as any)?.series
                               const srcList = Array.isArray(srcSeries) ? srcSeries : srcSeries ? [srcSeries] : []
                               const data = srcList[0]?.data
-                              return {
+                              const next: any = {
                                 ...(base as any),
                                 series: [{ ...(base as any).series?.[0], data: Array.isArray(data) ? data : (base as any).series?.[0]?.data }],
-                              } as any
+                              }
+                              next.tooltip = {
+                                ...((base as any).tooltip ?? {}),
+                                triggerOn: 'mousemove',
+                                enterable: true,
+                                confine: true,
+                                backgroundColor: 'rgba(0, 0, 0, 0.82)',
+                                borderColor: 'transparent',
+                                borderWidth: 0,
+                                padding: [10, 12],
+                                extraCssText:
+                                  'border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.38);backdrop-filter:blur(10px);border:0 !important;outline:0 !important;',
+                                textStyle: { color: 'rgba(233,236,242,0.94)', fontWeight: 600 },
+                              }
+                              return next as any
                             }
 
                             const tooltip = (() => {
@@ -2379,8 +2416,22 @@ export default function DashboardChatWorkspacePage() {
                               const base = typeof src === 'object' && src ? { ...src } : {}
                               const trigger = base.trigger === 'item' ? 'item' : base.trigger === 'axis' ? 'axis' : undefined
                               const nextTrigger = trigger ?? (t === 'line' || t === 'bar' ? 'axis' : 'item')
-                              const formatter = nextTrigger === 'axis' ? toAxisTooltip() : toItemTooltip()
-                              return { ...base, trigger: nextTrigger, formatter }
+                              const formatter = t === 'radar' ? toRadarTooltip() : nextTrigger === 'axis' ? toAxisTooltip() : toItemTooltip()
+                              return {
+                                ...base,
+                                triggerOn: 'mousemove',
+                                enterable: true,
+                                confine: true,
+                                backgroundColor: 'rgba(0, 0, 0, 0.82)',
+                                borderColor: 'transparent',
+                                borderWidth: 0,
+                                padding: [10, 12],
+                                extraCssText:
+                                  'border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.38);backdrop-filter:blur(10px);border:0 !important;outline:0 !important;',
+                                textStyle: { color: 'rgba(233,236,242,0.94)', fontWeight: 600 },
+                                trigger: nextTrigger,
+                                formatter,
+                              }
                             })()
 
                             const next: any = { ...(opt as any), backgroundColor: 'transparent', tooltip }
@@ -2429,7 +2480,10 @@ export default function DashboardChatWorkspacePage() {
                             pickOption(effectiveChartType) ||
                             buildDerivedChartOption(effectiveChartType, activeResult) ||
                             activeResult.chart
-                          const chartOption = activeOption ? (normalizeChartOption(effectiveChartType, activeOption) as any) : ({} as any)
+                          const optionCacheKey = `${m.id}::${effectiveChartType}::${view}`
+                          const cachedOption = chartOptionCacheRef.current.get(optionCacheKey)
+                          const chartOption = cachedOption ?? (activeOption ? (normalizeChartOption(effectiveChartType, activeOption) as any) : ({} as any))
+                          if (!cachedOption) chartOptionCacheRef.current.set(optionCacheKey, chartOption)
                           const chartTypeMenuItems = (Object.keys(CHART_TYPE_LABELS) as ChartTypeKey[]).map((k) => ({
                             key: k,
                             disabled: !supportedChartTypes.has(k),
@@ -3118,8 +3172,8 @@ export default function DashboardChatWorkspacePage() {
                 setActiveSessionId(s.id)
               }}
             >
-              <Space size={8} align="center" style={{ minWidth: 0, flex: 1 }}>
-                <MessageOutlined style={{ color: token.colorTextSecondary }} />
+              <div className="sessionRowMain">
+                <MessageOutlined style={{ color: token.colorTextSecondary, flex: '0 0 auto' }} />
                 {sessionEditId === s.id ? (
                   <Input
                     size="small"
@@ -3132,12 +3186,12 @@ export default function DashboardChatWorkspacePage() {
                       setSessionEditId('')
                       setSessionEditName('')
                     }}
-                    style={{ maxWidth: 200 }}
+                    style={{ flex: 1, minWidth: 0 }}
                   />
                 ) : (
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                  <span className="sessionRowName">{s.name}</span>
                 )}
-              </Space>
+              </div>
 
               {sessionEditId === s.id ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={(e) => e.stopPropagation()}>

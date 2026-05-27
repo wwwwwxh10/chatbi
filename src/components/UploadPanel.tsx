@@ -61,24 +61,78 @@ export function UploadPanel({
 
   const fileIcon = (name: string) => {
     const ext = fileExt(name)
-    const key = ext || 'file'
-    const src = `/vendor/wps-icons/${key}@2x.png`
-    const fallbackSvg =
-      'data:image/svg+xml,' +
-      encodeURIComponent(
-        `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.2 2.5h5.2l2.4 2.4v8.6c0 .6-.5 1.1-1.1 1.1H4.2c-.6 0-1.1-.5-1.1-1.1V3.6c0-.6.5-1.1 1.1-1.1Z" stroke="${token.colorTextTertiary}" stroke-width="1.2"/><path d="M9.4 2.5v2.4h2.4" stroke="${token.colorTextTertiary}" stroke-width="1.2"/></svg>`,
-      )
+    const spec = (() => {
+      const excel = new Set(['xls', 'xlsx', 'csv'])
+      const word = new Set(['doc', 'docx'])
+      const ppt = new Set(['ppt', 'pptx'])
+      const pdf = new Set(['pdf'])
+      const image = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
+      const zip = new Set(['zip', 'rar', '7z'])
+      if (excel.has(ext)) return { kind: 'excel' as const, ribbon: '#107C41', label: 'X' }
+      if (word.has(ext)) return { kind: 'word' as const, ribbon: '#185ABD', label: 'W' }
+      if (ppt.has(ext)) return { kind: 'ppt' as const, ribbon: '#D24726', label: 'P' }
+      if (pdf.has(ext)) return { kind: 'pdf' as const, ribbon: '#B30B00', label: 'P' }
+      if (image.has(ext)) return { kind: 'image' as const, ribbon: '#0078D4', label: 'I' }
+      if (zip.has(ext)) return { kind: 'zip' as const, ribbon: '#6B7280', label: 'Z' }
+      if (ext) return { kind: 'other' as const, ribbon: '#64748B', label: ext.toUpperCase().slice(0, 1) }
+      return { kind: 'other' as const, ribbon: '#64748B', label: 'F' }
+    })()
+
+    const label = spec.label
+    const ribbon = spec.ribbon
+
     return (
-      <img
-        src={src}
-        width={16}
-        height={16}
-        alt={key}
-        style={{ display: 'block', borderRadius: 4, opacity: 0.92 }}
-        onError={(e) => {
-          e.currentTarget.src = fallbackSvg
-        }}
-      />
+      <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <defs>
+          <linearGradient id="uploadFileRibbon" x1="2.2" y1="1.2" x2="6.4" y2="14.8" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor={ribbon} stopOpacity="1" />
+            <stop offset="1" stopColor={ribbon} stopOpacity="0.86" />
+          </linearGradient>
+        </defs>
+
+        <rect x="2.2" y="1.2" width="11.6" height="13.6" rx="2" fill="rgba(255,255,255,0.96)" />
+        <rect x="2.2" y="1.2" width="11.6" height="13.6" rx="2" fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="0.9" />
+        <path d="M10.2 1.2v2.55c0 0.72 0.58 1.3 1.3 1.3h2.3" fill="rgba(0,0,0,0.03)" />
+        <path d="M10.2 1.2v2.55c0 0.72 0.58 1.3 1.3 1.3h2.3" fill="none" stroke="rgba(0,0,0,0.10)" strokeWidth="0.9" />
+
+        <rect x="2.2" y="1.2" width="4.2" height="13.6" rx="2" fill="url(#uploadFileRibbon)" />
+
+        {spec.kind === 'pdf' ? (
+          <>
+            <rect x="7.4" y="9.2" width="5.6" height="2.6" rx="0.8" fill={ribbon} opacity="0.12" />
+            <text
+              x="10.2"
+              y="11.1"
+              textAnchor="middle"
+              fontSize="5.1"
+              fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', Arial"
+              fontWeight="900"
+              fill={ribbon}
+              opacity="0.92"
+            >
+              PDF
+            </text>
+          </>
+        ) : spec.kind === 'image' ? (
+          <>
+            <rect x="7.45" y="5.75" width="5.3" height="4.8" rx="0.9" fill={ribbon} opacity="0.06" />
+            <path d="M8.15 10.0l1.15-1.25 0.85 0.9 0.8-1.0 0.95 1.35" fill="none" stroke={ribbon} strokeOpacity="0.42" strokeWidth="0.9" strokeLinejoin="round" />
+            <circle cx="8.85" cy="6.9" r="0.5" fill={ribbon} opacity="0.30" />
+          </>
+        ) : null}
+
+        <text
+          x="4.3"
+          y="10.25"
+          textAnchor="middle"
+          fontSize="8.2"
+          fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', Arial"
+          fontWeight="900"
+          fill="rgba(255,255,255,0.96)"
+        >
+          {label}
+        </text>
+      </svg>
     )
   }
 
@@ -148,7 +202,7 @@ export function UploadPanel({
           return true
         }}
         showUploadList={false}
-        progress={{ strokeColor: token.colorPrimary, size: 'small' }}
+        progress={{ strokeColor: token.colorSuccess, size: 'small' }}
       >
         <div
           style={{
@@ -248,7 +302,9 @@ export function UploadPanel({
                 ;(e.currentTarget as HTMLDivElement).style.background = token.colorBgContainer
               }}
             >
-              <div style={{ flex: 'none', width: 16, height: 16, display: 'grid', placeItems: 'center', marginRight: 8 }}>{fileIcon(String(f.name ?? ''))}</div>
+              <div style={{ flex: 'none', width: 16, height: 16, display: 'grid', placeItems: 'center', marginRight: 8 }}>
+                {fileIcon(String(f.name ?? ''))}
+              </div>
               <div
                 style={{
                   minWidth: 0,
@@ -272,7 +328,7 @@ export function UploadPanel({
               </div>
 
               {f.status === 'done' ? (
-                <span aria-label="成功" style={{ flex: 'none', display: 'grid', placeItems: 'center', width: 14, height: 14, color: token.colorTextTertiary, marginRight: 10 }}>
+                <span aria-label="成功" style={{ flex: 'none', display: 'grid', placeItems: 'center', width: 14, height: 14, color: token.colorSuccess, marginRight: 10 }}>
                   <CheckCircleOutlined style={{ fontSize: 12 }} />
                 </span>
               ) : null}
@@ -289,7 +345,7 @@ export function UploadPanel({
                       width: `${percentOf(f)}%`,
                       height: '100%',
                       borderRadius: 2,
-                      background: token.colorTextTertiary,
+                      background: token.colorSuccess,
                       transition: 'width 120ms linear',
                     }}
                   />

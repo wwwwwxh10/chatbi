@@ -3235,21 +3235,12 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
   const [publishBlocked, setPublishBlocked] = useState<{ title: string; detail: string } | null>(null)
   const [deleteDashboardTarget, setDeleteDashboardTarget] = useState<{ id: string; title: string } | null>(null)
   const [deleteBlockedTarget, setDeleteBlockedTarget] = useState<{ title: string } | null>(null)
+  const [customDashboardKeyword, setCustomDashboardKeyword] = useState('')
 
   const [tablePreviewOpen, setTablePreviewOpen] = useState(false)
   const [tablePreviewTables, setTablePreviewTables] = useState<string[]>([])
   const [tablePreviewActive, setTablePreviewActive] = useState('')
   const [tablePreviewDefaultTab, setTablePreviewDefaultTab] = useState<'preview' | 'fields'>('preview')
-
-  const chartLibraryUrl = '/chart-library.html'
-
-  const primaryButtonStyle = useMemo(
-    () => ({
-      borderRadius: 12,
-      fontWeight: 700,
-    }),
-    [],
-  )
 
   const templates: DashboardTemplate[] = useMemo(
     () => [
@@ -3283,6 +3274,15 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
   }
 
   const customDashboards = dashboards
+  const shownCustomDashboards = useMemo(() => {
+    const q = customDashboardKeyword.trim().toLowerCase()
+    if (!q) return customDashboards
+    return customDashboards.filter((d) => {
+      const title = String(d.title ?? '').toLowerCase()
+      const desc = String(d.description ?? '').toLowerCase()
+      return title.includes(q) || desc.includes(q)
+    })
+  }, [customDashboards, customDashboardKeyword])
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -3337,21 +3337,14 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
             </Typography.Title>
           </div>
           <Space>
-            <Button
-              icon={
-                <AppGridIcon
-                  size={18}
-                  primary={token.colorPrimary}
-                  secondary={themeMode === 'dark' ? 'rgba(255,255,255,0.70)' : 'rgba(15,23,42,0.55)'}
-                />
-              }
-              style={primaryButtonStyle}
-              href={chartLibraryUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('dashboard.componentLibrary')}
-            </Button>
+            <Input
+              allowClear
+              value={customDashboardKeyword}
+              onChange={(e) => setCustomDashboardKeyword(e.target.value)}
+              placeholder={locale === 'zh-CN' ? '搜索仪表盘' : 'Search dashboards'}
+              prefix={<SearchOutlined />}
+              style={{ width: 220 }}
+            />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/dashboard/studio/new')}>
               {t('dashboard.create')}
             </Button>
@@ -3368,7 +3361,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
             tableLayout="fixed"
             scroll={{ x: 840 }}
             pagination={{ pageSize: 5 }}
-            dataSource={customDashboards.map((d) => ({ ...d, key: d.id }))}
+            dataSource={shownCustomDashboards.map((d) => ({ ...d, key: d.id }))}
             columns={[
               {
                 title: t('dashboard.table.name'),
@@ -3523,13 +3516,24 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
                         />
                       </Tooltip>
                       <Tooltip title={t('dashboard.startChat')}>
-                        <Button
-                          type="text"
-                          className="iconOnly"
-                          size="small"
-                          icon={<CommentOutlined />}
-                          onClick={() => openChatWorkspace({ dashboardId: String(r.id) })}
-                        />
+                        <span>
+                          <Button
+                            type="text"
+                            className="iconOnly"
+                            size="small"
+                            disabled={!r.published}
+                            icon={<CommentOutlined />}
+                            onClick={() => {
+                              if (!r.published) return
+                              const block = getPublishBlockInfo(String(r.id), r.configText)
+                              if (block) {
+                                setPublishBlocked(block)
+                                return
+                              }
+                              openChatWorkspace({ dashboardId: String(r.id) })
+                            }}
+                          />
+                        </span>
                       </Tooltip>
                       <Dropdown
                         trigger={['click']}
@@ -3683,7 +3687,7 @@ export default function DashboardPage({ refreshKey }: { refreshKey?: number }) {
         title={
           <div className="dsConflictTitle">
             <AlertTriangle size={18} />
-            <span>{locale === 'zh-CN' ? '发布失败' : 'Publish failed'}</span>
+            <span>{locale === 'zh-CN' ? '操作失败' : 'Operation failed'}</span>
           </div>
         }
         footer={
