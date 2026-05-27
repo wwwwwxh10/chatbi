@@ -2053,7 +2053,6 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 border: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 'none' : `1px solid ${token.colorSplit}`,
                 background: appearance.theme === 'obsidian' ? token.colorBgLayout : appearance.theme === 'cyber' || appearance.theme === 'tech' ? 'transparent' : 'rgba(8, 12, 22, 0.70)',
                 overflow: layout.mode === 'free' ? 'hidden' : 'auto',
-                scrollbarGutter: 'stable both-edges',
                 padding: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? 0 : 12,
                 backdropFilter: appearance.theme === 'obsidian' || appearance.theme === 'cyber' || appearance.theme === 'tech' ? undefined : 'blur(14px)',
               }}
@@ -2077,7 +2076,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   alignItems: 'stretch',
                   minHeight: 0,
                   position: 'relative',
-                  padding: layout.mode === 'free' ? gap : 0,
+                  padding: 0,
                 }}
               >
                 {!readOnly && !previewMode && unplacedCount ? (
@@ -2255,7 +2254,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       const cx = e.clientX
                       const cy = e.clientY
                       const rect = el.getBoundingClientRect()
-                      const pad = gap
+                      const pad = 0
                       const rawX = cx - rect.left
                       const rawY = cy - rect.top
                       const x = Math.max(pad, Math.min(rect.width - pad - 1, rawX))
@@ -2287,7 +2286,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                       const el = freeOverlayRef.current
                       if (!el) return
                       const rect = el.getBoundingClientRect()
-                      const pad = gap
+                      const pad = 0
                       const rawX = e.clientX - rect.left
                       const rawY = e.clientY - rect.top
                       const x = Math.max(pad, Math.min(rect.width - pad - 1, rawX))
@@ -2357,7 +2356,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         gridTemplateColumns: `repeat(${freeCols}, minmax(0, 1fr))`,
                         gridTemplateRows: `repeat(${freeRows}, minmax(0, 1fr))`,
                         gap,
-                        padding: gap,
+                        padding: 0,
                         pointerEvents: 'none',
                       }}
                     >
@@ -2391,7 +2390,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                               gridTemplateColumns: `repeat(${freeCols}, minmax(0, 1fr))`,
                               gridTemplateRows: `repeat(${freeRows}, minmax(0, 1fr))`,
                               gap,
-                              padding: gap,
+                              padding: 0,
                               pointerEvents: 'none',
                               zIndex: 40,
                             }}
