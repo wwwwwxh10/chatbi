@@ -232,6 +232,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
       setLayout(initialLayout)
       setSlots(normalizeSlots(layoutSpecs(initialLayout), []))
       setUnplacedSlots([])
+      setExampleSlotIds({})
       return
     }
 
@@ -398,9 +399,21 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     }
     setSlots(resolvedSlots)
     setUnplacedSlots(carry.slice(cap))
+    setExampleSlotIds({})
   }, [dashboards, dataSources, id, mode])
 
   const accent = appearance.theme === 'obsidian' ? token.colorPrimary : THEME_ACCENT[appearance.theme]
+  const accentRgb = useMemo(() => {
+    const hex = String(accent ?? '')
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex)
+    if (!m) return '43,123,255'
+    const raw = m[1]
+    const r = Number.parseInt(raw.slice(0, 2), 16)
+    const g = Number.parseInt(raw.slice(2, 4), 16)
+    const b = Number.parseInt(raw.slice(4, 6), 16)
+    if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) return '43,123,255'
+    return `${r},${g},${b}`
+  }, [accent])
   const panelBg = appearance.theme === 'obsidian' ? token.colorFillQuaternary : 'rgba(255,255,255,0.020)'
 
   const cyberPageBgNoGrid =
@@ -431,6 +444,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
   const [dragFromUnplacedIdx, setDragFromUnplacedIdx] = useState<number | null>(null)
   const [unplacedOpen, setUnplacedOpen] = useState(false)
   const [hoveredUnplacedId, setHoveredUnplacedId] = useState<string | null>(null)
+  const [exampleSlotIds, setExampleSlotIds] = useState<Record<string, true>>({})
 
   const [editorDraft, setEditorDraft] = useState<string>('')
   const [editorError, setEditorError] = useState<WidgetSlot['error']>(null)
@@ -513,6 +527,22 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     setEditorError(demoInjectedError ?? editingSlot.error)
     setEditorFullscreen(false)
   }, [demoConfigErrorSlotIndex, editingIdx, editingSlot])
+
+  useEffect(() => {
+    setExampleSlotIds((prev) => {
+      const keep = new Set(slots.filter((s) => s.kind).map((s) => s.id))
+      let changed = false
+      const next: Record<string, true> = {}
+      for (const id of Object.keys(prev)) {
+        if (!keep.has(id)) {
+          changed = true
+          continue
+        }
+        next[id] = true
+      }
+      return changed ? next : prev
+    })
+  }, [slots])
 
   const applyLayout = (nextLayout: StudioLayout, opts?: { fillFromUnplaced?: boolean }) => {
     const fillFromUnplaced = opts?.fillFromUnplaced !== false
@@ -792,15 +822,17 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     )
   }
 
-  const optionForSlot = (slot: WidgetSlot) => {
+  const optionForSlot = (slot: WidgetSlot, parsedOverride?: any) => {
     if (!slot.kind || slot.error) return null
-    const parsed = (() => {
-      try {
-        return JSON.parse(slot.configText)
-      } catch {
-        return null
-      }
-    })()
+    const parsed =
+      parsedOverride ??
+      (() => {
+        try {
+          return JSON.parse(slot.configText)
+        } catch {
+          return null
+        }
+      })()
     if (!parsed) return null
     const unit = (() => {
       if (typeof parsed.unit === 'string') return String(parsed.unit)
@@ -1052,13 +1084,16 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
         </div>
       )
     }
-    const parsed = (() => {
-      try {
-        return JSON.parse(slot.configText)
-      } catch {
-        return null
-      }
-    })()
+    const isExample = Boolean(exampleSlotIds[slot.id]) && (mode === 'new' || mode === 'edit') && !previewMode
+    const parsed = isExample
+      ? defaultConfig(slot.kind)
+      : (() => {
+          try {
+            return JSON.parse(slot.configText)
+          } catch {
+            return null
+          }
+        })()
     const chartTitle = String(parsed?.title ?? KIND_NAME[slot.kind])
     const palette = CHART_PALETTES[appearance.chartPalette]
     const c0 = palette.colors[0] ?? accent
@@ -1153,6 +1188,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   {titleText}
                 </Typography.Text>
+                {isExample ? (
+                  <span className="studioExampleTag" style={{ marginInlineStart: 1 }}>
+                    示例
+                  </span>
+                ) : null}
               </Space>
             </div>
           </div>
@@ -1205,6 +1245,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   {chartTitle}
                 </Typography.Text>
+                {isExample ? (
+                  <span className="studioExampleTag" style={{ marginInlineStart: 1 }}>
+                    示例
+                  </span>
+                ) : null}
               </Space>
             </div>
           </div>
@@ -1225,15 +1270,8 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     }
 
     if (slot.kind === 'kpi') {
-      const parsed = (() => {
-        try {
-          return JSON.parse(slot.configText)
-        } catch {
-          return null
-        }
-      })()
-      const name = String(parsed?.title ?? KIND_NAME.kpi)
-      const fmt = String(parsed?.format ?? 'currency')
+      const name = String((parsed as any)?.title ?? KIND_NAME.kpi)
+      const fmt = String((parsed as any)?.format ?? 'currency')
       return (
         <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div
@@ -1267,6 +1305,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   {name}
                 </Typography.Text>
+                {isExample ? (
+                  <span className="studioExampleTag" style={{ marginInlineStart: 1 }}>
+                    示例
+                  </span>
+                ) : null}
               </Space>
             </div>
           </div>
@@ -1284,7 +1327,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
     }
 
 
-    const opt = optionForSlot(slot)
+    const opt = optionForSlot(slot, parsed)
     const fittedOpt = opt ? fitOptionForFreeCard(opt as any, idx) : null
     const renderOpt =
       fittedOpt && slot.kind
@@ -1366,6 +1409,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {chartTitle}
               </Typography.Text>
+              {isExample ? (
+                <span className="studioExampleTag" style={{ marginInlineStart: 1 }}>
+                  示例
+                </span>
+              ) : null}
             </Space>
           </div>
         </div>
@@ -1444,6 +1492,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {chartTitle}
               </Typography.Text>
+              {isExample ? (
+                <span className="studioExampleTag" style={{ marginInlineStart: 1 }}>
+                  示例
+                </span>
+              ) : null}
             </Space>
           </div>
           {null}
@@ -1879,6 +1932,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
         width: '100%',
         background: studioShellBg,
         ['--studio-accent' as any]: accent,
+        ['--studio-accent-rgb' as any]: accentRgb,
         ['--studio-field-bg' as any]: fieldBg,
         ['--studio-field-border' as any]: fieldBorder,
         ['--studio-panel-card-bg' as any]: panelCardBg,
@@ -2472,6 +2526,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   const isDragFrom = dragFromIdx === idx
                   const isDragOver = dragOverIdx === idx
                   const isMoveOver = isDragOver && (dragFromIdx != null ? dragFromIdx !== idx : dragFromUnplacedIdx != null)
+                  const isExample = Boolean(exampleSlotIds[slot.id]) && (mode === 'new' || mode === 'edit') && slot.kind && !previewMode
                   const pos = (layout.mode === 'free' ? layout.cards : templatePositions)?.[idx]
                   const colSpan = pos ? pos.colSpan : Math.max(1, Math.min(freeCols, spec.colSpan))
                   const rowSpan = pos ? pos.rowSpan : Math.max(1, spec.rowSpan)
@@ -2494,7 +2549,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                   return (
                     <div
                       key={slot.id}
-                      className={`studioSlot${slot.kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}${!slot.kind && !readOnly && !previewMode ? ' studioSlotCanDrop' : ''}${isDragFrom ? ' studioSlotDragging' : ''}${isDragOver ? ' studioSlotDragOver' : ''}${isMoveOver ? ' studioSlotMoveOver' : ''}`}
+                      className={`studioSlot${slot.kind ? ' studioSlotFilled dashboardChartCard' : ' studioSlotEmpty'}${!slot.kind && !readOnly && !previewMode ? ' studioSlotCanDrop' : ''}${isDragFrom ? ' studioSlotDragging' : ''}${isDragOver ? ' studioSlotDragOver' : ''}${isMoveOver ? ' studioSlotMoveOver' : ''}${isExample ? ' studioSlotExample' : ''}`}
                       style={{
                         ['--studio-accent' as any]: accent,
                         gridColumn: pos ? `${pos.colStart} / span ${colSpan}` : `span ${colSpan}`,
@@ -2608,6 +2663,9 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         if (!k || !KIND_NAME[k]) return
                         if (slot.kind) return
                         assignWidget(idx, k)
+                        if (mode === 'new' || mode === 'edit') {
+                          setExampleSlotIds((prev) => ({ ...prev, [slot.id]: true }))
+                        }
                         setDragOverIdx(null)
                         setDraggingKind(null)
                         requestAnimationFrame(() => setDragOverIdx(null))
@@ -2615,11 +2673,11 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                     >
                       {slot.kind && !previewMode ? (
                         <div className="studioSlotActions" style={{ position: 'absolute', top: 8, right: 8, zIndex: 30, display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <Tooltip title={readOnly || previewMode ? '查看代码' : '编辑代码'}>
+                          <Tooltip title="绑定数据源">
                             <Button
                               type="text"
                               size="small"
-                              className="studioSlotIconBtn"
+                              className="studioSlotIconBtn studioSlotCodeBtn"
                               icon={<CodeOutlined />}
                               disabled={readOnly || previewMode}
                               draggable={false}
@@ -2629,7 +2687,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                                 if (readOnly || previewMode) return
                                 setEditingSlotId(slot.id)
                               }}
-                              aria-label={readOnly || previewMode ? '查看代码' : '编辑代码'}
+                              aria-label="绑定数据源"
                             />
                           </Tooltip>
                           <Tooltip title="移除组件">
@@ -2644,6 +2702,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                               onClick={(ev) => {
                                 ev.stopPropagation()
                                 setSlot(slot.id, { kind: null, configText: '', error: null })
+                                setExampleSlotIds((prev) => {
+                                  if (!prev[slot.id]) return prev
+                                  const next = { ...prev }
+                                  delete next[slot.id]
+                                  return next
+                                })
                                 if (editingSlotId === slot.id) setEditingSlotId(null)
                                 if (selectedSlotId === slot.id) setSelectedSlotId(null)
                               }}
@@ -2723,7 +2787,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         </div>
                       ) : null}
 
-                      <div style={{ height: '100%', borderRadius: 14, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+                      <div className="studioSlotBody" style={{ height: '100%', borderRadius: 14, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
                         {slotBodies[idx]}
                       </div>
                     </div>
@@ -2742,7 +2806,7 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <Space size={4}>
                 <CodeOutlined />
-                <span>代码编辑器</span>
+                <span>绑定数据源</span>
               </Space>
               <Space size={6}>
                 <Button
@@ -2795,6 +2859,12 @@ export default function DashboardStudioPageV2({ mode }: { mode: StudioMode }) {
                         const v = validateWidget(editingSlot.kind, editorDraft)
                         const err: WidgetSlot['error'] = 'error' in v ? v.error : null
                         setSlot(editingSlot.id, { configText: editorDraft, error: err })
+                        setExampleSlotIds((prev) => {
+                          if (!prev[editingSlot.id]) return prev
+                          const next = { ...prev }
+                          delete next[editingSlot.id]
+                          return next
+                        })
                         setEditingSlotId(null)
                       }}
                     >
