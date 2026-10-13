@@ -52,6 +52,7 @@ function renderMetricSegments(token: ReturnType<typeof theme.useToken>['token'],
       out.push(
         <span
           key={`${start}-m`}
+          className="chatRichMetric"
           style={{
             fontWeight: METRIC_WEIGHT,
             color: tone.color,
@@ -75,7 +76,7 @@ function InlineRich({ text }: { text: string }) {
       {parts.map((p, idx) => {
         const isEmphasis = idx % 2 === 1
         return (
-          <span key={idx} style={isEmphasis ? { fontWeight: EMPHASIS_WEIGHT } : undefined}>
+          <span key={idx} className={isEmphasis ? 'chatRichEmphasis' : undefined} style={isEmphasis ? { fontWeight: EMPHASIS_WEIGHT } : undefined}>
             {renderMetricSegments(token, p)}
           </span>
         )

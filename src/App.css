@@ -596,6 +596,9 @@ html[data-mode='dark'] .dsPreviewTable .ant-table-thead > tr > th {
   overflow-y: auto !important;
 }
 
+.dsFieldTable .ant-table-cell { white-space: normal; overflow-wrap: anywhere; }
+.dsFieldTable .ant-typography code { white-space: normal; overflow-wrap: anywhere; }
+
 
 .appHeaderIconButton .ant-btn-icon {
   margin-inline-end: 0;

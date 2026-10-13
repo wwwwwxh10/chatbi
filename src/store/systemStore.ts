@@ -19,4 +19,3 @@ export const useSystemStore = create<SystemState>()(
     { name: 'chatbi-system-settings' },
   ),
 )
-

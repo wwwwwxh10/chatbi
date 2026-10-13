@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { Sidebar } from './components/Sidebar'
-import { Button, Dropdown, Form, Input, Layout, Modal, Space, Upload, message, theme } from 'antd'
+import { Button, Dropdown, Form, Input, Layout, Modal, Space, message } from 'antd'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import DashboardPage from './pages/DashboardPage'
 import DashboardChatPage from './pages/DashboardChatPage'
@@ -15,6 +15,7 @@ import KnowledgeBasePage from './pages/KnowledgeBasePage'
 import NotFoundPage from './pages/NotFoundPage'
 import SystemManagementPage from './pages/SystemManagementPage'
 import LoginPage from './pages/LoginPage'
+import SmartQueryPage from './pages/SmartQueryPage'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from './store/appStore'
 import {
@@ -30,8 +31,7 @@ import {
 } from '@ant-design/icons'
 import { AppLogoWordmark } from './components/logo/AppLogoWordmark'
 import { useAuthStore } from './store/authStore'
-import { useSystemStore } from './store/systemStore'
-import { AppLogoMark } from './components/logo/AppLogoMark'
+
 import { AppErrorBoundary, GlobalErrorOverlay } from './components/GlobalErrorOverlay'
 
 type PageMeta = {
@@ -40,7 +40,6 @@ type PageMeta = {
 
 export default function App() {
   const { t } = useTranslation()
-  const { token } = theme.useToken()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -48,6 +47,7 @@ export default function App() {
   const isChatWorkspace =
     location.pathname.startsWith('/dashboard/chat-workspace') || location.pathname.startsWith('/dashboard/chat-workspace-studio-demo')
   const isLogin = location.pathname === '/login'
+  const isSmartQuery = location.pathname.startsWith('/smart-query')
   const isStudio = location.pathname.startsWith('/dashboard/studio')
   const isStudioEditor = location.pathname === '/dashboard/studio/new' || /^\/dashboard\/studio\/[^/]+$/.test(location.pathname)
   const isStudioPreview = /^\/dashboard\/studio\/[^/]+\/preview$/.test(location.pathname)
@@ -56,10 +56,6 @@ export default function App() {
 
   const [systemOpen, setSystemOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
-
-  const [systemSettingsOpen, setSystemSettingsOpen] = useState(false)
-  const [settingsName, setSettingsName] = useState('')
-  const [settingsLogo, setSettingsLogo] = useState<string | null>(null)
 
   const [pwdOpen, setPwdOpen] = useState(false)
   const [pwdForm] = Form.useForm<{ oldPassword: string; newPassword: string; confirmPassword: string }>()
@@ -71,12 +67,10 @@ export default function App() {
   const isAuthed = useAuthStore((s) => s.isAuthed)
   const logout = useAuthStore((s) => s.logout)
 
-  const systemName = useSystemStore((s) => s.systemName)
-  const logo = useSystemStore((s) => s.logoDataUrl)
-  const setSystemName = useSystemStore((s) => s.setSystemName)
-  const setLogo = useSystemStore((s) => s.setLogoDataUrl)
+
 
   const pageMeta: PageMeta = useMemo(() => {
+    if (location.pathname.startsWith('/smart-query')) return { title: '智能问数' }
     if (location.pathname.startsWith('/dashboard/chat')) return { title: t('dashboard.chat') }
     if (location.pathname.startsWith('/data-sources')) return { title: t('dataSources.title') }
     if (location.pathname.startsWith('/knowledge-base')) return { title: t('nav.knowledgeBase') }
@@ -90,8 +84,8 @@ export default function App() {
   }, [pageMeta.title])
 
   useEffect(() => {
-    const showSidebar = !isChatWorkspace && !isLogin
-    const showHeader = !isChatWorkspace && !isLogin && !isStudio
+    const showSidebar = !isChatWorkspace && !isLogin && !isSmartQuery
+    const showHeader = !isChatWorkspace && !isLogin && !isStudio && !isSmartQuery
     document.body.classList.toggle('appModalInset', showHeader)
     document.body.style.setProperty('--app-sidebar-width', showSidebar ? (collapsed ? '72px' : '260px') : '0px')
     document.body.style.setProperty('--app-header-height', showHeader ? '56px' : '0px')
@@ -100,7 +94,7 @@ export default function App() {
       document.body.style.removeProperty('--app-sidebar-width')
       document.body.style.removeProperty('--app-header-height')
     }
-  }, [collapsed, isChatWorkspace, isLogin, isStudio])
+  }, [collapsed, isChatWorkspace, isLogin, isSmartQuery, isStudio])
 
   useEffect(() => {
     setCollapsed(isStudioEditor || isStudioPreview || isDashboardPreview)
@@ -112,9 +106,11 @@ export default function App() {
       return
     }
     if (isAuthed && location.pathname === '/login') {
-      navigate('/dashboard', { replace: true })
+      navigate('/smart-query', { replace: true, state: { openWelcome: true } })
     }
   }, [isAuthed, location.pathname, navigate])
+
+
 
   const systemMenuItems = useMemo(
     () => [
@@ -189,27 +185,11 @@ export default function App() {
     <AppErrorBoundary>
       <GlobalErrorOverlay>
         <Layout className={isChatWorkspace ? 'appRoot chatWorkspace' : 'appRoot'}>
-      {isChatWorkspace || isLogin || isStudio ? null : (
+      {isChatWorkspace || isLogin || isStudio || isSmartQuery ? null : (
         <Layout.Header className="appHeader" style={{ height: 56, paddingInline: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
             <button type="button" className="appHeaderBrand" onClick={() => navigate('/dashboard')} aria-label="ChatBI">
-              {logo ? (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                  <img
-                    src={logo}
-                    alt={systemName}
-                    style={{ width: 32, height: 32, aspectRatio: '1 / 1', borderRadius: 12, objectFit: 'contain', flex: 'none' }}
-                  />
-                  <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 0.2 }}>{systemName}</span>
-                </div>
-              ) : systemName === 'ChatBI' ? (
-                <AppLogoWordmark size={36} fontSize={24} />
-              ) : (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                  <AppLogoMark size={32} />
-                  <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 0.2 }}>{systemName}</span>
-                </div>
-              )}
+              <AppLogoWordmark size={32} />
             </button>
           </div>
 
@@ -221,9 +201,6 @@ export default function App() {
                   if (key === 'system:users') navigate('/system/users')
                   if (key === 'system:settings') {
                     setSystemOpen(false)
-                    setSettingsName(systemName)
-                    setSettingsLogo(logo)
-                    setSystemSettingsOpen(true)
                   }
                 },
               }}
@@ -279,19 +256,20 @@ export default function App() {
       )}
 
       <Layout style={{ minHeight: 0 }}>
-        {isChatWorkspace || isLogin ? null : <Sidebar collapsed={collapsed} onCollapsedChange={setCollapsed} />}
+        {isChatWorkspace || isLogin || isSmartQuery ? null : <Sidebar collapsed={collapsed} onCollapsedChange={setCollapsed} />}
         <Layout.Content
           className={isDashboardModule ? 'dashboardContentNoScrollbar' : undefined}
           style={{
-            padding: isChatWorkspace || isLogin || isStudio ? 0 : 16,
+            padding: isChatWorkspace || isLogin || isStudio || isSmartQuery ? 0 : 16,
             minHeight: 0,
-            height: isChatWorkspace || isLogin || isStudio ? '100vh' : 'calc(100vh - 56px)',
-            overflow: isLogin ? 'hidden' : isChatWorkspace ? 'visible' : isStudio ? 'hidden' : 'auto',
+            height: isChatWorkspace || isLogin || isStudio || isSmartQuery ? '100vh' : 'calc(100vh - 56px)',
+            overflow: isLogin || isSmartQuery ? 'hidden' : isChatWorkspace ? 'visible' : isStudio ? 'hidden' : 'auto',
           }}
         >
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/smart-query" replace />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/smart-query" element={<SmartQueryPage />} />
             <Route path="/dashboard/chat" element={<DashboardChatPage />} />
             <Route path="/dashboard/chat-workspace" element={<DashboardChatWorkspacePage />} />
             <Route path="/dashboard/chat-workspace-studio-demo" element={<DashboardChatWorkspacePage />} />
@@ -312,100 +290,7 @@ export default function App() {
         </Layout.Content>
       </Layout>
 
-      <Modal
-        open={systemSettingsOpen}
-        title={<div style={{ paddingRight: 28, fontWeight: 800, fontSize: 18, lineHeight: 1.35 }}>系统设置</div>}
-        centered
-        width={720}
-        destroyOnHidden
-        onCancel={() => setSystemSettingsOpen(false)}
-        okText={t('actions.save')}
-        cancelText={t('actions.cancel')}
-        onOk={async () => {
-          const nextName = String(settingsName ?? '').trim()
-          if (!nextName) {
-            void message.error(t('validation.required'))
-            return
-          }
-          setSystemName(nextName)
-          setLogo(settingsLogo)
-          await new Promise((r) => setTimeout(r, 250))
-          void message.success('已保存')
-          setSystemSettingsOpen(false)
-        }}
-      >
-        <Form layout="vertical">
-          <Form.Item label="系统名称" required>
-            <Input value={settingsName} onChange={(e) => setSettingsName(e.target.value)} placeholder="例如：ChatBI" />
-          </Form.Item>
 
-          <Form.Item label="系统 Logo" required>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 14,
-                  border: `1px solid ${token.colorSplit}`,
-                  background: token.colorFillTertiary,
-                  display: 'grid',
-                  placeItems: 'center',
-                  overflow: 'hidden',
-                  flex: 'none',
-                }}
-              >
-                {settingsLogo ? <img src={settingsLogo} alt={settingsName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <AppLogoMark size={34} />}
-              </div>
-
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Upload
-                  accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                  fileList={[]}
-                  showUploadList={false}
-                  beforeUpload={(file) => {
-                    const isOk = /image\/(png|jpeg)/.test(file.type)
-                    if (!isOk) {
-                      void message.error('仅支持 PNG/JPG')
-                      return Upload.LIST_IGNORE
-                    }
-                    if (file.size > 200 * 1024) {
-                      void message.error('图片需小于 200KB')
-                      return Upload.LIST_IGNORE
-                    }
-                    return false
-                  }}
-                  onChange={(info) => {
-                    const f = info.file?.originFileObj
-                    if (!(f instanceof File)) return
-                    const reader = new FileReader()
-                    reader.onload = () => {
-                      const dataUrl = typeof reader.result === 'string' ? reader.result : null
-                      setSettingsLogo(dataUrl)
-                      void message.success('已选择新图标')
-                    }
-                    reader.readAsDataURL(f)
-                  }}
-                >
-                  <Button type="default" size="small" style={{ alignSelf: 'flex-start', opacity: 0.82 }}>
-                    更换图标
-                  </Button>
-                </Upload>
-                {settingsLogo ? (
-                  <Button
-                    type="link"
-                    size="small"
-                    style={{ alignSelf: 'flex-start', paddingInline: 0, height: 22, opacity: 0.82 }}
-                    onClick={() => setSettingsLogo(null)}
-                  >
-                    恢复默认
-                  </Button>
-                ) : null}
-                <div style={{ fontSize: 12, color: token.colorTextSecondary }}>建议尺寸 48×48 px 以内；支持 PNG、JPG 格式；文件大小不超过 200KB。</div>
-              </div>
-            </div>
-          </Form.Item>
-        </Form>
-      </Modal>
 
       <Modal
         open={pwdOpen}

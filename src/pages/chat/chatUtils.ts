@@ -7,6 +7,7 @@ export type ChatMessage = {
   role: ChatRole
   content: string
   at: number
+  dataSourceId?: string
 }
 
 export type ResultTable = {

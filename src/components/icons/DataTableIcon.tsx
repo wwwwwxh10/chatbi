@@ -2,38 +2,19 @@ import type { CSSProperties } from 'react'
 
 export function DataTableIcon({ size = 16, color = 'currentColor', search = false, style }: { size?: number; color?: string; search?: boolean; style?: CSSProperties }) {
   const s = Math.max(12, size)
-  const sw = 1.4
-  const r = 2.6
-  const headerH = 4.2
 
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', ...style }}>
-      <path
-        d="M5.6 4.8h12.8c.99 0 1.8.81 1.8 1.8v10.8c0 .99-.81 1.8-1.8 1.8H5.6c-.99 0-1.8-.81-1.8-1.8V6.6c0-.99.81-1.8 1.8-1.8Z"
-        stroke={color}
-        strokeWidth={sw}
-        opacity={0.9}
-        rx={r}
-      />
-      <path d={`M5.2 ${6.6 + headerH}h13.6`} stroke={color} strokeWidth={sw} opacity={0.65} strokeLinecap="round" />
-      <path d="M9.6 6.2h8.2" stroke={color} strokeWidth={sw} opacity={0.9} strokeLinecap="round" />
-      <path d="M7.2 10.6v7.2" stroke={color} strokeWidth={sw} opacity={0.55} strokeLinecap="round" />
-      <path d="M12 10.6v7.2" stroke={color} strokeWidth={sw} opacity={0.55} strokeLinecap="round" />
-      <path d="M16.8 10.6v7.2" stroke={color} strokeWidth={sw} opacity={0.55} strokeLinecap="round" />
-      <path d="M5.6 14h12.8" stroke={color} strokeWidth={sw} opacity={0.45} strokeLinecap="round" />
-      <path d="M5.6 17.2h12.8" stroke={color} strokeWidth={sw} opacity={0.45} strokeLinecap="round" />
-
-      <path
-        d="M5.6 4.8h12.8c.99 0 1.8.81 1.8 1.8v4.2H3.8V6.6c0-.99.81-1.8 1.8-1.8Z"
-        fill={color}
-        opacity={0.16}
-        rx={r}
-      />
+      <rect x="2" y="2" width="20" height="20" rx="6" fill={color} />
+      <path d="m12 5.4 6 3.25-6 3.25-6-3.25L12 5.4Z" fill="white" />
+      <path d="m6 9.75 5.25 2.84v6.01L6 15.76V9.75Z" fill="white" opacity=".78" />
+      <path d="m18 9.75-5.25 2.84v6.01L18 15.76V9.75Z" fill="white" opacity=".96" />
+      <path d="M12 12.35v5.95M6.45 9.05 12 12.08l5.55-3.03" stroke={color} strokeWidth=".65" strokeLinecap="round" strokeLinejoin="round" opacity=".42" />
 
       {search ? (
         <>
-          <circle cx="18.3" cy="17.7" r="2.8" stroke={color} strokeWidth={sw} opacity={0.95} />
-          <path d="M20.35 19.75l2.05 2.05" stroke={color} strokeWidth={sw} strokeLinecap="round" opacity={0.95} />
+          <circle cx="18.3" cy="17.7" r="2.8" fill="white" stroke={color} strokeWidth="1.4" />
+          <path d="M20.35 19.75l2.05 2.05" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
         </>
       ) : null}
     </svg>

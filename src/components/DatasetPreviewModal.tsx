@@ -3,6 +3,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { DataTableIcon } from './icons/DataTableIcon'
+import { useAppStore } from '../store/appStore'
 
 type FieldType = 'Str' | 'Num' | 'Date' | 'Geo'
 type FieldRole = 'dimension' | 'measure'
@@ -15,6 +16,40 @@ type Field = {
   role: FieldRole
   description: string
 }
+
+const FIELD_DESCRIPTION_EN: Record<string, string> = {
+  '预订日期': 'Reservation date',
+  '汽车品牌': 'Manufacturer',
+  '车型': 'Model',
+  '分公司': 'Branch',
+  '车辆状态': 'Vehicle status',
+  '订金（KWD）': 'Deposit (KWD)',
+  '车辆标识': 'Vehicle ID',
+  '年款': 'Model year',
+  '库存类型': 'Stock type',
+  '订单确认日期': 'Order confirmation date',
+  '交付日期': 'Delivery date',
+  '询价日期': 'Enquiry date',
+  '意向品牌': 'Preferred manufacturer',
+  '意向车型': 'Preferred model',
+  '询价来源': 'Enquiry source',
+  '跟进状态': 'Follow-up status',
+  '开票日期': 'Invoice date',
+  '配置版本': 'Variant',
+  '销售价格（KWD）': 'Selling price (KWD)',
+  '利润（KWD）': 'Profit (KWD)',
+}
+
+const AAS_COLUMNS = [
+  'Vehicle ID', 'Reserved By', 'Name', 'Manufacturer', 'Manufacturer Desc', 'Model Analysis Code', 'Model Code', 'Model Desc', 'Variant Code', 'Variant Desc',
+  'Vehicle Desc', 'Colour', 'Colour Desc', 'Model Year', 'VIN', 'Customer Name', 'Mobile No.', 'Total Deposit', 'Reservation Date', 'Reservation Exp. Date',
+  'Vehicle Status', 'Vehicle Status Desc', 'Branch', 'Branch Name', 'Stock Type', 'Stock Type Desc', 'Order Confirmation Date', 'Delivery Date', 'Enq. No.', 'Enquiry Progress',
+  'Enquiry Progress Desc', 'Invoice (T/F)', 'Shipment Name', 'New/Used', 'Actual date received', 'Delivery Status code', 'Delivery Status code Desc', 'Customer ID', 'Estimated date received', 'Order Invoice Date',
+  'Vehicle Adoption Date', 'Order Invoice Account No', 'Account Name', 'Trade-In Value', 'Enq. Type Code', 'Enq. Type Name', 'Vehicle Registration Date', 'Order Number', 'Selling Price', 'Profit',
+] as const
+
+const AAS_DATE_FIELDS = new Set(['Reservation Date', 'Reservation Exp. Date', 'Order Confirmation Date', 'Delivery Date', 'Actual date received', 'Estimated date received', 'Order Invoice Date', 'Vehicle Adoption Date', 'Vehicle Registration Date'])
+const AAS_NUMBER_FIELDS = new Set(['Vehicle ID', 'Model Year', 'Total Deposit', 'Branch', 'Enq. No.', 'Delivery Status code', 'Customer ID', 'Trade-In Value', 'Order Number', 'Selling Price', 'Profit'])
 
 function typePill(type: FieldType) {
   const label = type === 'Str' ? 'Str.' : type
@@ -34,113 +69,104 @@ function typePill(type: FieldType) {
 }
 
 function buildFields(tableName: string): Field[] {
-  const base = (tableName || 'subs').toLowerCase()
+  const base = (tableName || 'vehicle_sales').toLowerCase()
 
-  if (base.includes('cdr_voice')) {
+  if (base.includes('aas_sample')) {
+    return AAS_COLUMNS.map((name, index) => {
+      const type: FieldType = AAS_DATE_FIELDS.has(name) ? 'Date' : AAS_NUMBER_FIELDS.has(name) ? 'Num' : 'Str'
+      return { id: `aas-${index}`, name, physicalName: name, type, role: AAS_NUMBER_FIELDS.has(name) ? 'measure' : 'dimension', description: name }
+    })
+  }
+
+  if (base.includes('reservation')) {
     return [
-      { id: 'd-1', name: 'date', physicalName: 'dt', type: 'Date', role: 'dimension', description: '日期' },
-      { id: 'd-2', name: 'msisdn', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: '手机号' },
-      { id: 'd-3', name: 'province', physicalName: 'province', type: 'Geo', role: 'dimension', description: '省份' },
-      { id: 'd-4', name: 'city', physicalName: 'city', type: 'Geo', role: 'dimension', description: '城市' },
-      { id: 'd-5', name: 'operator', physicalName: 'operator', type: 'Str', role: 'dimension', description: '运营商' },
-      { id: 'm-1', name: 'call_minutes', physicalName: 'call_minutes', type: 'Num', role: 'measure', description: '通话时长(分钟)' },
-      { id: 'm-2', name: 'call_fee', physicalName: 'call_fee', type: 'Num', role: 'measure', description: '通话费用(元)' },
+      { id: 'd-1', name: 'reservation_date', physicalName: 'reservation_date', type: 'Date', role: 'dimension', description: '预订日期' },
+      { id: 'd-2', name: 'manufacturer', physicalName: 'manufacturer_desc', type: 'Str', role: 'dimension', description: '汽车品牌' },
+      { id: 'd-3', name: 'model', physicalName: 'model_desc', type: 'Str', role: 'dimension', description: '车型' },
+      { id: 'd-4', name: 'branch', physicalName: 'branch_name', type: 'Str', role: 'dimension', description: '分公司' },
+      { id: 'd-5', name: 'status', physicalName: 'vehicle_status_desc', type: 'Str', role: 'dimension', description: '车辆状态' },
+      { id: 'm-1', name: 'deposit_kwd', physicalName: 'total_deposit', type: 'Num', role: 'measure', description: '订金（KWD）' },
     ]
   }
 
-  if (base.includes('cdr_data')) {
+  if (base.includes('inventory')) {
     return [
-      { id: 'd-1', name: 'date', physicalName: 'dt', type: 'Date', role: 'dimension', description: '日期' },
-      { id: 'd-2', name: 'msisdn', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: '手机号' },
-      { id: 'd-3', name: 'province', physicalName: 'province', type: 'Geo', role: 'dimension', description: '省份' },
-      { id: 'd-4', name: 'operator', physicalName: 'operator', type: 'Str', role: 'dimension', description: '运营商' },
-      { id: 'd-5', name: 'net_type', physicalName: 'net_type', type: 'Str', role: 'dimension', description: '网络制式' },
-      { id: 'm-1', name: 'data_mb', physicalName: 'data_mb', type: 'Num', role: 'measure', description: '流量使用(MB)' },
-      { id: 'm-2', name: 'data_fee', physicalName: 'data_fee', type: 'Num', role: 'measure', description: '流量费用(元)' },
+      { id: 'd-1', name: 'vehicle_id', physicalName: 'vehicle_id', type: 'Str', role: 'dimension', description: '车辆标识' },
+      { id: 'd-2', name: 'manufacturer', physicalName: 'manufacturer_desc', type: 'Str', role: 'dimension', description: '汽车品牌' },
+      { id: 'd-3', name: 'model', physicalName: 'model_desc', type: 'Str', role: 'dimension', description: '车型' },
+      { id: 'd-4', name: 'model_year', physicalName: 'model_year', type: 'Num', role: 'dimension', description: '年款' },
+      { id: 'd-5', name: 'branch', physicalName: 'branch_name', type: 'Str', role: 'dimension', description: '分公司' },
+      { id: 'd-6', name: 'stock_type', physicalName: 'stock_type_desc', type: 'Str', role: 'dimension', description: '库存类型' },
+      { id: 'd-7', name: 'vehicle_status', physicalName: 'vehicle_status_desc', type: 'Str', role: 'dimension', description: '车辆状态' },
     ]
   }
 
-  if (base.includes('billing')) {
+  if (base.includes('delivery')) {
     return [
-      { id: 'd-1', name: 'month', physicalName: 'month', type: 'Date', role: 'dimension', description: '月份' },
-      { id: 'd-2', name: 'msisdn', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: '手机号' },
-      { id: 'd-3', name: 'plan', physicalName: 'plan', type: 'Str', role: 'dimension', description: '套餐' },
-      { id: 'd-4', name: 'operator', physicalName: 'operator', type: 'Str', role: 'dimension', description: '运营商' },
-      { id: 'm-1', name: 'arpu', physicalName: 'arpu', type: 'Num', role: 'measure', description: 'ARPU(元)' },
-      { id: 'm-2', name: 'mrr', physicalName: 'mrr', type: 'Num', role: 'measure', description: 'MRR(元)' },
+      { id: 'd-1', name: 'order_confirmation_date', physicalName: 'order_confirmation_date', type: 'Date', role: 'dimension', description: '订单确认日期' },
+      { id: 'd-2', name: 'delivery_date', physicalName: 'delivery_date', type: 'Date', role: 'dimension', description: '交付日期' },
+      { id: 'd-3', name: 'manufacturer', physicalName: 'manufacturer_desc', type: 'Str', role: 'dimension', description: '汽车品牌' },
+      { id: 'd-4', name: 'model', physicalName: 'model_desc', type: 'Str', role: 'dimension', description: '车型' },
+      { id: 'd-5', name: 'branch', physicalName: 'branch_name', type: 'Str', role: 'dimension', description: '分公司' },
     ]
   }
 
-  if (base.includes('network_kpi')) {
+  if (base.includes('enquir')) {
     return [
-      { id: 'd-1', name: 'date', physicalName: 'dt', type: 'Date', role: 'dimension', description: '日期' },
-      { id: 'd-2', name: 'province', physicalName: 'province', type: 'Geo', role: 'dimension', description: '省份' },
-      { id: 'd-3', name: 'city', physicalName: 'city', type: 'Geo', role: 'dimension', description: '城市' },
-      { id: 'd-4', name: 'net_type', physicalName: 'net_type', type: 'Str', role: 'dimension', description: '网络制式' },
-      { id: 'm-1', name: 'dau', physicalName: 'dau', type: 'Num', role: 'measure', description: '日活' },
-      { id: 'm-2', name: 'drop_rate', physicalName: 'drop_rate', type: 'Num', role: 'measure', description: '掉线率(%)' },
-      { id: 'm-3', name: 'latency_ms', physicalName: 'latency_ms', type: 'Num', role: 'measure', description: '时延(ms)' },
+      { id: 'd-1', name: 'enquiry_date', physicalName: 'enquiry_date', type: 'Date', role: 'dimension', description: '询价日期' },
+      { id: 'd-2', name: 'manufacturer', physicalName: 'manufacturer_desc', type: 'Str', role: 'dimension', description: '意向品牌' },
+      { id: 'd-3', name: 'model', physicalName: 'model_desc', type: 'Str', role: 'dimension', description: '意向车型' },
+      { id: 'd-4', name: 'source', physicalName: 'enquiry_source', type: 'Str', role: 'dimension', description: '询价来源' },
+      { id: 'd-5', name: 'status', physicalName: 'enquiry_status', type: 'Str', role: 'dimension', description: '跟进状态' },
     ]
   }
 
   return [
-    { id: 'd-1', name: 'date', physicalName: 'dt', type: 'Date', role: 'dimension', description: '日期' },
-    { id: 'd-2', name: 'msisdn', physicalName: 'msisdn', type: 'Str', role: 'dimension', description: '手机号' },
-    { id: 'd-3', name: 'province', physicalName: 'province', type: 'Geo', role: 'dimension', description: '省份' },
-    { id: 'd-4', name: 'city', physicalName: 'city', type: 'Geo', role: 'dimension', description: '城市' },
-    { id: 'd-5', name: 'operator', physicalName: 'operator', type: 'Str', role: 'dimension', description: '运营商' },
-    { id: 'd-6', name: 'plan', physicalName: 'plan', type: 'Str', role: 'dimension', description: '套餐' },
-    { id: 'm-1', name: 'arpu', physicalName: 'arpu', type: 'Num', role: 'measure', description: 'ARPU(元)' },
-    { id: 'm-2', name: 'churn_rate', physicalName: 'churn_rate', type: 'Num', role: 'measure', description: '流失率(%)' },
+    { id: 'd-1', name: 'invoice_date', physicalName: 'order_invoice_date', type: 'Date', role: 'dimension', description: '开票日期' },
+    { id: 'd-2', name: 'manufacturer', physicalName: 'manufacturer_desc', type: 'Str', role: 'dimension', description: '汽车品牌' },
+    { id: 'd-3', name: 'model', physicalName: 'model_desc', type: 'Str', role: 'dimension', description: '车型' },
+    { id: 'd-4', name: 'variant', physicalName: 'variant_desc', type: 'Str', role: 'dimension', description: '配置版本' },
+    { id: 'd-5', name: 'model_year', physicalName: 'model_year', type: 'Num', role: 'dimension', description: '年款' },
+    { id: 'd-6', name: 'branch', physicalName: 'branch_name', type: 'Str', role: 'dimension', description: '分公司' },
+    { id: 'm-1', name: 'selling_price_kwd', physicalName: 'selling_price', type: 'Num', role: 'measure', description: '销售价格（KWD）' },
+    { id: 'm-2', name: 'profit_kwd', physicalName: 'profit', type: 'Num', role: 'measure', description: '利润（KWD）' },
   ]
 }
 
 function buildRows(tableName: string) {
-  const base = (tableName || 'subs').toLowerCase()
-  const provinces = ['上海', '浙江', '广东', '江苏', '四川', '湖北']
-  const cities = ['上海', '杭州', '广州', '深圳', '南京', '成都', '武汉', '苏州']
-  const operators = ['移动', '联通', '电信']
-  const plans = ['畅享 129', '畅享 199', '5G 尊享 299', '校园 59', '融合 169']
-  const netTypes = ['4G', '5G', 'WiFi']
+  const base = (tableName || 'vehicle_sales').toLowerCase()
+  const manufacturers = ['BMW', 'Land Rover', 'Geely', 'MINI', 'Rolls-Royce']
+  const models = ['5 Series', 'Defender', 'Monjaro', 'Countryman', 'Cullinan']
+  const branches = ['Al-Rai', 'Shuwaikh', 'Ahmadi', 'Jahra']
 
   return Array.from({ length: 120 }).map((_, i) => {
-    const dt = `2026-0${((i % 6) + 1).toString()}-${String(((i % 27) + 1)).padStart(2, '0')}`
-    const province = provinces[i % provinces.length]
-    const city = cities[i % cities.length]
-    const operator = operators[i % operators.length]
-    const msisdn = `13${(i % 9) + 1}${String(80000000 + i).slice(0, 8)}`
-    const plan = plans[i % plans.length]
-    const net_type = netTypes[i % netTypes.length]
-
-    if (base.includes('cdr_voice')) {
-      const call_minutes = (i % 85) + 5
-      const call_fee = Number((call_minutes * 0.15 + (i % 7) * 0.2).toFixed(2))
-      return { dt, msisdn, province, city, operator, call_minutes, call_fee, key: i }
+    const date = `2025-0${(i % 3) + 1}-${String((i % 27) + 1).padStart(2, '0')}`
+    const manufacturer = manufacturers[i % manufacturers.length]
+    const model = models[i % models.length]
+    const branch = branches[i % branches.length]
+    if (base.includes('aas_sample')) {
+      const values: Record<string, string | number | boolean> = {
+        'Vehicle ID': 57543 + i, 'Reserved By': `user-${9304 + (i % 8)}`, Name: 'Sales Consultant', Manufacturer: manufacturer === 'Land Rover' ? 'LANDROV' : manufacturer.toUpperCase(),
+        'Manufacturer Desc': manufacturer, 'Model Analysis Code': model, 'Model Code': model.toUpperCase(), 'Model Desc': model, 'Variant Code': `VAR-${100 + i}`,
+        'Variant Desc': `${model} ${['Premium', 'Sport', 'Luxury'][i % 3]}`, 'Vehicle Desc': `${model} ${['Premium', 'Sport', 'Luxury'][i % 3]}`, Colour: ['1CD', '1AZ', '490'][i % 3],
+        'Colour Desc': ['Grasmere Green', 'Phoenix Orange', 'Mandarin II Solid'][i % 3], 'Model Year': 2024 + (i % 2), VIN: `***********${String(9606 + i).slice(-4)}`,
+        'Customer Name': `Customer ${String(i + 1).padStart(4, '0')}`, 'Mobile No.': '******90', 'Total Deposit': i % 3 ? 500 + (i % 8) * 250 : '',
+        'Reservation Date': date, 'Reservation Exp. Date': i % 4 ? '2025-04-15' : '', 'Vehicle Status': ['A', 'X', 'I'][i % 3], 'Vehicle Status Desc': ['Adopted', 'Closed', 'Invoiced'][i % 3],
+        Branch: 1011 + (i % 4), 'Branch Name': branch, 'Stock Type': ['RETAIL', 'HIDDEN'][i % 2], 'Stock Type Desc': i % 2 ? 'Hidden stock' : 'Retail sales stock',
+        'Order Confirmation Date': i % 3 ? date : '', 'Delivery Date': i % 3 ? date : '', 'Enq. No.': i % 3 ? 34000 + i : '', 'Enquiry Progress': i % 3 ? 'Inv' : '',
+        'Enquiry Progress Desc': i % 3 ? 'Invoiced' : '', 'Invoice (T/F)': i % 3 !== 0, 'Shipment Name': `SHIPMENT-${100 + i}`, 'New/Used': 'N',
+        'Actual date received': '2025-01-15', 'Delivery Status code': i % 5, 'Delivery Status code Desc': ['Not arranged', 'Planned', 'Confirmed'][i % 3], 'Customer ID': i % 3 ? 21000 + i : '',
+        'Estimated date received': '2025-01-15', 'Order Invoice Date': i % 3 ? date : '', 'Vehicle Adoption Date': '2025-01-15', 'Order Invoice Account No': i % 3 ? `B${String(i + 2).padStart(7, '0')}` : '',
+        'Account Name': i % 3 ? 'Finance Account' : '', 'Trade-In Value': i % 4 ? 0 : 8600, 'Enq. Type Code': i % 3 ? 'RETAIL' : '', 'Enq. Type Name': i % 3 ? 'Retail sale' : '',
+        'Vehicle Registration Date': i % 3 ? date : '', 'Order Number': i % 3 ? 20000 + i : '', 'Selling Price': 16500 + (i % 18) * 725, Profit: Number((4892.489 - (i % 7) * 820.35).toFixed(3)),
+      }
+      return { ...Object.fromEntries(AAS_COLUMNS.map((column) => [column, values[column] ?? ''])), key: i }
     }
-
-    if (base.includes('cdr_data')) {
-      const data_mb = (i % 1800) + 200
-      const data_fee = Number((data_mb * 0.002 + (i % 5) * 0.3).toFixed(2))
-      return { dt, msisdn, province, operator, net_type, data_mb, data_fee, key: i }
-    }
-
-    if (base.includes('billing')) {
-      const month = `2026-0${((i % 6) + 1).toString()}-01`
-      const arpu = Number((89 + (i % 120) * 0.7).toFixed(2))
-      const mrr = Number((arpu * (1 + ((i % 4) * 0.03))).toFixed(2))
-      return { month, msisdn, plan, operator, arpu, mrr, key: i }
-    }
-
-    if (base.includes('network_kpi')) {
-      const dau = 80000 + (i % 28) * 2300
-      const drop_rate = Number((0.2 + (i % 7) * 0.05).toFixed(2))
-      const latency_ms = 18 + (i % 12) * 3
-      return { dt, province, city, net_type, dau, drop_rate, latency_ms, key: i }
-    }
-
-    const arpu = Number((99 + (i % 80) * 0.8).toFixed(2))
-    const churn_rate = Number((0.8 + (i % 9) * 0.12).toFixed(2))
-    return { dt, msisdn, province, city, operator, plan, arpu, churn_rate, key: i }
+    if (base.includes('reservation')) return { reservation_date: date, manufacturer, model, branch, status: i % 4 === 0 ? 'Expired' : 'Active', deposit_kwd: 500 + (i % 8) * 250, key: i }
+    if (base.includes('inventory')) return { vehicle_id: `VEH-${String(10001 + i)}`, manufacturer, model, model_year: 2024 + (i % 2), branch, stock_type: i % 5 ? 'Available' : 'Reserved', vehicle_status: 'In Stock', key: i }
+    if (base.includes('delivery')) return { order_confirmation_date: date, delivery_date: `2025-0${(i % 3) + 2}-${String((i % 27) + 1).padStart(2, '0')}`, manufacturer, model, branch, key: i }
+    if (base.includes('enquir')) return { enquiry_date: date, manufacturer, model, source: ['Showroom', 'Website', 'Call Center'][i % 3], status: ['Open', 'Follow-up', 'Converted'][i % 3], key: i }
+    return { invoice_date: date, manufacturer, model, variant: ['Premium', 'Sport', 'Luxury'][i % 3], model_year: 2024 + (i % 2), branch, selling_price_kwd: 14500 + (i % 18) * 725, profit_kwd: 1200 + (i % 11) * 260, key: i }
   })
 }
 
@@ -151,6 +177,8 @@ export function DatasetPreviewModal({
   initialActive,
   defaultTab = 'preview',
   zIndex = 1600,
+  hideTableList = false,
+  previewRows,
 }: {
   open: boolean
   onClose: () => void
@@ -158,15 +186,19 @@ export function DatasetPreviewModal({
   initialActive?: string
   defaultTab?: 'preview' | 'fields'
   zIndex?: number
+  hideTableList?: boolean
+  previewRows?: Array<Record<string, unknown>>
 }) {
   const { token } = theme.useToken()
-  const [drawerHeight, setDrawerHeight] = useState(560)
+  const locale = useAppStore((state) => state.locale)
+  const en = locale === 'en-US'
+  const [drawerHeight, setDrawerHeight] = useState(680)
 
   useEffect(() => {
     if (!open) return
     const compute = () => {
-      const desired = window.innerHeight - 56
-      setDrawerHeight(Math.max(480, Math.min(720, desired)))
+      const desired = window.innerHeight - 32
+      setDrawerHeight(Math.max(560, Math.min(820, desired)))
     }
     compute()
     window.addEventListener('resize', compute)
@@ -196,8 +228,17 @@ export function DatasetPreviewModal({
     return list.includes(a) ? a : list[0] || ''
   }, [active, initialActive, list])
 
-  const fields = useMemo(() => buildFields(activeName), [activeName])
-  const rows = useMemo(() => buildRows(activeName), [activeName, refreshTick])
+  const fields = useMemo(() => {
+    if (!previewRows?.length) return buildFields(activeName)
+    return Object.keys(previewRows[0]).map((name, index) => {
+      const values = previewRows.map((row) => row[name]).filter((value) => value != null && value !== '')
+      const numeric = values.length > 0 && values.every((value) => typeof value === 'number' || !Number.isNaN(Number(value)))
+      const dateLike = !numeric && values.length > 0 && values.every((value) => /^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(String(value)))
+      const type: FieldType = numeric ? 'Num' : dateLike ? 'Date' : 'Str'
+      return { id: `uploaded-${index}`, name, physicalName: name, type, role: numeric ? 'measure' : 'dimension', description: name } as Field
+    })
+  }, [activeName, previewRows])
+  const rows = useMemo(() => previewRows?.length ? previewRows : buildRows(activeName), [activeName, previewRows, refreshTick])
 
   const previewColumns = useMemo(() => {
     const sample = rows[0] ?? {}
@@ -221,19 +262,24 @@ export function DatasetPreviewModal({
 
   const fieldColumns = useMemo(() => {
     return [
-      { title: '字段名', dataIndex: 'name', key: 'name', width: '25%', ellipsis: true },
+      { title: en ? 'Field' : '字段名', dataIndex: 'name', key: 'name', width: '27%' },
       {
-        title: '物理字段名',
+        title: en ? 'Physical field' : '物理字段名',
         dataIndex: 'physicalName',
         key: 'physicalName',
-        width: '25%',
-        ellipsis: true,
+        width: '31%',
         render: (v: string) => <Typography.Text code>{v}</Typography.Text>,
       },
-      { title: '字段类型', dataIndex: 'type', key: 'type', width: '25%', ellipsis: true, render: (v: FieldType) => typePill(v) },
-      { title: '字段描述', dataIndex: 'description', key: 'description', width: '25%', ellipsis: true },
+      { title: en ? 'Type' : '字段类型', dataIndex: 'type', key: 'type', width: '14%', render: (v: FieldType) => typePill(v) },
+      {
+        title: en ? 'Description' : '字段描述',
+        dataIndex: 'description',
+        key: 'description',
+        width: '28%',
+        render: (value: string) => en ? FIELD_DESCRIPTION_EN[value] ?? value : value,
+      },
     ] as ColumnsType<Field>
-  }, [])
+  }, [en])
 
   const dimCount = useMemo(() => fields.filter((f) => f.role === 'dimension').length, [fields])
   const meaCount = useMemo(() => fields.filter((f) => f.role === 'measure').length, [fields])
@@ -244,7 +290,7 @@ export function DatasetPreviewModal({
       onClose={onClose}
       placement="bottom"
       height={drawerHeight}
-      title="数据表"
+      title={en ? 'Data table' : '数据表'}
       zIndex={zIndex}
       destroyOnClose
       mask
@@ -256,7 +302,7 @@ export function DatasetPreviewModal({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '300px 1fr',
+          gridTemplateColumns: hideTableList ? '1fr' : '300px 1fr',
           border: `1px solid ${token.colorSplit}`,
           borderRadius: 12,
           overflow: 'hidden',
@@ -265,12 +311,12 @@ export function DatasetPreviewModal({
           background: token.colorBgContainer,
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: `1px solid ${token.colorSplit}` }}>
+        {!hideTableList ? <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: `1px solid ${token.colorSplit}` }}>
           <div style={{ padding: 12 }}>
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜索"
+              placeholder={en ? 'Search' : '搜索'}
               prefix={<SearchOutlined />}
               allowClear
             />
@@ -313,7 +359,7 @@ export function DatasetPreviewModal({
               })}
             </Space>
           </div>
-        </div>
+        </div> : null}
 
         <div style={{ overflow: 'hidden', padding: 12, height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {activeName ? (
@@ -325,7 +371,7 @@ export function DatasetPreviewModal({
               items={[
                 {
                   key: 'preview',
-                  label: <Typography.Text style={{ fontWeight: 650 }}>数据预览</Typography.Text>,
+                  label: <Typography.Text style={{ fontWeight: 650 }}>{en ? 'Data preview' : '数据预览'}</Typography.Text>,
                   children: (
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
                       <div style={{ flex: 1, minHeight: 0, border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'hidden' }}>
@@ -343,11 +389,11 @@ export function DatasetPreviewModal({
                       <div style={{ flex: 'none', marginTop: 'auto', borderTop: `1px solid ${token.colorSplit}`, paddingTop: 10, paddingBottom: 2, background: token.colorBgContainer }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontSize: 12, color: token.colorTextSecondary }}>
                           <div>
-                            总字段数 {fields.length}　<span style={{ color: token.colorPrimary }}>●</span> 维度 <span style={{ color: token.colorPrimary, fontWeight: 750 }}>{dimCount}</span>　<span style={{ color: token.colorPrimary }}>●</span> 度量{' '}
+                            {en ? 'Fields' : '总字段数'} {fields.length}　<span style={{ color: token.colorPrimary }}>●</span> {en ? 'Dimensions' : '维度'} <span style={{ color: token.colorPrimary, fontWeight: 750 }}>{dimCount}</span>　<span style={{ color: token.colorPrimary }}>●</span> {en ? 'Measures' : '度量'}{' '}
                             <span style={{ color: token.colorPrimary, fontWeight: 750 }}>{meaCount}</span>
                           </div>
                           <Space size={10} align="center">
-                            <span style={{ color: token.colorTextSecondary }}>最多预览前100条</span>
+                            <span style={{ color: token.colorTextSecondary }}>{en ? 'Previewing up to 100 rows' : '最多预览前100条'}</span>
                             <Button
                               type="text"
                               size="small"
@@ -355,7 +401,7 @@ export function DatasetPreviewModal({
                               style={{ fontSize: 12, color: token.colorPrimary }}
                               onClick={() => setRefreshTick((x) => x + 1)}
                             >
-                              刷新
+                              {en ? 'Refresh' : '刷新'}
                             </Button>
                           </Space>
                         </div>
@@ -365,11 +411,11 @@ export function DatasetPreviewModal({
                 },
                 {
                   key: 'fields',
-                  label: <Typography.Text style={{ fontWeight: 650 }}>字段详情</Typography.Text>,
+                  label: <Typography.Text style={{ fontWeight: 650 }}>{en ? 'Field details' : '字段详情'}</Typography.Text>,
                   children: (
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
                       <div style={{ flex: 1, minHeight: 0, border: `1px solid ${token.colorSplit}`, borderRadius: 12, overflow: 'hidden' }}>
-                        <Table size="middle" pagination={false} columns={fieldColumns} dataSource={fields as any} tableLayout="fixed" />
+                        <Table className="dsPreviewTable dsFieldTable" size="middle" pagination={false} columns={fieldColumns} dataSource={fields as any} sticky tableLayout="fixed" scroll={{ y: Math.max(300, drawerHeight - 250) }} />
                       </div>
                     </div>
                   ),

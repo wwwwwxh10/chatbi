@@ -1,0 +1,188 @@
+.smartQueryRoot { height: 100vh; min-width: 0; display: grid; grid-template-columns: 280px minmax(0, 1fr); background: var(--ant-color-bg-layout); color: var(--ant-color-text); transition: grid-template-columns 180ms ease; }
+.smartQueryRoot.sidebarCollapsed { grid-template-columns: 72px minmax(0, 1fr); }
+.smartQuerySidebar { min-height: 0; padding: 16px 14px 12px; border-right: 1px solid var(--ant-color-split); background: var(--ant-color-bg-container); display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+.smartQueryBrand { height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-inline: 4px; }
+.smartQueryCollapse { flex: none; width: 30px; height: 30px; color: var(--ant-color-text-tertiary); opacity: .72; }
+.smartQueryCollapse:hover { color: var(--ant-color-primary) !important; background: var(--ant-color-fill-tertiary) !important; }
+.sidebarCollapsed .smartQuerySidebar { padding-inline: 10px; }
+.sidebarCollapsed .smartQueryBrand { justify-content: center; }
+.sidebarCollapsed .smartQuerySidebar > .ant-btn { width: 42px; min-width: 42px; align-self: center; padding-inline: 0; }
+.sidebarCollapsed .smartQuerySidebarFooter { margin-inline: -10px; align-items: center; }
+.sidebarCollapsed .smartQueryFooterAction { width: 42px !important; min-width: 42px !important; min-height: 42px !important; margin: 0 !important; padding: 0 !important; justify-content: center; }
+.sidebarCollapsed .smartQueryAccountArea { width: 100%; padding: 12px 10px 0; display: flex; justify-content: center; }
+.smartQuerySearch { margin-top: 2px; }
+.smartQuerySessions { flex: 1; min-height: 0; overflow: auto; margin: 0 -14px 0 -6px; padding: 0 4px 0 6px; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.smartQuerySessions:hover { scrollbar-color: color-mix(in srgb, var(--ant-color-text-tertiary) 42%, transparent) transparent; }
+.smartQuerySessions::-webkit-scrollbar { width: 5px; }
+.smartQuerySessions::-webkit-scrollbar-track { background: transparent; }
+.smartQuerySessions::-webkit-scrollbar-thumb { border-radius: 999px; background: transparent; }
+.smartQuerySessions:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ant-color-text-tertiary) 42%, transparent); }
+.smartQueryGroupLabel { padding: 14px 9px 7px; color: var(--ant-color-text-tertiary); font-size: 12px; font-weight: 600; }
+.smartQuerySession { width: 100%; height: 42px; border: 0; border-radius: 7px; padding: 0 5px 0 11px; display: flex; align-items: center; gap: 6px; background: transparent; color: inherit; cursor: pointer; text-align: left; }
+.smartQuerySession:hover { background: var(--ant-color-fill-tertiary); }
+.smartQuerySession.isActive { background: color-mix(in srgb, var(--ant-color-primary) 14%, transparent); color: var(--ant-color-primary); }
+.smartQuerySessionName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.smartQuerySession .ant-btn { opacity: 0; }
+.smartQuerySession:hover .ant-btn { opacity: 1; }
+.smartQueryCollapsedRail { flex: 1; min-height: 0; }
+.smartQuerySidebarFooter { margin-inline: -14px; display: flex; flex-direction: column; gap: 12px; }
+.smartQueryFooterAction { width: calc(100% - 28px) !important; margin: 0 14px; min-height: 44px !important; border: 1px solid color-mix(in srgb, var(--ant-color-split) 75%, transparent) !important; background: var(--ant-color-fill-quaternary) !important; box-shadow: 0 4px 14px rgba(0,0,0,.04); }
+.smartQueryAccountArea { padding: 12px 14px 0; border-top: 1px solid var(--ant-color-split); }
+.smartQueryFooterAction, .smartQueryAccount { width: 100%; min-height: 40px; border: 0; border-radius: 7px; padding: 6px 9px; display: flex; align-items: center; gap: 10px; color: inherit; background: transparent; cursor: pointer; text-align: left; }
+.smartQueryFooterAction svg { color: var(--ant-color-text-tertiary); }
+.smartQueryFooterAction:hover, .smartQueryAccount:hover { background: var(--ant-color-fill-tertiary); }
+.smartQueryFooterAction span { white-space: nowrap; }
+.smartQueryWorkbenchArrow { margin-left: auto; }
+.smartQueryAccountAvatar { width: 28px; height: 28px; flex: none; display: grid; place-items: center; color: var(--ant-color-text); }
+.smartQueryAccountText { flex: 1; min-width: 0; font-weight: 500; line-height: 1.25; white-space: nowrap; }
+.sidebarCollapsed .smartQueryFooterAction, .sidebarCollapsed .smartQueryAccount { width: 42px; justify-content: center; padding-inline: 0; }
+.sidebarCollapsed .smartQueryFooterAction span, .sidebarCollapsed .smartQueryAccountText, .sidebarCollapsed .smartQueryAccountMore { display: none; }
+.sidebarCollapsed .smartQueryFooterAction > .anticon, .sidebarCollapsed .smartQueryAccountAvatar { display: grid; margin: 0; }
+.sidebarCollapsed .smartQueryWorkbenchArrow { display: none; }
+.smartQueryMain { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--ant-color-bg-layout); }
+.smartQueryHeader { height: 64px; flex: none; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--ant-color-split); background: var(--ant-color-bg-container); }
+.smartQueryHeader h4 { font-size: 16px !important; line-height: 24px !important; }
+.smartQueryThread { flex: 1; min-height: 0; overflow: auto; }
+.smartQueryWelcome { min-height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px 24px 5%; }
+.smartQueryWelcomeIntro { width: min(760px, 90%); display: flex; align-items: center; justify-content: flex-start; gap: 8px; text-align: left; }
+.smartQueryWelcomeAvatar { width: 112px; height: 112px; flex: none; object-fit: contain; }
+.smartQueryWelcomeIntro h3 { margin: 0 !important; color: var(--ant-color-primary) !important; font-weight: 750 !important; transform: translateY(14px); }
+.smartQueryTypewriter::after { content: ''; display: inline-block; width: 2px; height: 1em; margin-left: 4px; vertical-align: -2px; background: currentColor; animation: smartQueryCaret .8s step-end infinite; }
+@keyframes smartQueryCaret { 50% { opacity: 0; } }
+.smartQuerySuggestions { width: 100%; margin-top: 14px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.smartQuerySuggestions button { height: 36px; border: 1px solid var(--ant-color-split); border-radius: 18px; padding: 0 16px; color: var(--ant-color-text-secondary); background: var(--ant-color-bg-container); cursor: pointer; transition: all 160ms ease; }
+.smartQuerySuggestions button:hover { color: var(--ant-color-primary); border-color: color-mix(in srgb, var(--ant-color-primary) 45%, var(--ant-color-split)); background: color-mix(in srgb, var(--ant-color-primary) 5%, var(--ant-color-bg-container)); }
+.smartQueryMessages { width: min(920px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 36px; display: flex; flex-direction: column; gap: 24px; }
+.smartQueryMessage { display: flex; align-items: flex-start; gap: 10px; }
+.smartQueryMessage.user { justify-content: flex-end; }
+.smartQueryMessageBody { width: min(780px, calc(100% - 44px)); }
+.smartQueryMessage.user .smartQueryMessageBody { width: auto; max-width: 94%; }
+.smartQueryBubble { line-height: 1.6; white-space: pre-wrap; }
+.smartQueryMessage.user .smartQueryBubble { padding: 10px 12px; border-radius: 10px; color: white; background: var(--ant-color-primary); border: 1px solid var(--ant-color-primary); }
+.smartQueryMessage.user .smartQueryBubble.hasDataset { display: flex; align-items: center; gap: 10px; color: var(--ant-color-text); border: 0; background: var(--ant-color-fill-secondary); }
+.smartQueryMessageDataset { height: 32px; padding: 0 10px 0 7px; display: inline-flex; align-items: center; gap: 7px; flex: none; border-radius: 8px; background: var(--ant-color-bg-elevated); font-weight: 500; white-space: nowrap; }
+.smartQueryUserMeta { min-height: 28px; display: flex; justify-content: flex-end; align-items: center; gap: 4px; color: var(--ant-color-text-tertiary); font-size: 12px; opacity: 0; transition: opacity 160ms ease; }
+.smartQueryMessage.user:hover .smartQueryUserMeta, .smartQueryUserMeta:focus-within { opacity: 1; }
+.smartQueryUserMeta .ant-btn { width: 28px; min-width: 28px; height: 28px; padding: 0; color: var(--ant-color-text-tertiary); }
+.smartQueryRunning { width: max-content; display: inline-flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 12px; }
+.smartQueryRunning .biSparkleIcon { color: var(--ant-color-primary); }
+.smartQueryResult { padding: 18px 20px 20px; border: 0; border-radius: 12px; overflow: hidden; background: var(--ant-color-bg-container); box-shadow: none; }
+.smartQueryResultToolbar { min-height: 44px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.smartQueryResultToolbar > strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; line-height: 24px; }
+.smartQueryResultControls { flex: none; }
+.smartQueryResultAction { width: 32px !important; min-width: 32px !important; height: 32px; padding: 0 !important; display: grid !important; place-items: center; border-radius: 8px; background: var(--ant-color-fill-tertiary); }
+.smartQueryResultAction .ant-btn-icon { display: grid; place-items: center; margin: 0 !important; }
+.smartQueryResultAction .ant-btn-icon > span { font-size: 12px; font-weight: 600; transform: scale(.85); }
+.smartQueryViewSwitch { height: 32px; padding: 2px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; background: var(--ant-color-fill-tertiary); }
+.smartQueryViewSwitch .ant-btn { width: 28px; min-width: 28px; height: 28px; padding: 0; border-radius: 6px; color: var(--ant-color-text-secondary); }
+.smartQueryViewSwitch .ant-btn.isActive { color: var(--ant-color-primary); background: var(--ant-color-fill-secondary); }
+.smartQueryChartTypes { width: 330px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.smartQueryChartTypes button { height: 48px; border: 0; border-radius: 8px; display: flex; align-items: center; gap: 9px; padding: 0 12px; color: var(--ant-color-text-secondary); background: transparent; cursor: pointer; }
+.smartQueryChartTypes button:hover, .smartQueryChartTypes button.isActive { color: var(--ant-color-text); background: var(--ant-color-fill-tertiary); }
+.smartQueryChartTypes button:disabled { color: var(--ant-color-text-tertiary); opacity: .38; background: transparent; cursor: not-allowed; }
+.smartQueryChartTypes button.isActive .anticon { color: var(--ant-color-primary); }
+.smartQueryMetric { padding: 16px 18px; display: flex; flex-direction: column; gap: 3px; color: var(--ant-color-text-secondary); border: 0; border-radius: 8px; background: var(--ant-color-fill-quaternary); }
+.smartQueryMetric strong { color: var(--ant-color-text); font-size: 28px; }
+.smartQueryChart { height: 340px; padding: 12px; border: 0; border-radius: 8px; overflow: hidden; background: var(--ant-color-fill-quaternary); }
+.smartQueryResultTable { padding: 8px; border: 0; border-radius: 8px; overflow: hidden; background: var(--ant-color-fill-quaternary); }
+.smartQueryResultTable .ant-table,
+.smartQueryResultTable .ant-table-container,
+.smartQueryResultTable .ant-table-content { background: transparent; }
+.smartQueryResultTable .ant-table-thead > tr > th { background: var(--ant-color-fill-tertiary); }
+.smartQueryResultTable .ant-table-tbody > tr > td { border-bottom-color: var(--ant-color-split); }
+.smartQueryNarrative { width: 100%; padding-top: 16px; font-size: 14px; line-height: 1.75; }
+.smartQueryNarrative p { margin: 0; }
+.smartQueryNarrative .chatRichEmphasis,
+.smartQueryNarrative .chatRichMetric { color: var(--ant-color-primary) !important; font-weight: 600 !important; }
+.smartQueryComposer { position: relative; flex: none; padding: 10px 24px 13px; background: linear-gradient(180deg, transparent, var(--ant-color-bg-layout) 18%); }
+.smartQueryComposerCore { width: min(920px, 100%); margin: 0 auto; position: relative; }
+.smartQueryWelcome .smartQueryComposerCore { width: min(760px, 90%); margin-top: 12px; text-align: left; transform: translateY(-24px); }
+.smartQueryWelcomeIntro { transform: translateY(-24px); }
+.smartQueryInputBox { width: 100%; min-height: 78px; border: 1px solid color-mix(in srgb, var(--ant-color-primary) 34%, var(--ant-color-split)); border-radius: 14px; padding: 9px 10px 7px; display: flex; flex-direction: column; gap: 5px; box-shadow: 0 6px 24px color-mix(in srgb, var(--ant-color-primary) 7%, transparent); transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease; }
+.smartQueryInputBox:hover { border-color: color-mix(in srgb, var(--ant-color-primary) 58%, var(--ant-color-split)); }
+.smartQueryInputBox:focus-within { border-color: var(--ant-color-primary); background: color-mix(in srgb, var(--ant-color-primary) 2%, var(--chatbi-input-bg)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ant-color-primary) 9%, transparent), 0 10px 30px color-mix(in srgb, var(--ant-color-primary) 10%, transparent); }
+.smartQueryInputBox textarea { resize: none; padding: 3px 4px !important; }
+.smartQueryComposerCore.isLarge .smartQueryInputBox { min-height: 144px; }
+.smartQueryComposerCore.isLarge textarea { font-size: 16px; }
+.smartQuerySelectedData { display: flex; gap: 8px; flex-wrap: wrap; }
+.smartQueryAttachmentChip { max-width: 360px; height: 34px; border: 0; border-radius: 8px; padding: 0 10px; display: inline-flex; align-items: center; gap: 8px; color: var(--ant-color-text); background: var(--ant-color-fill-tertiary); cursor: pointer; }
+.smartQueryAttachmentChip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.smartQueryAttachmentChip:hover { background: var(--ant-color-fill-secondary); }
+.smartQueryChipDelete { display: none; width: 22px; height: 22px; margin-left: -5px; border: 0; border-radius: 6px; color: var(--ant-color-text-tertiary); background: transparent; cursor: pointer; }
+.smartQueryAttachmentChip:hover .smartQueryChipDelete { display: grid; place-items: center; }
+.smartQueryChipDelete:hover { color: var(--ant-color-text); background: var(--ant-color-fill-tertiary); }
+.smartQueryInputToolbar { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.smartQueryInputToolsLeft { display: flex; align-items: center; gap: 5px; }
+.smartQueryInputToolsRight { display: flex; align-items: center; gap: 12px; }
+.smartQueryToolButton, .smartQueryModelButton { color: var(--ant-color-text-secondary); padding-inline: 8px; }
+.smartQueryToolButton { width: 32px; }
+.smartQueryToolButton .ant-btn-icon, .smartQueryQuickTrigger .ant-btn-icon { width: 18px; height: 18px; display: grid; place-items: center; }
+.smartQueryToolButton .ant-btn-icon > svg { width: 17px; height: 17px; }
+.smartQueryQuickTrigger .anticon { font-size: 16px; }
+.smartQueryToolButton:hover, .smartQueryModelButton:hover { color: var(--ant-color-text) !important; background: var(--ant-color-fill-tertiary) !important; }
+.smartQueryModelButton { height: 36px; font-weight: 400; font-size: 14px; gap: 6px; }
+.smartQueryModelButton .anticon-down { font-size: 11px; color: var(--ant-color-text-tertiary); }
+.smartQuerySend { flex: none; width: 34px !important; min-width: 34px !important; height: 34px; display: grid !important; place-items: center; padding: 0 !important; }
+.smartQuerySend .ant-btn-icon { width: 18px; height: 18px; display: grid; place-items: center; margin: 0 !important; }
+.smartQuerySend, .smartQuerySend:hover, .smartQuerySend:focus { border: 0 !important; box-shadow: none !important; }
+.smartQuerySend:disabled { color: var(--ant-color-text-tertiary) !important; background: var(--ant-color-fill-secondary) !important; }
+.smartQueryQuickTrigger { color: var(--ant-color-text-secondary); }
+.smartQueryHint { margin-top: 7px; text-align: center; font-size: 11px; color: var(--ant-color-text-tertiary); }
+.smartQueryDataPicker { width: 300px; padding: 2px; }
+.smartQueryDataPickerHeader { margin-bottom: 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.smartQueryDataPicker h5 { margin: 0 0 2px !important; }
+.smartQueryDataPickerHeader > span { padding: 2px 8px; border-radius: 10px; color: var(--ant-color-text-tertiary); background: var(--ant-color-fill-tertiary); font-size: 12px; }
+.smartQueryDataList { max-height: 350px; overflow: auto; margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.smartQueryDataList > button { width: 100%; min-height: 62px; border: 1px solid transparent; border-radius: 9px; padding: 8px 10px; display: grid; grid-template-columns: 32px minmax(0, 1fr) 20px; align-items: center; gap: 10px; color: inherit; background: transparent; text-align: left; cursor: pointer; }
+.smartQueryDataList > button:hover { border-color: var(--ant-color-split); background: var(--ant-color-fill-quaternary); }
+.smartQueryDataList > button.isSelected { border-color: color-mix(in srgb, var(--ant-color-primary) 36%, transparent); background: color-mix(in srgb, var(--ant-color-primary) 7%, transparent); }
+.smartQueryDatasetIcon { width: 32px; height: 32px; border-radius: 8px; display: grid !important; place-items: center; background: var(--ant-color-fill-tertiary); }
+.smartQueryDataList > button > span { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.smartQueryDataList strong, .smartQueryDataList small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.smartQueryDataList small { color: var(--ant-color-text-tertiary); }
+.smartQueryQuickPanel { position: absolute; left: 0; bottom: calc(100% + 8px); width: 320px; max-width: calc(100% - 24px); z-index: 20; overflow: hidden; border-radius: 16px; background: var(--ant-color-bg-elevated); box-shadow: 0 18px 48px rgba(0,0,0,.22); }
+.smartQueryQuickHeader { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 12px 8px; }
+.smartQueryQuickHeader > span { font-size: 14px; line-height: 1.5; font-weight: 500; }
+.smartQueryQuickHeader .ant-btn { width: auto; color: var(--ant-color-text-secondary); font-size: 14px; line-height: 1.5; }
+.smartQueryQuickList { max-height: 240px; overflow-x: hidden; overflow-y: auto; padding: 0 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.smartQueryQuickList .ant-btn { width: 100%; min-width: 0; height: auto; padding: 8px 10px; justify-content: flex-start; border-radius: 10px; font-size: 14px; line-height: 1.5; text-align: left; }
+.smartQueryQuickList .ant-btn > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.smartQueryMessageActions { min-height: 34px; margin-top: 6px; display: flex; align-items: center; gap: 8px; color: var(--ant-color-text-tertiary); font-size: 12px; }
+.smartQueryMessageActions .ant-btn { color: var(--ant-color-text-tertiary); }
+.smartQueryFollowUps { margin-top: 14px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; color: var(--ant-color-text-tertiary); font-size: 13px; }
+.smartQueryFollowUps > div { margin-bottom: 2px; }
+.smartQueryFollowUps > button { min-height: 34px; max-width: 100%; border: 0; border-radius: 17px; padding: 6px 14px; color: var(--ant-color-text-secondary); background: var(--ant-color-fill-quaternary); text-align: left; cursor: pointer; transition: color 160ms ease, background-color 160ms ease; }
+.smartQueryFollowUps > button:hover { color: var(--ant-color-primary); background: var(--ant-color-fill-tertiary); }
+.smartQuerySql { max-height: 60vh; overflow: auto; padding: 16px; border-radius: 7px; background: var(--ant-color-fill-tertiary); white-space: pre-wrap; }
+.smartQuerySqlTabs .ant-tabs-nav { margin-bottom: 16px; }
+.smartQuerySqlTabs .smartQuerySql { min-height: 210px; margin: 0; padding: 20px; border: 1px solid var(--ant-color-split); border-radius: 10px; font-size: 14px; line-height: 1.65; }
+.smartQueryRoot.isEnglish { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif; }
+.smartQueryRoot.isEnglish .smartQuerySessionName { font-size: 13px; line-height: 20px; }
+.smartQueryRoot.isEnglish .smartQueryGroupLabel { font-size: 11px; line-height: 20px; text-transform: uppercase; }
+.smartQueryRoot.isEnglish .smartQueryHeader h4 { font-size: 15px !important; font-weight: 600; }
+.smartQueryRoot.isEnglish .smartQueryMessageBody { width: min(800px, calc(100% - 44px)); }
+.smartQueryRoot.isEnglish .smartQueryBubble { font-size: 14px; line-height: 1.6; letter-spacing: 0; overflow-wrap: anywhere; }
+.smartQueryRoot.isEnglish .smartQueryResultToolbar { align-items: flex-start; }
+.smartQueryRoot.isEnglish .smartQueryResultToolbar > strong { max-width: 62ch; padding-top: 4px; font-size: 16px; line-height: 24px; font-weight: 600; white-space: normal; text-wrap: balance; }
+.smartQueryRoot.isEnglish .smartQueryNarrative { max-width: 100%; font-size: 15px; line-height: 1.78; letter-spacing: 0; overflow-wrap: anywhere; text-wrap: pretty; }
+.smartQueryRoot.isEnglish .smartQueryNarrative > div { max-width: 100%; }
+.smartQueryRoot.isEnglish .smartQueryResultTable .ant-table { font-size: 13px; }
+.smartQueryRoot.isEnglish .smartQueryFollowUps { font-size: 12px; line-height: 18px; }
+.smartQueryRoot.isEnglish .smartQueryFollowUps > button { min-height: 36px; max-width: min(100%, 68ch); border-radius: 8px; padding: 8px 12px; font-size: 13px; line-height: 18px; white-space: normal; overflow-wrap: anywhere; }
+.smartQueryRoot.isEnglish .smartQueryModelButton { font-size: 13px; }
+.smartQueryRoot.isEnglish .smartQueryInputBox textarea { font-size: 14px; line-height: 22px; }
+.smartQueryRoot.isEnglish .smartQueryHint { line-height: 16px; }
+@media (max-width: 900px) {
+  .smartQueryRoot { grid-template-columns: 210px minmax(0, 1fr); }
+  .smartQueryRoot.sidebarCollapsed { grid-template-columns: 64px minmax(0, 1fr); }
+  .smartQuerySidebar { padding-inline: 10px; }
+  .smartQueryHeader { padding-inline: 14px; }
+  .smartQueryMessages { width: calc(100% - 24px); }
+  .smartQueryComposer { padding-inline: 12px; }
+  .smartQueryWelcome { padding-inline: 14px; }
+  .smartQueryWelcomeIntro, .smartQueryWelcome .smartQueryComposerCore { width: 100%; }
+  .smartQueryWelcomeIntro h3 { font-size: 20px !important; }
+  .smartQueryWelcomeAvatar { width: 88px; height: 88px; }
+  .smartQueryResult { padding-inline: 14px; }
+  .smartQueryResultToolbar { align-items: flex-start; flex-direction: column; }
+}

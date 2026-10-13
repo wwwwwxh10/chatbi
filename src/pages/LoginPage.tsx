@@ -59,7 +59,7 @@ export default function LoginPage() {
                   return
                 }
                 login()
-                navigate('/dashboard', { replace: true })
+                navigate('/smart-query', { replace: true, state: { openWelcome: true } })
               }}
             >
               <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入账号' }]}>
