@@ -23,6 +23,7 @@ export const resources = {
     translation: {
       app: { name: 'ChatBI', prototype: 'Prototype' },
       nav: {
+        smartQuery: '问数',
         dashboard: '仪表盘',
         knowledgeBase: '知识库',
         dataSources: '数据源',
@@ -245,6 +246,7 @@ export const resources = {
     translation: {
       app: { name: 'ChatBI', prototype: 'Prototype' },
       nav: {
+        smartQuery: 'Ask Data',
         dashboard: 'Dashboard',
         knowledgeBase: 'Knowledge Base',
         dataSources: 'Data Sources',

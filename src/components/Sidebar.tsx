@@ -9,6 +9,7 @@ import {
   ChevronsRight,
   Database,
   GitBranch,
+  MessageSquareText,
   Sigma,
 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -65,6 +66,7 @@ export function Sidebar({
 
   const knowledgeTab = readKnowledgeTab(location.search)
   const selectedKey = (() => {
+    if (location.pathname.startsWith('/smart-query')) return 'smart-query'
     if (location.pathname.startsWith('/knowledge-base')) return `kb:${knowledgeTab}`
     if (location.pathname.startsWith('/data-sources')) return 'data-sources'
     if (location.pathname.startsWith('/dashboard')) return 'dashboard'
@@ -92,6 +94,11 @@ export function Sidebar({
   }, [collapsed, location.pathname, openKeys.length])
 
   const items: MenuProps['items'] = [
+    {
+      key: 'smart-query',
+      icon: <MessageSquareText size={16} />,
+      label: t('nav.smartQuery'),
+    },
     {
       key: 'dashboard',
       icon: <ChartNoAxesCombined size={16} />,
@@ -125,6 +132,7 @@ export function Sidebar({
   ]
 
   const onClick: MenuProps['onClick'] = (e) => {
+    if (e.key === 'smart-query') navigate('/smart-query')
     if (e.key === 'dashboard') navigate('/dashboard')
     if (e.key === 'data-sources') navigate('/data-sources')
 
